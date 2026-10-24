@@ -27,7 +27,7 @@ $groups = match ($role) {
         'Catalog' => [['/admin/products', 'Products', 'box', 0], ['/admin/categories', 'Categories', 'tag', 0], ['/admin/brands', 'Brands', 'tag', 0]],
         'Inventory' => [['/admin/stock', 'Stock Control', 'stack', 0], ['/admin/stock/movements', 'Stock Movement', 'swap', 0]],
         'Sales' => [['/admin/orders', 'Orders', 'cart', $pendingOrders, $orderSub('/admin')], ['/admin/affiliates', 'Affiliates', 'link', 0], ['/admin/commissions', 'Commissions', 'coin', $pendingCommissions], ['/admin/withdrawals', 'Withdrawals', 'coin', 0], ['/admin/vouchers', 'Vouchers', 'coin', 0]],
-        'Administration' => [['/admin/staff', 'Staff', 'users', 0], ['/admin/visitors', 'Visitors', 'pin', 0], ['/admin/whatsapp', 'WhatsApp', 'stack', 0], ['/admin/email', 'Email', 'swap', 0], ['/admin/invoice', 'Invoice details', 'stack', 0], ['/admin/backup', 'Backup', 'lock', 0], ['/admin/email/announce', 'Announcements', 'heart', 0], ['/admin/payments', 'Payments', 'card', 0], ['/admin/payments/billplz', 'Billplz', 'link', 0], ['/admin/shipping/ninjavan', 'NinjaVan', 'truck', 0], ['/admin/settings', 'Settings', 'gear', 0]],
+        'Administration' => [['/admin/staff', 'Staff', 'users', 0], ['/admin/visitors', 'Visitors', 'pin', 0], ['/admin/invoice', 'Invoice details', 'stack', 0], ['/admin/backup', 'Backup', 'lock', 0], ['/admin/email/announce', 'Announcements', 'heart', 0], ['/admin/payments', 'Payments', 'card', 0], ['/admin/api', 'API Management', 'link', 0, [['/admin/whatsapp', 'WhatsApp', '', 0], ['/admin/email', 'Email', '', 0], ['/admin/payments/billplz', 'Billplz', '', 0], ['/admin/shipping/ninjavan', 'NinjaVan', '', 0]]], ['/admin/settings', 'Settings', 'gear', 0]],
         'Account' => [['/admin/profile', 'Profile', 'user', 0], ['/admin/password', 'Password', 'lock', 0]],
     ],
     'staff' => array_filter([
@@ -36,8 +36,11 @@ $groups = match ($role) {
         'Inventory' => Auth::can('stock.manage') ? [['/staff/stock', 'Stock Control', 'stack', 0], ['/staff/stock/movements', 'Stock Movement', 'swap', 0]] : [],
         'Sales' => Auth::can('orders.view') ? [['/staff/orders', 'Orders', 'cart', $pendingOrders, $orderSub('/staff')]] : [],
         'Administration' => array_merge(
-            Auth::can('payments.manage') ? [['/staff/payments', 'Payments', 'card', 0], ['/staff/payments/billplz', 'Billplz', 'link', 0]] : [],
-            Auth::can('shipping.manage') ? [['/staff/shipping/ninjavan', 'NinjaVan', 'truck', 0]] : []
+            Auth::can('payments.manage') ? [['/staff/payments', 'Payments', 'card', 0]] : [],
+            (Auth::can('payments.manage') || Auth::can('shipping.manage')) ? [['/staff/api', 'API Management', 'link', 0, array_merge(
+                Auth::can('payments.manage') ? [['/staff/payments/billplz', 'Billplz', '', 0]] : [],
+                Auth::can('shipping.manage') ? [['/staff/shipping/ninjavan', 'NinjaVan', '', 0]] : []
+            )]] : []
         ),
         'Account' => [['/staff/profile', 'Profile', 'user', 0], ['/staff/password', 'Password', 'lock', 0]],
     ]),
@@ -59,10 +62,13 @@ $active = null;
 parse_str((string) parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_QUERY), $__q);
 $statusNow = is_string($__q['status'] ?? null) && isset(\App\Services\OrderService::FLOW[$__q['status']]) ? $__q['status'] : '';
 foreach ($groups as $items) {
-    foreach ($items as [$href]) {
-        $hit = $href === $home ? $path === $href : ($path === $href || str_starts_with($path, $href . '/'));
-        if ($hit && ($active === null || strlen($href) > strlen($active))) {
-            $active = $href;
+    foreach ($items as $item) {
+        // A group's own page and the pages inside its submenu both count as the current section.
+        foreach (array_merge([$item[0]], array_column($item[4] ?? [], 0)) as $href) {
+            $hit = $href === $home ? $path === $href : ($path === $href || str_starts_with($path, $href . '/'));
+            if ($hit && ($active === null || strlen($href) > strlen($active))) {
+                $active = $href;
+            }
         }
     }
 }
@@ -139,7 +145,7 @@ $siteLogo = \App\Services\SiteLogo::url(); // the logo replaces the shop name wh
                             <?php if ($badge > 0): ?><span class="pill" aria-label="<?= (int) $badge ?> pending"><?= $badge > 99 ? '99+' : (int) $badge ?></span><?php endif; ?>
                         </a>
                         <?php else:
-                            $inSection = $href === $active;
+                            $inSection = $href === $active || in_array($active, array_column($kids, 0), true);
                             $onList = $inSection && $path === $href;               // the orders list itself: a child is the current page
                             $subId = 'sub-' . substr(md5($href), 0, 6);
                         ?>
@@ -150,7 +156,7 @@ $siteLogo = \App\Services\SiteLogo::url(); // the logo replaces the shop name wh
                                 <svg class="ico nav-chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
                             </button>
                             <div class="nav-sub" id="<?= e($subId) ?>">
-                                <?php foreach ($kids as [$kHref, $kLabel, $kKey, $kCount]): $on = $onList && $kKey === $statusNow; ?>
+                                <?php foreach ($kids as [$kHref, $kLabel, $kKey, $kCount]): $on = ($onList && $kKey === $statusNow) || (!$onList && $kHref === $active); ?>
                                     <a href="<?= e(url($kHref)) ?>" data-palette-label="<?= e($label . ': ' . $kLabel) ?>"<?= $on ? ' aria-current="page"' : '' ?>>
                                         <span class="dot st-<?= e($kKey === '' ? 'all' : $kKey) ?>" aria-hidden="true"></span><span class="nav-label"><?= e($kLabel) ?></span>
                                         <span class="count<?= $kKey === 'pending' && $kCount > 0 ? ' hot' : '' ?>"><?= $kCount > 999 ? '999+' : (int) $kCount ?></span>
