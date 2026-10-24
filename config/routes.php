@@ -166,6 +166,7 @@ return function (Router $r): void {
             $r->post('/vouchers', 'Admin/VoucherController@store');
             $r->post('/vouchers/{id}/active', 'Admin/VoucherController@toggle');
             $r->post('/vouchers/{id}/delete', 'Admin/VoucherController@delete');
+            $r->post('/vouchers/{id}/email', 'Admin/VoucherController@email');
             $r->get('/backup', 'Admin/BackupController@index');
             $r->post('/backup', 'Admin/BackupController@create');
             $r->get('/backup/download/{name}', 'Admin/BackupController@download');

@@ -29,18 +29,11 @@ final class VoucherService
     {
         $v = self::find($code);
         $refuse = fn(string $message) => ['ok' => false, 'message' => $message, 'discount' => 0, 'voucher' => null];
-        if ($v === null || (int) $v['active'] !== 1) {
+        if ($v === null) {
             return $refuse('That code is not valid.');
         }
-        $now = time();
-        if ($v['starts_at'] !== null && strtotime((string) $v['starts_at']) > $now) {
-            return $refuse('That code is not active yet.');
-        }
-        if ($v['expires_at'] !== null && strtotime((string) $v['expires_at']) <= $now) {
-            return $refuse('That code has expired.');
-        }
-        if ($v['max_uses'] !== null && (int) $v['used_count'] >= (int) $v['max_uses']) {
-            return $refuse('That code has been used up.');
+        if (($reason = self::blocked($v)) !== null) {
+            return $refuse($reason);
         }
         $min = PricingService::cents((string) $v['min_subtotal']);
         if ($subtotalCents < $min) {
@@ -50,6 +43,54 @@ final class VoucherService
             ? intdiv($subtotalCents * PricingService::cents((string) $v['value']) + 5000, 10000)
             : PricingService::cents((string) $v['value']);
         return ['ok' => true, 'message' => 'Code applied.', 'discount' => min($discount, $subtotalCents), 'voucher' => $v];
+    }
+
+    /** Why a code cannot be used right now, or null when it can. Unknown and switched-off codes give the same answer. */
+    private static function blocked(array $v): ?string
+    {
+        if ((int) $v['active'] !== 1) {
+            return 'That code is not valid.';
+        }
+        $now = time();
+        if ($v['starts_at'] !== null && strtotime((string) $v['starts_at']) > $now) {
+            return 'That code is not active yet.';
+        }
+        if ($v['expires_at'] !== null && strtotime((string) $v['expires_at']) <= $now) {
+            return 'That code has expired.';
+        }
+        if ($v['max_uses'] !== null && (int) $v['used_count'] >= (int) $v['max_uses']) {
+            return 'That code has been used up.';
+        }
+        return null;
+    }
+
+    /**
+     * Email a live code to every member who has not unsubscribed. Uses the announcement sender, so it is
+     * logged as a campaign and carries the unsubscribe link. @return array|string the counts, or an error message
+     */
+    public static function emailMembers(int $id, int $actorId): array|string
+    {
+        $v = Database::query('SELECT * FROM vouchers WHERE id = ?', [$id])->fetch();
+        if (!$v) {
+            return 'That code does not exist.';
+        }
+        if (($reason = self::blocked($v)) !== null) {
+            return 'This code cannot be sent: ' . $reason;
+        }
+        $offer = $v['type'] === 'percent'
+            ? rtrim(rtrim(number_format((float) $v['value'], 2), '0'), '.') . '% off the items'
+            : 'RM' . number_format((float) $v['value'], 2) . ' off the items';
+        $min = (float) $v['min_subtotal'] > 0 ? 'Belanja minimum: RM' . number_format((float) $v['min_subtotal'], 2) . "\n" : '';
+        $until = $v['expires_at'] !== null ? 'Sah sehingga: ' . date('d M Y, H:i', strtotime((string) $v['expires_at'])) . "\n" : '';
+        $subject = 'Kod diskaun ' . $v['code'] . ' untuk anda';
+        // The code holds only A-Z, 0-9, dash and underscore, so it cannot clash with the {name} and {shop} placeholders.
+        $body = "Hai {name},\n\nAda tawaran khas untuk anda dari {shop}!\n\nKod: {$v['code']}\nPotongan: {$offer}\n{$min}{$until}\n"
+            . "Gunakan kod ini semasa checkout. Selamat berbelanja!\n\n{shop}";
+        $r = EmailService::announce($subject, $body, 'members', $actorId);
+        if (is_array($r)) {
+            AuditService::log($actorId, 'voucher.email', "{$v['code']} to {$r['recipients']} members: {$r['sent']} sent, {$r['failed']} failed");
+        }
+        return $r;
     }
 
     /** Count one use. Call inside the order transaction; throws if the code ran out or expired in the meantime. */

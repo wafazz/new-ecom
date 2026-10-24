@@ -3,10 +3,14 @@
 use App\Core\Database as DB;
 use App\Models\Product;
 use App\Models\Setting;
+use App\Models\User;
 use App\Services\AffiliateService;
 use App\Services\CheckoutException;
 use App\Services\CheckoutService;
+use App\Services\EmailSettings as S;
+use App\Services\MailService as M;
 use App\Services\OrderService;
+use App\Services\UnsubscribeService;
 use App\Services\VoucherService as V;
 
 if (!str_ends_with((string) env('DB_NAME', ''), '_test')) {
@@ -14,6 +18,7 @@ if (!str_ends_with((string) env('DB_NAME', ''), '_test')) {
     return;
 }
 reset_test_db();
+putenv('APP_KEY=voucher-db-test-key-0123456789abcdef0123'); // the email API key is stored encrypted
 DB::query("DELETE FROM settings WHERE `key` LIKE 'shipping%'");
 DB::query("INSERT INTO users (role, name, email, password_hash, status) VALUES ('admin', 'Vee Admin', 'vee@example.test', 'x', 'active')");
 $actor = (int) DB::connection()->lastInsertId();
@@ -88,3 +93,29 @@ check('cancelling the order gives the use back', $err === null && $uses('RAYA10'
 $items = [['line_total' => '60.00', 'commission_rate' => '10.00']];
 check('the commission base is the items less the discount', AffiliateService::calculate($items, 0, 600) === ['base' => 5400, 'amount' => 540]);
 check('with no discount the commission is unchanged', AffiliateService::calculate($items, 0, 0) === ['base' => 6000, 'amount' => 600]);
+
+// Emailing a live code to members. Nothing goes out unless email is set up and the code is live.
+DB::query("DELETE FROM settings WHERE `key` LIKE 'email.%'");
+User::create('member', 'Ali Member', 'ali-v@example.test', 'Passw0rd!x');
+User::create('member', 'Left Member', 'left-v@example.test', 'Passw0rd!x');
+UnsubscribeService::unsubscribe('left-v@example.test');
+$raya = (int) V::find('RAYA10')['id'];
+check('with email not set up, the code is not sent and the admin is told why', str_contains((string) V::emailMembers($raya, $actor), 'Turn email on'));
+check('an expired code is not sent', str_contains((string) V::emailMembers((int) V::find('OLD')['id'], $actor), 'cannot be sent'));
+
+$tpl = [];
+foreach (S::KINDS as $kind) {
+    $tpl[$kind] = ['on' => '1', 'subject' => S::defaults()[$kind]['subject'], 'body' => S::defaults()[$kind]['body']];
+}
+S::save(['enabled' => '1', 'key' => 're_VOUCHERKEY1234', 'from_name' => 'Lure Shop', 'from_email' => 'shop@example.test', 'reply_to' => '', 'tpl' => $tpl], $actor);
+$sent = [];
+M::setTransport(function (string $m, string $path, string $key, ?string $body, array $headers) use (&$sent): array {
+    $items = json_decode((string) $body, true);
+    foreach ($items as $msg) {
+        $sent[] = $msg;
+    }
+    return ['code' => 200, 'json' => ['data' => array_map(fn($i) => ['id' => "b{$i}"], range(0, count($items) - 1))]];
+});
+$r = V::emailMembers($raya, $actor);
+check('the code goes to active members who have not unsubscribed, and only them', is_array($r) && $r['recipients'] === 1 && $r['sent'] === 1 && count($sent) === 1 && $sent[0]['to'] === ['ali-v@example.test']);
+check('the email carries the code, the offer and an unsubscribe link', str_contains((string) $sent[0]['text'], 'Kod: RAYA10') && str_contains((string) $sent[0]['text'], '10% off the items') && str_contains((string) $sent[0]['text'], '/unsubscribe/'));

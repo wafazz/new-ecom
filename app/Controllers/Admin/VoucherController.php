@@ -8,6 +8,7 @@ use App\Core\Controller;
 use App\Core\Database;
 use App\Core\Request;
 use App\Core\Response;
+use App\Services\EmailService;
 use App\Services\VoucherService;
 
 /** Discount codes for HQ: create, switch on or off, and delete codes nobody has used. */
@@ -19,8 +20,20 @@ final class VoucherController extends Controller
             'title' => 'Vouchers',
             'vouchers' => Database::query('SELECT * FROM vouchers ORDER BY id DESC')->fetchAll(),
             'types' => VoucherService::TYPES,
+            'memberCount' => count(EmailService::recipients('members')),
+            'canEmail' => EmailService::ready(),
             'scripts' => ['vouchers.js'],
         ], 'portal');
+    }
+
+    /** Email a live code to every member who has not unsubscribed. */
+    public function email(Request $request, string $id): void
+    {
+        $r = VoucherService::emailMembers((int) $id, (int) Auth::user()['id']);
+        if (is_string($r)) {
+            $this->backWithErrors('/admin/vouchers', ['form' => $r]);
+        }
+        $this->success('/admin/vouchers', "Sent to {$r['recipients']} member(s): {$r['sent']} sent, {$r['failed']} failed.");
     }
 
     public function store(Request $request): void
