@@ -87,7 +87,11 @@ final class ProductController extends ManageController
         }
         $data['slug'] = Str::uniqueSlug('products', 'slug', $data['slug'] ?: Str::slug($data['name']));
         $data['stock'] = 0; // stock is set on the Stock Control page, never from this form
-        $id = $this->persist(null, $data, $type, $rows, $images);
+        try {
+            $id = $this->persist(null, $data, $type, $rows, $images);
+        } catch (\RuntimeException $e) {
+            $this->storageFailed($e, $this->base() . '/products/create', $request);
+        }
         $this->success($this->base() . "/products/{$id}/edit", 'Product created.');
     }
 
@@ -125,7 +129,11 @@ final class ProductController extends ManageController
         }
 
         $data['slug'] = Str::uniqueSlug('products', 'slug', $data['slug'] ?: Str::slug($data['name']), (int) $product['id']);
-        $this->persist((int) $product['id'], $data, $type, $rows, $images);
+        try {
+            $this->persist((int) $product['id'], $data, $type, $rows, $images);
+        } catch (\RuntimeException $e) {
+            $this->storageFailed($e, $back, $request);
+        }
         $this->success($back, 'Product saved.');
     }
 
@@ -149,6 +157,16 @@ final class ProductController extends ManageController
     }
 
     /** Save the product, its variations and its images together, or none of them. */
+    /** The photos could not be written to disk, usually because the uploads folder is not writable. Log the reason, and tell the admin in plain words. */
+    private function storageFailed(\RuntimeException $e, string $back, Request $request): never
+    {
+        if ($e instanceof \PDOException) {
+            throw $e; // a database problem is not a storage problem: let it show as an error
+        }
+        @file_put_contents(BASE_PATH . '/storage/logs/app.log', '[' . date('c') . '] product photos: ' . $e->getMessage() . ' (check that public/uploads can be written to by the web server user)' . "\n", FILE_APPEND | LOCK_EX);
+        $this->backWithErrors($back, ['images' => 'The photos could not be saved on the server. The shop developer needs to check that the uploads folder can be written to.'], $request->body);
+    }
+
     private function persist(?int $id, array $data, string $type, array $rows, ?array $images): int
     {
         $pdo = Database::connection();
