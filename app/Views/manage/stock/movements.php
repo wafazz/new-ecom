@@ -12,11 +12,14 @@ $presets = [
 ];
 $activeFilters = $f['q'] !== '' || $f['reason'] !== '' || $f['dir'] !== '' || $f['from'] || $f['to'] || $f['actor'] !== '' || $f['product'];
 ?>
-<div class="row-between">
-    <h1>Stock Movement</h1>
-    <a class="btn secondary" href="<?= e(url($base . '/stock')) ?>">← Stock Control</a>
-</div>
-<p class="muted">Every change to every product's stock: what moved, how much, why, and who did it. Orders and cancellations appear here automatically.</p>
+<div class="msg-page">
+<header class="msg-head">
+    <div>
+        <h1>Stock movement</h1>
+        <p class="muted">Every change to every product's stock: what moved, how much, why, and who did it. Orders and cancellations appear here automatically.</p>
+    </div>
+    <a class="btn secondary" href="<?= e(url($base . '/stock')) ?>">← Stock control</a>
+</header>
 
 <div class="tiles stock-tiles">
     <div class="tile"><span class="tile-label">Movements</span><span class="tile-value"><?= number_format($summary['count']) ?></span></div>
@@ -99,3 +102,4 @@ $activeFilters = $f['q'] !== '' || $f['reason'] !== '' || $f['dir'] !== '' || $f
   if (q && q.value) { var l = q.value.length; q.focus(); q.setSelectionRange(l, l); }
 })();
 </script>
+</div>

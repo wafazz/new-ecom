@@ -21,11 +21,14 @@ $levelBadge = function (int $out, int $low, int $n, int $stock): string {
     return '<span class="badge active">In stock</span>';
 };
 ?>
-<div class="row-between">
-    <h1>Stock Control Management</h1>
+<div class="msg-page">
+<header class="msg-head">
+    <div>
+        <h1>Stock control</h1>
+        <p class="muted">Stock is changed only on this page. Orders take stock off automatically and cancelled orders put it back; every change is written to the history.</p>
+    </div>
     <a class="btn secondary" href="<?= e(url($base . '/stock/movements')) ?>">Stock movement</a>
-</div>
-<p class="muted">Stock is changed only on this page. Orders take stock off automatically and cancelled orders put it back; every change is written to the history.</p>
+</header>
 
 <div class="tiles stock-tiles">
     <div class="tile"><span class="tile-label">Sellable items</span><span class="tile-value"><?= number_format($summary['items']) ?></span></div>
@@ -145,3 +148,4 @@ $levelBadge = function (int $out, int $low, int $n, int $stock): string {
 <?php endif; endif; ?>
 </div>
 <noscript><p class="muted">Turn on JavaScript to adjust stock from this page.</p></noscript>
+</div>

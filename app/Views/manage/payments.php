@@ -3,8 +3,13 @@
 $v = fn(string $k, string $current) => old($k, $current);
 $checked = fn(string $k, bool $current) => (isset($_SESSION['_old']) ? (($_SESSION['_old'][$k] ?? '') === '1') : $current) ? ' checked' : '';
 ?>
-<h1>Payments</h1>
-<p class="muted">Choose how customers can pay and what they are told. Orders already placed keep the method they chose.</p>
+<div class="msg-page">
+<header class="msg-head">
+    <div>
+        <h1>Payments</h1>
+        <p class="muted">Choose how customers can pay and what they are told. Orders already placed keep the method they chose.</p>
+    </div>
+</header>
 
 <p class="pay-offered" id="pay-offered"><strong>Customers can pay by:</strong>
     <?php if ($offered === []): ?><span class="badge st-cancelled">nothing right now</span>
@@ -61,3 +66,4 @@ $checked = fn(string $k, bool $current) => (isset($_SESSION['_old']) ? (($_SESSI
 
     <p class="pay-actions"><button class="btn">Save payment settings</button></p>
 </form>
+</div>

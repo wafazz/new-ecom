@@ -814,3 +814,10 @@ a.vis-card:hover{transform:translateY(-3px);box-shadow:0 14px 28px -12px rgba(47
   .dash-side-body{display:none}
   .dash-side-body.is-open{display:flex}
 }
+
+/* Filter tabs that are links (status tabs on list pages). Same look as the button tabs. */
+.msg-tabs a{border:0;background:none;color:var(--muted);font:inherit;font-size:.82rem;font-weight:600;padding:.3rem .75rem;border-radius:999px;text-decoration:none}
+.msg-tabs a:hover{color:var(--text)}
+.msg-tabs a.is-on{background:var(--surface);color:var(--text);box-shadow:0 1px 3px rgba(15,23,42,.12)}
+.msg-pill.bad{background:#fef2f2;color:#b91c1c;border-color:#fecaca}
+.msg-pill.info{background:#eff6ff;color:#1d4ed8;border-color:#bfdbfe}
