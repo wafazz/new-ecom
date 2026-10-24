@@ -50,7 +50,7 @@ final class MailService
         if (!EmailSettings::enabled() || $key === null || EmailSettings::fromEmail() === '' || $items === []) {
             return array_fill(0, count($items), ['ok' => false, 'message' => 'Email is not set up.', 'id' => null]);
         }
-        $payload = array_map(fn($it) => self::message($it['to'], $it['subject'], $it['text']), array_slice($items, 0, self::BATCH_SIZE));
+        $payload = array_map(fn($it) => self::message($it['to'], $it['subject'], $it['text'], $it['headers'] ?? []), array_slice($items, 0, self::BATCH_SIZE));
         $r = self::http('POST', '/emails/batch', $key, json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR), ['Idempotency-Key: ' . substr($idempotencyKey, 0, 256)]);
         $data = is_array($r['json']['data'] ?? null) ? $r['json']['data'] : [];
         $out = [];
@@ -71,10 +71,13 @@ final class MailService
         return $name === '' ? EmailSettings::fromEmail() : $name . ' <' . EmailSettings::fromEmail() . '>';
     }
 
-    /** @return array<string,mixed> */
-    private static function message(string $to, string $subject, string $text): array
+    /** @param array<string,string> $headers extra mail headers (for example List-Unsubscribe) @return array<string,mixed> */
+    private static function message(string $to, string $subject, string $text, array $headers = []): array
     {
         $m = ['from' => self::from(), 'to' => [$to], 'subject' => $subject, 'text' => $text, 'html' => self::html($text)];
+        if ($headers !== []) {
+            $m['headers'] = $headers;
+        }
         $replyTo = EmailSettings::replyTo();
         if ($replyTo !== '') {
             $m['reply_to'] = $replyTo;

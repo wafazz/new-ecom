@@ -5,6 +5,9 @@ return function (Router $r): void {
     // Billplz webhook: server-to-server, authenticated by its X-Signature (so deliberately outside the CSRF group).
     $r->post('/payments/billplz/callback', 'Shop/BillplzController@callback');
     $r->post('/shipping/ninjavan/webhook', 'Shop/NinjaVanWebhookController@receive');
+    // Announcement unsubscribe: the token is signed, and mail clients post here without a CSRF token (one-click).
+    $r->get('/unsubscribe/{token}', 'Shop/UnsubscribeController@show');
+    $r->post('/unsubscribe/{token}', 'Shop/UnsubscribeController@unsubscribe');
 
     // CSRF protects every non-GET request in every group below.
     $r->group('', ['csrf'], function (Router $r): void {

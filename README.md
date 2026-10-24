@@ -63,7 +63,7 @@ Admin-editable (Settings page): guest checkout on/off, flat shipping fee, defaul
 3. `php bin/migrate.php` (safe to re-run; applies only new files). Back up the DB first.
 4. `php bin/create-admin.php ...` for the first admin.
 5. Make `storage/` (logs, cached waybills) and `public/uploads/` writable by the web user; nothing else needs to be.
-6. Cron, daily: `php bin/prune-carts.php` (removes stale guest carts and expired throttle/click rows).
+6. Cron, daily: `php bin/prune-carts.php` (removes stale guest carts and expired throttle/click rows). Also `php bin/retention.php` (deletes old email and WhatsApp logs, audit rows, daily visitor counts and app.log entries; see **Personal data** below).
 7. Cron, hourly: `php bin/expire-unpaid.php` (cancels unpaid online-payment orders after `UNPAID_HOLD_HOURS`, default 24, and restocks them).
 8. NinjaVan: register `APP_URL/shipping/ninjavan/webhook` in the Ninja Dashboard for tracking updates, and ask NinjaVan support to enable the waybill API for your account. Billplz needs to reach `APP_URL/payments/billplz/callback`, so APP_URL must be a public https address (a local URL cannot receive payment confirmations). Try it in Sandbox mode first.
 9. Backups: schedule `php bin/backup.php` daily and keep a copy off the server (see **Backups** below).
@@ -83,6 +83,11 @@ Admins can make a backup at `/admin/backup`, with or without the uploads and rec
 - Backups are written to `storage/backups/`, which is never public and is not committed to git. The cron user must be able to write there.
 - A backup on the same server does not protect against losing the server. Copy the newest files off the server regularly.
 - Restore is not automated yet. To restore, import a `.sql` or `.sql.gz` backup into the database (gunzip first if needed) and unzip the files zip over the project folder.
+
+## Personal data
+- **Announcements** (`/admin/email/announce`) add an unsubscribe link to every email, plus the one-click mail-client header. Anyone who unsubscribes is left out of later announcements (`email_unsubscribes`). Order and account emails are not affected. The link is signed with `APP_KEY`, so it works only for links this shop sent.
+- **Retention** (`php bin/retention.php`, daily) removes email and WhatsApp logs after 180 days, audit rows after 365 days, daily visitor counts after 400 days, and app.log entries after 90 days. Change the periods with `--logs-days`, `--audit-days`, `--visitor-days` and `--app-log-days`.
+- Visitors are stored as a hash of a browser cookie. The all-time visitor total is kept, because it holds no personal data.
 
 ## Money rules
 All amounts are integer cents in code, `DECIMAL(10,2)` in the DB. Selling price = active discount else retail. Order lines snapshot price, cost, company base price and commission rate. Affiliate commission = rate % of (unit price - company base price) per line, created when an order is completed, then approved and paid out by an admin.

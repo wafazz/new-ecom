@@ -133,13 +133,13 @@ final class EmailService
         if (in_array($audience, ['customers', 'everyone'], true)) {
             $rows = array_merge($rows, Database::query("SELECT customer_email AS email, customer_name AS name FROM orders WHERE customer_email IS NOT NULL AND customer_email <> '' ORDER BY id DESC")->fetchAll());
         }
-        $seen = [];
+        $seen = UnsubscribeService::set();
         $out = [];
         foreach ($rows as $r) {
             $email = trim((string) $r['email']);
             $key = strtolower($email);
             if ($email === '' || filter_var($email, FILTER_VALIDATE_EMAIL) === false || isset($seen[$key])) {
-                continue;
+                continue; // skipped: not an address, already listed, or unsubscribed
             }
             $seen[$key] = true;
             $out[] = ['email' => $email, 'name' => trim((string) $r['name'])];
@@ -169,11 +169,17 @@ final class EmailService
         $failed = 0;
         $shop = (string) config('app.name');
         foreach (array_chunk($people, MailService::BATCH_SIZE) as $i => $chunk) {
-            $items = array_map(fn($p) => [
-                'to' => $p['email'],
-                'subject' => $subject,
-                'text' => self::render($body, ['name' => $p['name'] !== '' ? $p['name'] : 'Pelanggan', 'shop' => $shop]),
-            ], $chunk);
+            $items = array_map(function ($p) use ($body, $shop, $subject) {
+                $url = UnsubscribeService::url($p['email']);
+                $text = self::render($body, ['name' => $p['name'] !== '' ? $p['name'] : 'Pelanggan', 'shop' => $shop]);
+                return [
+                    'to' => $p['email'],
+                    'subject' => $subject,
+                    'text' => $text . "\n\n" . "Anda menerima emel ini kerana pernah berurusan dengan {$shop}. Tidak mahu terima pengumuman lagi? Nyah-langgan di sini:\n{$url}",
+                    // Mail clients show an unsubscribe button from these (RFC 8058 one-click).
+                    'headers' => ['List-Unsubscribe' => "<{$url}>", 'List-Unsubscribe-Post' => 'List-Unsubscribe=One-Click'],
+                ];
+            }, $chunk);
             foreach (MailService::batch($items, 'campaign', "campaign-{$id}-{$i}-" . bin2hex(random_bytes(6))) as $r) {
                 $r['ok'] ? $sent++ : $failed++;
             }
