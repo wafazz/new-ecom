@@ -115,7 +115,44 @@ final class Backup
         return $removed;
     }
 
-    private static function dump(string $file, bool $gz): void
+    /**
+     * Replace the tables in $pdo with the ones in a backup written by dump(). Statements are run one by one,
+     * streaming the file. dump() escapes line breaks inside values, so a statement ends at a line that ends
+     * with ';'. Throws if the file is not one of ours or stops in the middle of a statement.
+     */
+    public static function restore(string $file, \PDO $pdo): void
+    {
+        $gz = str_ends_with($file, '.gz');
+        $in = $gz ? gzopen($file, 'rb') : fopen($file, 'rb');
+        if ($in === false) {
+            throw new \RuntimeException('The backup file cannot be read.');
+        }
+        $read = fn(): string|false => $gz ? gzgets($in) : fgets($in);
+        try {
+            $first = $read();
+            if ($first === false || !str_starts_with($first, '-- Lure Shop database backup')) {
+                throw new \RuntimeException('This file is not a backup made by this shop.');
+            }
+            $statement = '';
+            while (($line = $read()) !== false) {
+                if ($statement === '' && (trim($line) === '' || str_starts_with($line, '--'))) {
+                    continue;
+                }
+                $statement .= $line;
+                if (str_ends_with(rtrim($line), ';')) {
+                    $pdo->exec($statement);
+                    $statement = '';
+                }
+            }
+            if (trim($statement) !== '') {
+                throw new \RuntimeException('The backup ends in the middle of a statement, so it is incomplete.');
+            }
+        } finally {
+            $gz ? gzclose($in) : fclose($in);
+        }
+    }
+
+    public static function dump(string $file, bool $gz): void
     {
         $pdo = Database::connection();
         $out = $gz ? gzopen($file, 'wb9') : fopen($file, 'wb');

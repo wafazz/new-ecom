@@ -161,6 +161,7 @@ return function (Router $r): void {
             $r->post('/backup', 'Admin/BackupController@create');
             $r->get('/backup/download/{name}', 'Admin/BackupController@download');
             $r->post('/backup/{name}/delete', 'Admin/BackupController@delete');
+            $r->post('/backup/{name}/restore', 'Admin/BackupController@restore');
             $r->get('/email', 'Admin/EmailController@show');
             $r->post('/email', 'Admin/EmailController@update');
             $r->post('/email/test', 'Admin/EmailController@test');

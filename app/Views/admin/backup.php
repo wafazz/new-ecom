@@ -43,6 +43,11 @@ $fmt = fn(int $b) => $b >= 1048576 ? number_format($b / 1048576, 1) . ' MB' : nu
                         <td class="num"><?= e($fmt($b['size'])) ?></td>
                         <td class="num">
                             <a class="btn secondary" href="<?= e(url('/admin/backup/download/' . $b['name'])) ?>">Download</a>
+                            <form method="post" action="<?= e(url('/admin/backup/' . $b['name'] . '/restore')) ?>" class="inline" data-busy-form>
+                                <?= csrf_field() ?>
+                                <input name="confirm" placeholder="Type RESTORE" autocomplete="off" required pattern="RESTORE" aria-label="Type RESTORE to confirm" style="width:9rem">
+                                <button class="btn secondary" type="submit">Restore</button>
+                            </form>
                             <form method="post" action="<?= e(url('/admin/backup/' . $b['name'] . '/delete')) ?>" class="inline" data-swal-confirm="Delete this backup?" data-swal-text="This cannot be undone." data-swal-danger="1" data-swal-button="Yes, delete">
                                 <?= csrf_field() ?><button class="btn secondary" type="submit">Delete</button>
                             </form>
@@ -57,8 +62,7 @@ $fmt = fn(int $b) => $b >= 1048576 ? number_format($b / 1048576, 1) . ' MB' : nu
 
     <section class="msg-card">
         <h2>How to restore</h2>
-        <p class="muted">Restoring replaces the current database. Do this on a server with the same <code>.env</code> (especially <code>APP_KEY</code>, which the saved passwords and keys depend on).</p>
-        <pre style="white-space:pre-wrap;background:var(--surface-2);padding:.8rem;border-radius:10px">gunzip -c backup-YYYYMMDD-HHMMSS.sql.gz | mysql -u USER -p ecommerce</pre>
-        <p class="muted"><small>For the uploaded images and receipts, unzip the files backup into the project folder.</small></p>
+        <p class="muted">Restore a saved backup with its <strong>Restore</strong> button above. It replaces the current database, and a safety backup of the current database is saved first. Do this on a server with the same <code>.env</code> (especially <code>APP_KEY</code>, which the saved passwords and keys depend on). A large database may take a while; keep this page open until it finishes.</p>
+        <p class="muted"><small>The button restores the database only. For the uploaded images and receipts, unzip the files backup into the project folder yourself.</small></p>
     </section>
 </div>

@@ -5,6 +5,7 @@ namespace App\Controllers\Admin;
 
 use App\Core\Auth;
 use App\Core\Controller;
+use App\Core\Database;
 use App\Core\Request;
 use App\Core\Response;
 use App\Services\AuditService;
@@ -55,5 +56,33 @@ final class BackupController extends Controller
         }
         AuditService::log((int) Auth::user()['id'], 'backup.delete', $name);
         $this->success('/admin/backup', 'Backup deleted.');
+    }
+
+    /** Replaces the database with a saved backup. A safety backup of the current database is made first. */
+    public function restore(Request $request, string $name): void
+    {
+        $back = '/admin/backup';
+        $file = Backup::path($name) ?? Response::abort(404);
+        if ($request->str('confirm') !== 'RESTORE') {
+            $this->backWithErrors($back, ['form' => 'Type RESTORE in capitals to confirm. Nothing was changed.']);
+        }
+
+        try {
+            $safety = Backup::create(false)['db'];
+        } catch (\Throwable $e) {
+            $this->backWithErrors($back, ['form' => 'Nothing was restored. A safety backup of the current database could not be made first: ' . $e->getMessage()]);
+        }
+
+        set_time_limit(0);
+        ignore_user_abort(true);
+        try {
+            Backup::restore($file, Database::connection());
+        } catch (\Throwable $e) {
+            $this->backWithErrors($back, ['form' => 'The restore stopped partway: ' . $e->getMessage() . ' The database before the restore is saved as ' . $safety . ' in storage/backups. Restore that file to undo this.']);
+        }
+
+        // The restored users table may not match this session, so sign in again.
+        Auth::logout();
+        $this->success('/admin/login', 'Restored from ' . $name . '. Sign in again. If this backup is from before the latest update, run php bin/migrate.php on the server.');
     }
 }
