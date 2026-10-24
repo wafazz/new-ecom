@@ -686,3 +686,5 @@ iframe.proof-view-media{height:62vh}
 .visitors-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:.8rem}
 .visitors-card{padding:1rem;border:1px solid var(--border);border-radius:12px;background:var(--surface)}
 .visitors-num{font-size:1.9rem;font-weight:700;font-variant-numeric:tabular-nums;margin:.3rem 0}
+@keyframes live-bump-anim{0%{transform:scale(1.15);color:#16a34a}100%{transform:scale(1);color:inherit}}
+.live-bump{display:inline-block;animation:live-bump-anim .55s ease-out}

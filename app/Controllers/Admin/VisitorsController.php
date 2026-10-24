@@ -16,7 +16,7 @@ final class VisitorsController extends Controller
         header('Cache-Control: no-store');
         $this->view('admin/visitors', [
             'title' => 'Visitors',
-            'stats' => VisitorService::stats(),
+            'stats' => VisitorService::cachedStats(),
             'online' => VisitorService::ONLINE_MINUTES,
             'scripts' => ['visitors.js'],
         ], 'portal');
@@ -26,6 +26,6 @@ final class VisitorsController extends Controller
     public function stats(Request $request): void
     {
         header('Cache-Control: no-store');
-        Response::json(VisitorService::stats());
+        Response::json(VisitorService::cachedStats());
     }
 }

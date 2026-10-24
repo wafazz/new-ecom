@@ -8,7 +8,7 @@ $cards = [
 ];
 ?>
 <h1>Visitors</h1>
-<p class="muted">Unique browsers that opened the shop. Updates by itself every 15 seconds. Admin and staff pages are not counted.</p>
+<p class="muted">Unique browsers that opened the shop. Updates by itself every few seconds. Admin and staff pages are not counted.</p>
 
 <div class="visitors" data-visitors-root data-stats-url="<?= e(url('/admin/visitors/stats')) ?>">
     <section class="visitors-online" aria-live="polite">

@@ -9,6 +9,9 @@ final class App
     {
         self::registerErrorHandling();
         self::assertProductionConfig();
+        if (\App\Services\VisitorService::serveLive()) {
+            return; // the live poll is answered without a session or routing
+        }
         Session::start();
         self::securityHeaders();
 

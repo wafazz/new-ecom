@@ -672,3 +672,6 @@ body.shop .select2-container--default .select2-results>.select2-results__options
 /* Clear layered shadow so the bubble lifts off the page */
 .live-float{box-shadow:0 1px 2px rgba(2,6,23,.25),0 8px 18px rgba(2,6,23,.28),0 28px 52px -14px rgba(47,91,234,.6),inset 0 1px 0 rgba(255,255,255,.95)}
 .live-float.is-hidden{box-shadow:none}
+/* A number that just changed flashes so live updates are easy to see */
+@keyframes live-bump-anim{0%{transform:scale(1.22);color:#16a34a}100%{transform:scale(1);color:inherit}}
+.live-bump{display:inline-block;animation:live-bump-anim .55s ease-out}

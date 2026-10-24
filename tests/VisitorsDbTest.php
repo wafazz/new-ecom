@@ -9,6 +9,7 @@ if (!str_ends_with((string) env('DB_NAME', ''), '_test')) {
     return;
 }
 reset_test_db();
+@unlink(BASE_PATH . '/storage/cache/visitor-stats.json'); // the counts are cached for a few seconds: start clean
 $_SERVER['HTTP_USER_AGENT'] = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/128.0.0.0 Safari/537.36';
 $vidA = str_repeat('a', 32);
 $vidB = str_repeat('b', 32);
@@ -63,3 +64,24 @@ check('a browser with no cookie gets a new visitor id', V::stats()['overall'] ==
 // The storefront badge shows live figures: online now, today, last 7 days and all time.
 $live = V::live();
 check('the storefront figures are online, today, last 7 days and all time', array_keys($live) === ['online', 'today', 'week', 'overall'] && $live['online'] === V::stats()['online'] && $live['today'] === V::stats()['today'] && $live['week'] === V::stats()['week'] && $live['overall'] === V::stats()['overall']);
+
+// Writes are throttled: "last seen" moves at most every TOUCH_SECONDS, so many polls cost one write.
+$vidT = str_repeat('9', 32);
+$_COOKIE[V::COOKIE] = $vidT;
+$hashT = hash('sha256', $vidT);
+DB::query("INSERT INTO visitors (visitor_hash, user_id, first_seen, last_seen) VALUES (?, NULL, NOW() - INTERVAL 600 SECOND, NOW() - INTERVAL 10 SECOND)", [$hashT]);
+V::track($get('/live/visitors'), false);
+check('a poll within 30 seconds does not write "last seen" again', (int) DB::query('SELECT TIMESTAMPDIFF(SECOND, last_seen, NOW()) FROM visitors WHERE visitor_hash = ?', [$hashT])->fetchColumn() >= 9);
+DB::query("UPDATE visitors SET last_seen = NOW() - INTERVAL 60 SECOND WHERE visitor_hash = ?", [$hashT]);
+V::track($get('/live/visitors'), false);
+check('a poll after 30 seconds moves "last seen" to now', (int) DB::query('SELECT TIMESTAMPDIFF(SECOND, last_seen, NOW()) FROM visitors WHERE visitor_hash = ?', [$hashT])->fetchColumn() <= 1);
+
+// The counts are shared for a few seconds: a second viewer within the window reads the same numbers, not a new query set.
+@unlink(BASE_PATH . '/storage/cache/visitor-stats.json');
+$first = V::cachedStats();
+DB::query("INSERT INTO visitors (visitor_hash, user_id, first_seen, last_seen) VALUES (REPEAT('8',64), NULL, NOW(), NOW())");
+check('within the cache window the shared counts are reused', V::cachedStats()['overall'] === $first['overall']);
+@unlink(BASE_PATH . '/storage/cache/visitor-stats.json');
+$now = (int) DB::query('SELECT COUNT(*) FROM visitors')->fetchColumn();
+check('after the window the counts are fresh', V::cachedStats()['overall'] === $now);
+@unlink(BASE_PATH . '/storage/cache/visitor-stats.json');
