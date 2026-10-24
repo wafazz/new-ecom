@@ -62,7 +62,7 @@ final class PasswordResetService
         if ($used !== 1) {
             return ['form' => 'This reset link has already been used. Ask for a new one.'];
         }
-        User::update($id, ['password_hash' => password_hash($new, PASSWORD_DEFAULT)]);
+        User::setPassword($id, password_hash($new, PASSWORD_DEFAULT));
         Database::query('UPDATE users SET email_verified_at = COALESCE(email_verified_at, NOW()) WHERE id = ?', [$id]);
         Database::query('DELETE FROM password_resets WHERE user_id = ?', [$id]);
         Database::query('DELETE FROM login_attempts WHERE email = ?', [(string) $user['email']]);

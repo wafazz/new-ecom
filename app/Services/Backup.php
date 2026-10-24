@@ -70,6 +70,51 @@ final class Backup
         return $file !== null && @unlink($file);
     }
 
+    /**
+     * Which of these backup names to delete so that only the newest $keep database dumps remain.
+     * A file zip goes with its dump (same timestamp). Names that are not backups are never listed.
+     * @param string[] $names @return string[]
+     */
+    public static function pruneNames(array $names, int $keep): array
+    {
+        $dumps = [];
+        $zips = [];
+        foreach ($names as $name) {
+            if (preg_match('/^backup-(\d{8}-\d{6})\.sql(\.gz)?$/', $name, $m) === 1) {
+                $dumps[$m[1]] = $name;
+            } elseif (preg_match('/^backup-(\d{8}-\d{6})-files\.zip$/', $name, $m) === 1) {
+                $zips[$m[1]] = $name;
+            }
+        }
+        krsort($dumps);
+        $keepStamps = array_keys(array_slice($dumps, 0, max(0, $keep), true));
+        $delete = [];
+        foreach ($dumps as $stamp => $name) {
+            if (!in_array($stamp, $keepStamps, true)) {
+                $delete[] = $name;
+            }
+        }
+        foreach ($zips as $stamp => $name) {
+            if (!in_array($stamp, $keepStamps, true)) {
+                $delete[] = $name;
+            }
+        }
+        return $delete;
+    }
+
+    /** Delete old backups, keeping the newest $keep database dumps. @return string[] the names removed */
+    public static function prune(int $keep): array
+    {
+        $names = array_map(fn($b) => $b['name'], self::list());
+        $removed = [];
+        foreach (self::pruneNames($names, $keep) as $name) {
+            if (self::delete($name)) {
+                $removed[] = $name;
+            }
+        }
+        return $removed;
+    }
+
     private static function dump(string $file, bool $gz): void
     {
         $pdo = Database::connection();

@@ -27,6 +27,12 @@ final class User extends Model
         ]);
     }
 
+    /** Set a new password hash and sign out every other session of this account. */
+    public static function setPassword(int $id, string $hash): void
+    {
+        Database::query('UPDATE users SET password_hash = ?, session_version = session_version + 1 WHERE id = ?', [$hash, $id]);
+    }
+
     public static function byRole(string $role): array
     {
         return Database::query('SELECT id, name, email, phone, status, permissions, last_login_at, created_at FROM users WHERE role = ? ORDER BY id DESC', [$role])->fetchAll();

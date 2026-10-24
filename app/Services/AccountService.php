@@ -57,7 +57,7 @@ final class AccountService
             $errors['password'] = 'Choose a password you have not used just now.';
         }
         if ($errors === []) {
-            User::update((int) $user['id'], ['password_hash' => password_hash($new, PASSWORD_DEFAULT)]);
+            User::setPassword((int) $user['id'], password_hash($new, PASSWORD_DEFAULT));
         }
         return $errors;
     }

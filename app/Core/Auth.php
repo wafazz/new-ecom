@@ -26,7 +26,8 @@ final class Auth
             $id = Session::get('auth_id');
             $user = is_int($id) ? User::find($id) : null;
             // A disabled account loses access immediately, even mid-session.
-            if ($user !== null && $user['status'] !== 'active') {
+            // So does a password change or reset made from another session (see User::setPassword).
+            if ($user !== null && ($user['status'] !== 'active' || (int) $user['session_version'] !== (int) Session::get('auth_ver', 0))) {
                 self::logout();
                 $user = null;
             }
@@ -44,6 +45,7 @@ final class Auth
     {
         Session::regenerate();
         Session::set('auth_id', (int) $user['id']);
+        Session::set('auth_ver', (int) ($user['session_version'] ?? 0));
         Database::query('UPDATE users SET last_login_at = NOW() WHERE id = ?', [$user['id']]);
         self::$user = $user;
         self::$loaded = true;
