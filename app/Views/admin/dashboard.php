@@ -29,6 +29,52 @@
         </aside>
 
         <div class="dash-main">
+            <section class="panel visitors-dash" aria-labelledby="vis-live-title" data-visitors-root data-stats-url="<?= e(url('/admin/visitors/stats')) ?>">
+                <div class="row-between">
+                    <h2 id="vis-live-title">Live visitors</h2>
+                    <span class="vis-live-tag"><span class="live-dot" aria-hidden="true"></span> live</span>
+                </div>
+
+                <div class="vis-grid">
+                    <a class="vis-card vis-hero" href="<?= e(url('/admin/visitors')) ?>" aria-label="Online now: open visitor details">
+                        <span class="vis-label">Online now</span>
+                        <span class="vis-big"><span data-stat="online" data-count><?= (int) $visitors['online'] ?></span></span>
+                        <span class="vis-sub"><span data-stat="online_members"><?= (int) $visitors['online_members'] ?></span> signed in · <span data-stat="online_guests"><?= (int) $visitors['online_guests'] ?></span> guests</span>
+                    </a>
+                    <a class="vis-card" href="<?= e(url('/admin/visitors')) ?>">
+                        <span class="vis-label">Today</span>
+                        <span class="vis-num"><span data-stat="today" data-count><?= (int) $visitors['today'] ?></span></span>
+                        <span class="vis-sub">unique visitors</span>
+                    </a>
+                    <a class="vis-card" href="<?= e(url('/admin/visitors')) ?>">
+                        <span class="vis-label">Last 7 days</span>
+                        <span class="vis-num"><span data-stat="week" data-count><?= (int) $visitors['week'] ?></span></span>
+                        <span class="vis-sub">unique visitors</span>
+                    </a>
+                    <a class="vis-card" href="<?= e(url('/admin/visitors')) ?>">
+                        <span class="vis-label">Last 30 days</span>
+                        <span class="vis-num"><span data-stat="month" data-count><?= (int) $visitors['month'] ?></span></span>
+                        <span class="vis-sub">unique visitors</span>
+                    </a>
+                    <a class="vis-card" href="<?= e(url('/admin/visitors')) ?>">
+                        <span class="vis-label">All time</span>
+                        <span class="vis-num"><span data-stat="overall" data-count><?= (int) $visitors['overall'] ?></span></span>
+                        <span class="vis-sub">unique visitors</span>
+                    </a>
+                    <div class="vis-card vis-chart" aria-label="Unique visitors per day, last 7 days">
+                        <span class="vis-label">Last 7 days, per day</span>
+                        <div class="vis-bars" data-trend>
+                            <?php $__max = max(1, ...array_column($visitors['trend'] ?? [], 'n')); foreach (($visitors['trend'] ?? []) as $__d): ?>
+                                <span class="vis-bar-wrap" title="<?= e($__d['label']) ?>: <?= (int) $__d['n'] ?> unique visitors">
+                                    <span class="vis-bar" style="height: <?= max(4, (int) round($__d['n'] / $__max * 100)) ?>%"></span>
+                                    <span class="vis-bar-label"><?= e($__d['label']) ?></span>
+                                </span>
+                            <?php endforeach; ?>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
             <div class="kpis">
                 <section class="hero" id="dash-hero" aria-label="Sales this period"></section>
                 <div class="tiles" id="dash-tiles"></div>

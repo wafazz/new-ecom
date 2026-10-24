@@ -15,7 +15,8 @@ final class DashboardController extends Controller
         $this->view('admin/dashboard', [
             'title' => 'Dashboard',
             'dash' => DashboardService::admin($this->days($request)),
-            'scripts' => ['charts.js', 'dashboard.js'],
+            'visitors' => self::visitors(),
+            'scripts' => ['charts.js', 'dashboard.js', 'visitors.js'],
         ], 'portal');
     }
 
@@ -29,5 +30,15 @@ final class DashboardController extends Controller
     private function days(Request $request): int
     {
         return in_array((int) $request->input('range', 30), DashboardService::RANGES, true) ? (int) $request->input('range', 30) : 30;
+    }
+
+    /** Live visitor counts for the panel; zeros (never an error) if the visitor tables are not there yet. */
+    private static function visitors(): array
+    {
+        try {
+            return \App\Services\VisitorService::cachedStats();
+        } catch (\Throwable) {
+            return ['online' => 0, 'online_members' => 0, 'online_guests' => 0, 'today' => 0, 'week' => 0, 'month' => 0, 'overall' => 0, 'at' => date('H:i:s')];
+        }
     }
 }

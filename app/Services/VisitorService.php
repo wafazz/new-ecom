@@ -105,11 +105,27 @@ final class VisitorService
             'week' => $days(7),
             'month' => $days(30),
             'overall' => (int) Database::query('SELECT COUNT(*) FROM visitors')->fetchColumn(),
+            'trend' => self::trend(7),
             'online' => $total,
             'online_members' => $members,
             'online_guests' => $total - $members,
             'at' => date('H:i:s'),
         ];
+    }
+
+    /** Unique visitors for each of the last $days days, oldest first (days with none are 0). */
+    public static function trend(int $days): array
+    {
+        $rows = Database::query(
+            'SELECT day, COUNT(DISTINCT visitor_hash) AS n FROM visitor_days WHERE day >= CURDATE() - INTERVAL ' . ($days - 1) . ' DAY GROUP BY day'
+        )->fetchAll(\PDO::FETCH_KEY_PAIR);
+        $out = [];
+        for ($i = $days - 1; $i >= 0; $i--) {
+            $ts = strtotime("-{$i} day");
+            $day = date('Y-m-d', $ts);
+            $out[] = ['day' => $day, 'label' => date('D', $ts), 'n' => (int) ($rows[$day] ?? 0)];
+        }
+        return $out;
     }
 
     /** The figures shown to shoppers on the storefront badge. */
@@ -125,6 +141,9 @@ final class VisitorService
 
     private static function skipped(string $path): bool
     {
+        if (preg_match('/\.[a-z0-9]{2,5}$/i', $path) === 1) {
+            return true; // files such as /favicon.ico or /robots.txt are fetched by browsers, not visits
+        }
         foreach (self::SKIP_PREFIXES as $p) {
             if ($path === $p || str_starts_with($path, $p . '/')) {
                 return true;

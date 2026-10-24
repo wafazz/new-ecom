@@ -26,6 +26,8 @@ V::track($get('/'));
 $s = V::stats();
 check('two browsers today are two unique visitors', $s['today'] === 2 && $s['overall'] === 2 && $s['week'] === 2 && $s['month'] === 2);
 
+V::track($get('/favicon.ico'));
+V::track($get('/robots.txt'));
 V::track($get('/admin/orders'));
 V::track($get('/staff/products'));
 V::track($get('/uploads/products/a.png'));
