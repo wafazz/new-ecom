@@ -9,6 +9,7 @@ final class App
     {
         self::registerErrorHandling();
         self::assertProductionConfig();
+        self::assertUploadFits();
         if (\App\Services\VisitorService::serveLive()) {
             return; // the live poll is answered without a session or routing
         }
@@ -36,6 +37,34 @@ final class App
         if (env('APP_DEBUG')) {
             throw new \RuntimeException('APP_DEBUG must be false in production.');
         }
+    }
+
+    /**
+     * PHP silently empties $_POST and $_FILES when a request is larger than post_max_size, so the form would fail
+     * later with a page the browser cannot read. Say what the limit is instead.
+     */
+    private static function assertUploadFits(): void
+    {
+        $length = (int) ($_SERVER['CONTENT_LENGTH'] ?? 0);
+        if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST' || $length <= 0 || $_POST !== [] || $_FILES !== []) {
+            return;
+        }
+        $limit = (string) ini_get('post_max_size');
+        if ($length > self::iniBytes($limit)) {
+            Response::abort(413, "That upload is too big for this server (the limit is {$limit}). Use smaller photos, or ask your host to raise post_max_size.");
+        }
+    }
+
+    /** "8M", "2G", "512K" or a plain number of bytes, as PHP reads them from php.ini. */
+    private static function iniBytes(string $value): int
+    {
+        $n = (int) $value;
+        return match (strtoupper(substr(trim($value), -1))) {
+            'G' => $n * 1024 * 1024 * 1024,
+            'M' => $n * 1024 * 1024,
+            'K' => $n * 1024,
+            default => $n,
+        };
     }
 
     private static function securityHeaders(): void

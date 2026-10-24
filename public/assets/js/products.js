@@ -16,13 +16,22 @@
 
   function token() { var i = $('input[name="_token"]'); return i ? i.value : ''; }
 
+  /** What to tell the admin when the server answered with something other than the expected JSON. */
+  function explainBadResponse(status) {
+    if (status === 413) return 'The photos are too big for the server. Use smaller photos (under 2 MB each), or ask your host to raise the upload limit (nginx client_max_body_size, PHP post_max_size).';
+    if (status === 419) return 'Your session expired. Reload the page and try again.';
+    if (status === 504 || status === 524) return 'The server took too long to save the photos. Try again with fewer or smaller photos.';
+    if (status >= 500) return 'The server had a problem saving this (error ' + status + '). Try again; if it keeps happening, tell the developer.';
+    return 'The server answered in a way the page did not expect (status ' + status + '). Reload and try again.';
+  }
+
   /** POST via fetch; always resolves to {ok, status, data}. */
   function post(url, body) {
     var fd = body instanceof FormData ? body : (function () { var f = new FormData(); Object.keys(body || {}).forEach(function (k) { [].concat(body[k]).forEach(function (v) { f.append(Array.isArray(body[k]) ? k + '[]' : k, v); }); }); return f; })();
     if (!fd.has('_token')) fd.append('_token', token());
     return fetch(url, { method: 'POST', body: fd, credentials: 'same-origin', headers: { 'X-Requested-With': 'XMLHttpRequest', Accept: 'application/json' } })
       .then(function (r) {
-        return r.json().catch(function () { return { ok: false, message: 'Unexpected response from the server.' }; }).then(function (d) {
+        return r.json().catch(function () { return { ok: false, message: explainBadResponse(r.status) }; }).then(function (d) {
           if (r.status === 401 || (d && d.login)) { toast('Your session expired. Reloading…', 'error'); setTimeout(function () { location.reload(); }, 1200); }
           return { ok: r.ok && d.ok !== false, status: r.status, data: d };
         });
