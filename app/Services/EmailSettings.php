@@ -9,12 +9,13 @@ use App\Models\Setting;
 /** Email (Resend) settings: on/off, API key (encrypted), sender, and the two automatic email templates. */
 final class EmailSettings
 {
-    public const KINDS = ['verify', 'order'];
+    public const KINDS = ['verify', 'order', 'reset'];
 
     /** Placeholders per automatic email. */
     public const VARIABLES = [
         'verify' => ['{name}', '{verify_url}', '{shop}'],
         'order' => ['{name}', '{order_no}', '{total}', '{items}', '{payment}', '{track_url}', '{shop}'],
+        'reset' => ['{name}', '{reset_url}', '{shop}'],
     ];
 
     /** @return array<string,array{subject:string, body:string}> */
@@ -28,6 +29,10 @@ final class EmailSettings
             'order' => [
                 'subject' => 'Pesanan {order_no} telah diterima',
                 'body' => "Hai {name},\n\nTerima kasih! Pesanan {order_no} telah diterima.\n\n{items}\n\nJumlah: RM{total}\nBayaran: {payment}\n\nJejak pesanan anda: {track_url}\n\n{shop}",
+            ],
+            'reset' => [
+                'subject' => 'Tetapkan semula kata laluan anda',
+                'body' => "Hai {name},\n\nKami terima permintaan untuk menetapkan semula kata laluan anda. Klik pautan ini:\n{reset_url}\n\nPautan ini sah selama 60 minit dan hanya boleh digunakan sekali.\n\nJika anda tidak membuat permintaan ini, abaikan emel ini. Kata laluan anda tidak akan berubah.\n\n{shop}",
             ],
         ];
     }
@@ -83,6 +88,7 @@ final class EmailSettings
             'templates' => [
                 'verify' => self::template('verify'),
                 'order' => self::template('order'),
+                'reset' => self::template('reset'),
             ],
         ];
     }

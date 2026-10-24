@@ -28,6 +28,23 @@ final class AccountService
         return $errors;
     }
 
+    /** Rules every new password follows: length, not the email address, and the confirmation matches. @return array<string,string> */
+    public static function newPasswordErrors(string $email, string $new, string $confirm): array
+    {
+        $errors = [];
+        if (strlen($new) < 8) {
+            $errors['password'] = 'Use at least 8 characters.';
+        } elseif (strlen($new) > 72) {
+            $errors['password'] = 'Use 72 characters or fewer.';
+        } elseif (strtolower($new) === strtolower($email)) {
+            $errors['password'] = 'Your password cannot be your email address.';
+        }
+        if (!isset($errors['password']) && $new !== $confirm) {
+            $errors['password_confirmation'] = 'The two passwords do not match.';
+        }
+        return $errors;
+    }
+
     /** @param array $user the signed-in users row (needs id, email, password_hash) @return array<string,string> */
     public static function changePassword(array $user, string $current, string $new, string $confirm): array
     {
@@ -35,17 +52,9 @@ final class AccountService
         if (!password_verify($current, (string) $user['password_hash'])) {
             $errors['current_password'] = 'Your current password is not right.';
         }
-        if (strlen($new) < 8) {
-            $errors['password'] = 'Use at least 8 characters.';
-        } elseif (strlen($new) > 72) {
-            $errors['password'] = 'Use 72 characters or fewer.';
-        } elseif (!isset($errors['current_password']) && hash_equals($current, $new)) {
+        $errors = array_merge($errors, self::newPasswordErrors((string) $user['email'], $new, $confirm));
+        if (!isset($errors['password']) && !isset($errors['current_password']) && hash_equals($current, $new)) {
             $errors['password'] = 'Choose a password you have not used just now.';
-        } elseif (strtolower($new) === strtolower((string) $user['email'])) {
-            $errors['password'] = 'Your password cannot be your email address.';
-        }
-        if (!isset($errors['password']) && $new !== $confirm) {
-            $errors['password_confirmation'] = 'The two passwords do not match.';
         }
         if ($errors === []) {
             User::update((int) $user['id'], ['password_hash' => password_hash($new, PASSWORD_DEFAULT)]);

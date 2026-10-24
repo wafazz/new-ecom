@@ -19,7 +19,7 @@ $admin = User::create('admin', 'Em Admin', 'em@example.test', 'Passw0rd!x');
 
 // Rules and storage.
 $all = function (array $over = []): array {
-    $base = ['verify' => ['on' => '1', 'subject' => 'Sahkan', 'body' => 'Hai {name} {verify_url}'], 'order' => ['on' => '1', 'subject' => 'Pesanan {order_no}', 'body' => S::defaults()['order']['body']]];
+    $base = ['verify' => ['on' => '1', 'subject' => 'Sahkan', 'body' => 'Hai {name} {verify_url}'], 'order' => ['on' => '1', 'subject' => 'Pesanan {order_no}', 'body' => S::defaults()['order']['body']], 'reset' => ['on' => '1', 'subject' => 'Reset', 'body' => 'Hai {name} {reset_url}']];
     return array_replace_recursive($base, $over);
 };
 check('turning email on without a key is refused', S::save(['enabled' => '1', 'key' => '', 'from_name' => '', 'from_email' => '', 'reply_to' => '', 'tpl' => $all()], $admin) !== [] && !S::enabled());
@@ -27,7 +27,7 @@ check('a key that is not a Resend key (re_…) is refused', S::save(['enabled' =
 check('a bad sender address is refused', S::save(['enabled' => '0', 'key' => '', 'from_name' => '', 'from_email' => 'not-an-email', 'reply_to' => '', 'tpl' => $all()], $admin) !== []);
 check('an empty template is refused', S::save(['enabled' => '0', 'key' => '', 'from_name' => '', 'from_email' => '', 'reply_to' => '', 'tpl' => $all(['order' => ['body' => '']])], $admin) !== []);
 check('the key is saved encrypted and never shown in full', S::save(['enabled' => '0', 'key' => 're_SECRETKEY9876', 'from_name' => 'Lure Shop', 'from_email' => 'shop@example.test', 'reply_to' => '', 'tpl' => $all()], $admin) === [] && Setting::get('email.key') !== 're_SECRETKEY9876' && S::apiKey() === 're_SECRETKEY9876' && !str_contains(json_encode(S::overview()), 're_SECRETKEY9876') && str_ends_with((string) S::overview()['key_hint'], '9876'));
-check('the defaults cover both automatic emails', array_keys(S::defaults()) === ['verify', 'order']);
+check('the defaults cover all three automatic emails', array_keys(S::defaults()) === ['verify', 'order', 'reset']);
 check('HTML from text is escaped (no markup from a message gets through)', str_contains(M::html("<script>x</script>\nline"), '&lt;script&gt;') && !str_contains(M::html('<b>x</b>'), '<b>') && str_contains(M::html("a\nb"), '<br'));
 
 // Sending through a stub: the request shape and the log.

@@ -50,6 +50,10 @@ return function (Router $r): void {
             $r->post('/admin/login', 'Auth/AdminLoginController@login');
             $r->get('/staff/login', 'Auth/StaffLoginController@show');
             $r->post('/staff/login', 'Auth/StaffLoginController@login');
+            $r->get('/forgot-password', 'Auth/PasswordResetController@show');
+            $r->post('/forgot-password', 'Auth/PasswordResetController@send');
+            $r->get('/reset-password/{token}', 'Auth/PasswordResetController@form');
+            $r->post('/reset-password', 'Auth/PasswordResetController@update');
         });
 
         $r->post('/logout', 'Auth/LogoutController@logout', ['auth']);

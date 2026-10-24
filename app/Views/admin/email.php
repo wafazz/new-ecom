@@ -1,6 +1,6 @@
 <?php
 /** Expects $overview, $variables, $defaults, $log. */
-$kindLabels = ['verify' => ['Confirm email address', 'Sent when a member signs up.'], 'order' => ['Order created', 'Sent to the customer when an order is placed.']];
+$kindLabels = ['verify' => ['Confirm email address', 'Sent when a member signs up.'], 'order' => ['Order created', 'Sent to the customer when an order is placed.'], 'reset' => ['Reset password', 'Sent when someone asks for a new password.']];
 $state = $overview['enabled'] && $overview['key_set'] && $overview['from_email'] !== '' ? ['ok', 'Connected and sending']
     : ($overview['enabled'] ? ['warn', 'On, but the key or sender is missing'] : ['', 'Off']);
 ?>

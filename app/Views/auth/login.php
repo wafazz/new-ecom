@@ -11,6 +11,7 @@
     </label>
     <button class="s-btn lg block">Log in</button>
 </form>
+<p class="muted"><a href="<?= e(url('/forgot-password')) ?>">Forgot password?</a></p>
 <?php if ($showRegister): ?>
     <p class="muted">No account? <a href="<?= e(url('/register')) ?>">Create one</a></p>
 <?php endif; ?>

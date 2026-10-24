@@ -62,6 +62,21 @@ final class EmailService
         return self::sendVerification($userId, (string) $user['email'], (string) $user['name']);
     }
 
+    /** Create a one-time reset link for an account and email it. @return string 'sent'|'off'|'failed' */
+    public static function sendPasswordReset(int $userId, string $email, string $name): string
+    {
+        if (!self::ready() || !EmailSettings::template('reset')['on']) {
+            return 'off';
+        }
+        $token = bin2hex(random_bytes(32));
+        Database::query('DELETE FROM password_resets WHERE user_id = ?', [$userId]);
+        Database::query('INSERT INTO password_resets (user_id, token_hash, expires_at) VALUES (?, ?, NOW() + INTERVAL ' . PasswordResetService::MINUTES . ' MINUTE)', [$userId, hash('sha256', $token)]);
+        $tpl = EmailSettings::template('reset');
+        $vars = ['name' => $name, 'reset_url' => url('/reset-password/' . $token), 'shop' => (string) config('app.name')];
+        $r = MailService::send($email, self::render($tpl['subject'], $vars), self::render($tpl['body'], $vars), 'reset');
+        return $r['ok'] ? 'sent' : 'failed';
+    }
+
     /** The user id for a valid, unexpired link (and marks the address confirmed), or null. */
     public static function confirm(string $token): ?int
     {
