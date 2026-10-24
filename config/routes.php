@@ -13,6 +13,7 @@ return function (Router $r): void {
         $r->get('/', 'Shop/HomeController@index');
         $r->get('/health', 'Shop/HomeController@health');
         $r->get('/live/visitors', 'Shop/HomeController@liveVisitors');
+        $r->get('/verify-email/{token}', 'Auth/VerifyEmailController@confirm');
         $r->get('/products', 'Shop/CatalogController@index');
         $r->get('/products/{slug}', 'Shop/CatalogController@show');
         $r->post('/wishlist/toggle', 'Shop/WishlistController@toggle', ['auth:member']);
@@ -149,6 +150,15 @@ return function (Router $r): void {
             $r->post('/staff/{id}/toggle', 'Admin/StaffController@toggle');
             $r->get('/staff/{id}/edit', 'Admin/StaffController@edit');
             $r->post('/staff/{id}/permissions', 'Admin/StaffController@permissions');
+            $r->get('/email', 'Admin/EmailController@show');
+            $r->post('/email', 'Admin/EmailController@update');
+            $r->post('/email/test', 'Admin/EmailController@test');
+            $r->get('/email/announce', 'Admin/EmailController@announceForm');
+            $r->post('/email/announce', 'Admin/EmailController@announce');
+            $r->get('/whatsapp', 'Admin/WhatsAppController@show');
+            $r->post('/whatsapp', 'Admin/WhatsAppController@update');
+            $r->post('/whatsapp/test', 'Admin/WhatsAppController@test');
+            $r->post('/whatsapp/check', 'Admin/WhatsAppController@check');
             $r->get('/visitors', 'Admin/VisitorsController@index');
             $r->get('/visitors/stats', 'Admin/VisitorsController@stats');
             $r->get('/settings', 'Admin/SettingsController@edit');
@@ -172,6 +182,7 @@ return function (Router $r): void {
         // Member portal
         $r->group('/member', ['auth:member'], function (Router $r): void {
             $r->get('/', 'Member/DashboardController@index');
+            $r->post('/verify-email/resend', 'Auth/VerifyEmailController@resend');
             $r->get('/orders', 'Member/OrderController@index');
             $r->get('/orders/{orderNo}', 'Member/OrderController@show');
             $r->post('/orders/{orderNo}/cancel', 'Member/OrderController@cancel');

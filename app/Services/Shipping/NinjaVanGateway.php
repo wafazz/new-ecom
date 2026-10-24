@@ -24,6 +24,8 @@ final class NinjaVanGateway
     public const VOLUMES = ['Less than 3 Parcels', 'Less than 10 Parcels', 'Half-Van Load', 'Full-Van Load', 'Larger than Van Load', 'Trolley Required'];
     private const TZ = 'Asia/Kuala_Lumpur';
     /** Webhook statuses worth showing in the order history (the rest only go to the shipment timeline). */
+    /** Courier statuses that mean the parcel reached the customer (a COD order is completed on these). */
+    private const DELIVERED = ['Successful Delivery', 'Completed'];
     private const NOTABLE = ['Successful Pickup', 'Pickup Fail', 'On Vehicle for Delivery', 'First Attempt Delivery Fail', 'Successful Delivery', 'Completed', 'Returned to Sender', 'Cancelled'];
 
     // ---- input + payload (pure) -------------------------------------------------------------
@@ -392,6 +394,7 @@ final class NinjaVanGateway
         $prev = is_string($p['previous_status'] ?? null) ? mb_substr($p['previous_status'], 0, 60) : null;
         $comments = is_string($p['comments'] ?? null) && $p['comments'] !== '' ? mb_substr($p['comments'], 0, 255) : null;
 
+        $delivered = in_array($status, self::DELIVERED, true) && (int) $shipment['active'] === 1;
         $pdo = Database::connection();
         $pdo->beginTransaction();
         try {
@@ -409,11 +412,14 @@ final class NinjaVanGateway
                 OrderService::note((int) $shipment['order_id'], 'shipment_update', "NinjaVan: {$status}" . ($comments !== null ? " ({$comments})" : ''));
             }
             $pdo->commit();
-            return 'recorded';
         } catch (\Throwable $e) {
             $pdo->rollBack();
             throw $e;
         }
+        if ($delivered) {
+            OrderService::completeFromCourier((int) $shipment['order_id'], "NinjaVan: {$status} (cash collected)");
+        }
+        return 'recorded';
     }
 
     public static function log(string $msg): void

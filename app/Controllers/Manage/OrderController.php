@@ -81,7 +81,9 @@ final class OrderController extends ManageController
             'order' => $order,
             'items' => OrderService::items((int) $order['id']),
             'events' => OrderService::events((int) $order['id']),
-            'next' => OrderService::FLOW[$order['status']],
+            'next' => $order['payment_method'] === 'cod'
+                ? array_values(array_diff(OrderService::FLOW[$order['status']], ['completed'])) // COD completes on the courier's delivery
+                : OrderService::FLOW[$order['status']],
             'payment' => Payments::find($order['payment_method']),
             'canUpdate' => Auth::can('orders.update'),
             'shipment' => $ship = ShipmentService::active((int) $order['id']),

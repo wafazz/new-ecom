@@ -131,7 +131,7 @@ final class OrderService
      *
      * @return string|null error message, null on success
      */
-    public static function transition(int $orderId, string $to, ?int $actorId, ?string $note = null, bool $customerOnlyPending = false): ?string
+    public static function transition(int $orderId, string $to, ?int $actorId, ?string $note = null, bool $customerOnlyPending = false, bool $fromCourier = false): ?string
     {
         $pdo = Database::connection();
         $pdo->beginTransaction();
@@ -144,6 +144,10 @@ final class OrderService
             if (!in_array($to, self::FLOW[$order['status']] ?? [], true) || ($customerOnlyPending && $order['status'] !== 'pending')) {
                 $pdo->rollBack();
                 return "This order is {$order['status']} and can't be changed to {$to}.";
+            }
+            if ($to === 'completed' && $order['payment_method'] === 'cod' && !$fromCourier) {
+                $pdo->rollBack();
+                return 'Cash-on-delivery orders are completed automatically when NinjaVan confirms the delivery.';
             }
 
             if ($to === 'cancelled' && Database::query('SELECT COUNT(*) FROM shipments WHERE order_id = ? AND active = 1', [$orderId])->fetchColumn() > 0) {
@@ -160,6 +164,7 @@ final class OrderService
                 AffiliateService::recordCommission($order, self::items($orderId));
             }
             $pdo->commit();
+            WhatsAppService::notifyStatus($orderId, $to); // after the commit: a WhatsApp problem cannot undo the change
             return null;
         } catch (\Throwable $e) {
             $pdo->rollBack();
@@ -258,6 +263,30 @@ final class OrderService
                 // the variation was removed since the order: its stock no longer exists
             }
         }
+    }
+
+    /**
+     * NinjaVan confirmed a delivery of a COD order: the cash is collected, so the order is completed (and marked paid).
+     * An order still in Processing goes through Shipped first. Other orders are left alone.
+     *
+     * @return string|null error message, null on success or when nothing needed doing
+     */
+    public static function completeFromCourier(int $orderId, string $note): ?string
+    {
+        $order = self::find($orderId);
+        if (!$order || $order['payment_method'] !== 'cod') {
+            return null;
+        }
+        if ($order['status'] === 'processing') {
+            $err = self::transition($orderId, 'shipped', null, 'NinjaVan picked up the parcel');
+            if ($err !== null) {
+                return $err;
+            }
+        }
+        if (self::find($orderId)['status'] !== 'shipped') {
+            return null; // already completed, cancelled or returned: a repeated webhook changes nothing
+        }
+        return self::transition($orderId, 'completed', null, $note, false, true);
     }
 
     /**

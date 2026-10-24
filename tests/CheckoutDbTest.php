@@ -44,8 +44,8 @@ check('over-stock quantity rejected, stock untouched', $over && $stock() === 1);
 $oid = $r['order_id'];
 foreach (['processing', 'shipped'] as $to) { O::transition($oid, $to, null); }
 check('no commission before completion', (int) DB::query('SELECT COUNT(*) FROM affiliate_commissions')->fetchColumn() === 0);
-O::transition($oid, 'completed', null);
-O::transition($oid, 'completed', null);
+O::completeFromCourier($oid, 'NinjaVan: Successful Delivery');
+O::completeFromCourier($oid, 'NinjaVan: Successful Delivery'); // a repeated webhook changes nothing
 $rows = DB::query('SELECT * FROM affiliate_commissions')->fetchAll();
 $ordRow = O::find($oid);
 $expBase = max(0, (int) round((float) $ordRow['subtotal'] * 100) - (int) round((float) $ordRow['shipping_fee'] * 100)); // sales minus shipping

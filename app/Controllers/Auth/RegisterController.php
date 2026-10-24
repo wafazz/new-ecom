@@ -49,6 +49,11 @@ final class RegisterController extends Controller
         }
 
         $id = User::create('member', $input['name'], $input['email'], $password, $input['phone']);
+        try {
+            \App\Services\EmailService::sendVerification($id, $input['email'], $input['name']);
+        } catch (\Throwable) {
+            // the account is created either way; the member can ask for the link again from the dashboard
+        }
         Auth::login(User::find($id));
         $this->success(PortalLoginController::landing('member'), 'Welcome! Your account is ready.');
     }

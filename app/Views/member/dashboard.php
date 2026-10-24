@@ -6,6 +6,15 @@ $when = $hour < 12 ? 'Good morning' : ($hour < 18 ? 'Good afternoon' : 'Good eve
 $first = explode(' ', trim((string) $me['name']))[0];
 ?>
 <div class="dash" id="member-dash">
+    <?php if (empty($me['email_verified_at']) && \App\Services\EmailService::ready()): ?>
+    <section class="panel verify-banner" aria-labelledby="verify-title">
+        <div>
+            <strong id="verify-title">Confirm your email address</strong>
+            <p class="muted">We sent a confirmation link to <?= e((string) $me['email']) ?>. Click it to confirm your address.</p>
+        </div>
+        <form method="post" action="<?= e(url('/member/verify-email/resend')) ?>" class="inline"><?= csrf_field() ?><button class="btn secondary">Send the link again</button></form>
+    </section>
+    <?php endif; ?>
     <header class="dash-head">
         <div><h1><?= e($when) ?>, <?= e($first) ?></h1>
             <p class="muted"><?= $d['orders'] > 0 ? 'Here is where your orders and rewards stand.' : 'Your account is ready. Your first order will show up here.' ?></p></div>
