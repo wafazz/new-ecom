@@ -47,14 +47,17 @@ check('no commission before completion', (int) DB::query('SELECT COUNT(*) FROM a
 O::transition($oid, 'completed', null);
 O::transition($oid, 'completed', null);
 $rows = DB::query('SELECT * FROM affiliate_commissions')->fetchAll();
-check('completion creates exactly one pending commission of 6.00 on 60.00 margin', count($rows) === 1 && $rows[0]['amount'] === '6.00' && $rows[0]['base_amount'] === '60.00' && $rows[0]['status'] === 'pending');
+$ordRow = O::find($oid);
+$expBase = max(0, (int) round((float) $ordRow['subtotal'] * 100) - (int) round((float) $ordRow['shipping_fee'] * 100)); // sales minus shipping
+$expAmount = intdiv($expBase * 1000 + 5000, 10000);                                                              // 10% of that base
+check('completion creates one pending commission: 10% of (sales - shipping)', count($rows) === 1 && (int) round((float) $rows[0]['base_amount'] * 100) === $expBase && (int) round((float) $rows[0]['amount'] * 100) === $expAmount && $rows[0]['status'] === 'pending');
 
 $cid = (int) $rows[0]['id'];
 check('payout refused before approval', A::payout($affId, $affId, 'REF', null) !== null);
 check('approve ok, second approve refused', A::decide($cid, 'approved', $affId) === null && A::decide($cid, 'approved', $affId) !== null);
 check('payout ok then cannot repeat', A::payout($affId, $affId, 'REF', null) === null && A::payout($affId, $affId, 'REF2', null) !== null);
 check('paid commission cannot be rejected', A::decide($cid, 'rejected', $affId) !== null);
-check('stats: paid 6.00, nothing pending/approved', A::stats($affId)['paid'] === '6.00' && A::stats($affId)['pending'] === '0.00' && A::stats($affId)['approved'] === '0.00');
+check('stats: paid equals the commission, nothing pending/approved', A::stats($affId)['paid'] === $rows[0]['amount'] && A::stats($affId)['pending'] === '0.00' && A::stats($affId)['approved'] === '0.00');
 
 $cancel = $self['order_id'];
 O::transition($cancel, 'cancelled', null);

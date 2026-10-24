@@ -1,14 +1,17 @@
 <?php
 use App\Services\AffiliateService as A;
 
-$item = fn(string $unit, string $company, int $qty, ?string $rate) => ['unit_price' => $unit, 'company_base_price' => $company, 'qty' => $qty, 'commission_rate' => $rate];
+// Commission base = (sales price - shipping) x rate, per line; shipping is shared by line sales.
+$item = fn(string $lineTotal, ?string $rate) => ['line_total' => $lineTotal, 'commission_rate' => $rate];
 
-check('10% of 30.00 margin x2 = 6.00', A::calculate([$item('100.00', '70.00', 2, '10.00')]) === ['base' => 6000, 'amount' => 600]);
-check('rounds half up per line (0.05 x 10% = 0.005 -> 0.01)', A::calculate([$item('10.05', '10.00', 1, '10.00')])['amount'] === 1);
-check('below company base earns nothing (no negative margin)', A::calculate([$item('50.00', '70.00', 3, '10.00')]) === ['base' => 0, 'amount' => 0]);
-check('lines without a rate (no affiliate) are skipped', A::calculate([$item('100.00', '70.00', 1, null)]) === ['base' => 0, 'amount' => 0]);
-check('mixed rates sum per line', A::calculate([$item('100.00', '80.00', 1, '10.00'), $item('50.00', '40.00', 1, '50.00')])['amount'] === 700);
-check('100% rate takes the whole margin', A::calculate([$item('9.99', '5.00', 1, '100.00')])['amount'] === 499);
+check('10% of 30.00 sales with no shipping = 3.00', A::calculate([$item('30.00', '10.00')]) === ['base' => 3000, 'amount' => 300]);
+check('shipping is taken off the sales first: (100.00 - 10.00) x 10% = 9.00', A::calculate([$item('100.00', '10.00')], 1000) === ['base' => 9000, 'amount' => 900]);
+check('shipping is shared by line sales: 60 and 40 sales, 10 shipping, rates 10% and 50%', A::calculate([$item('60.00', '10.00'), $item('40.00', '50.00')], 1000)['amount'] === 2340);
+check('rounds half up per line (10.05 x 10% = 1.005 -> 1.01)', A::calculate([$item('10.05', '10.00')])['amount'] === 101);
+check('shipping above the sales gives no negative base', A::calculate([$item('5.00', '10.00')], 1000) === ['base' => 0, 'amount' => 0]);
+check('lines without a rate (no affiliate) are skipped', A::calculate([$item('100.00', null)], 500) === ['base' => 0, 'amount' => 0]);
+check('a 100% rate takes the whole net sales', A::calculate([$item('9.99', '100.00')])['amount'] === 999);
+check('no items gives nothing', A::calculate([]) === ['base' => 0, 'amount' => 0]);
 
 check('rate accepts 0, 7.5, 100', A::isRate('0') && A::isRate('7.5') && A::isRate('100.00'));
 check('rate rejects 100.01, -1, abc, 1e2, empty', !A::isRate('100.01') && !A::isRate('-1') && !A::isRate('abc') && !A::isRate('1e2') && !A::isRate(''));

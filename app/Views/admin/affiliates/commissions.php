@@ -11,7 +11,7 @@
     <p class="muted">No commissions found.</p>
 <?php else: ?>
 <table>
-    <thead><tr><th>Order</th><th>Affiliate</th><th>Created</th><th class="num">Margin</th><th class="num">Commission</th><th>Status</th><th></th></tr></thead>
+    <thead><tr><th>Order</th><th>Affiliate</th><th>Created</th><th class="num">Commission base</th><th class="num">Commission</th><th>Status</th><th></th></tr></thead>
     <tbody>
     <?php foreach ($rows as $m): ?>
         <tr>

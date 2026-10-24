@@ -28,7 +28,7 @@
     <p class="muted">None yet.</p>
 <?php else: ?>
 <table>
-    <thead><tr><th>Order</th><th>Created</th><th class="num">Margin</th><th class="num">Commission</th><th>Status</th><th></th></tr></thead>
+    <thead><tr><th>Order</th><th>Created</th><th class="num">Commission base</th><th class="num">Commission</th><th>Status</th><th></th></tr></thead>
     <tbody>
     <?php foreach ($commissions as $m): ?>
         <tr>

@@ -89,7 +89,7 @@ $vrows = ($variantRows ?? []) !== [] ? $variantRows : [['id' => 0, 'sku' => '', 
     </fieldset>
 
     <?php if ($isAdmin): ?>
-        <label>Affiliate commission override (% of margin, blank = default)
+        <label>Affiliate commission override (% of sales after shipping, blank = default)
             <input name="commission_rate" inputmode="decimal" value="<?= old('commission_rate', (string) ($product['commission_rate'] ?? '')) ?>"><?= field_error('commission_rate') ?></label>
     <?php endif; ?>
 

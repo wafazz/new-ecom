@@ -135,20 +135,29 @@ final class AffiliateService
     }
 
     /**
-     * @param array<array{unit_price:string,company_base_price:string,qty:int|string,commission_rate:?string}> $items
+     * Commission base = sales price minus shipping: each line's sales (line_total), less its share of the order's
+     * shipping cost, times that line's rate. Shipping is shared between lines in proportion to their sales.
+     *
+     * @param array<array{line_total:string,commission_rate:?string}> $items
      * @return array{base:int, amount:int} cents; amount rounds half-up per line
      */
-    public static function calculate(array $items): array
+    public static function calculate(array $items, int $shippingCents = 0): array
     {
+        $subtotal = 0;
+        foreach ($items as $it) {
+            $subtotal += PricingService::cents((string) $it['line_total']);
+        }
         $base = 0;
         $amount = 0;
         foreach ($items as $it) {
             if ($it['commission_rate'] === null) {
                 continue;
             }
-            $margin = max(0, PricingService::cents((string) $it['unit_price']) - PricingService::cents((string) $it['company_base_price'])) * (int) $it['qty'];
-            $base += $margin;
-            $amount += intdiv($margin * PricingService::cents((string) $it['commission_rate']) + 5000, 10000);
+            $line = PricingService::cents((string) $it['line_total']);
+            $share = $subtotal > 0 ? intdiv($shippingCents * $line + intdiv($subtotal, 2), $subtotal) : 0;
+            $net = max(0, $line - $share);
+            $base += $net;
+            $amount += intdiv($net * PricingService::cents((string) $it['commission_rate']) + 5000, 10000);
         }
         return ['base' => $base, 'amount' => $amount];
     }
@@ -159,7 +168,7 @@ final class AffiliateService
         if ($order['affiliate_id'] === null) {
             return;
         }
-        $c = self::calculate($items);
+        $c = self::calculate($items, PricingService::cents((string) ($order['shipping_fee'] ?? '0')));
         if ($c['amount'] < 1) {
             return;
         }
