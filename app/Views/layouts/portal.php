@@ -27,7 +27,7 @@ $groups = match ($role) {
         'Catalog' => [['/admin/products', 'Products', 'box', 0], ['/admin/categories', 'Categories', 'tag', 0], ['/admin/brands', 'Brands', 'tag', 0]],
         'Inventory' => [['/admin/stock', 'Stock Control', 'stack', 0], ['/admin/stock/movements', 'Stock Movement', 'swap', 0]],
         'Sales' => [['/admin/orders', 'Orders', 'cart', $pendingOrders, $orderSub('/admin')], ['/admin/affiliates', 'Affiliates', 'link', 0], ['/admin/commissions', 'Commissions', 'coin', $pendingCommissions], ['/admin/vouchers', 'Vouchers', 'coin', 0]],
-        'Administration' => [['/admin/staff', 'Staff', 'users', 0], ['/admin/visitors', 'Visitors', 'pin', 0], ['/admin/whatsapp', 'WhatsApp', 'stack', 0], ['/admin/email', 'Email', 'swap', 0], ['/admin/backup', 'Backup', 'lock', 0], ['/admin/email/announce', 'Announcements', 'heart', 0], ['/admin/payments', 'Payments', 'card', 0], ['/admin/payments/billplz', 'Billplz', 'link', 0], ['/admin/shipping/ninjavan', 'NinjaVan', 'truck', 0], ['/admin/settings', 'Settings', 'gear', 0]],
+        'Administration' => [['/admin/staff', 'Staff', 'users', 0], ['/admin/visitors', 'Visitors', 'pin', 0], ['/admin/whatsapp', 'WhatsApp', 'stack', 0], ['/admin/email', 'Email', 'swap', 0], ['/admin/invoice', 'Invoice details', 'stack', 0], ['/admin/backup', 'Backup', 'lock', 0], ['/admin/email/announce', 'Announcements', 'heart', 0], ['/admin/payments', 'Payments', 'card', 0], ['/admin/payments/billplz', 'Billplz', 'link', 0], ['/admin/shipping/ninjavan', 'NinjaVan', 'truck', 0], ['/admin/settings', 'Settings', 'gear', 0]],
         'Account' => [['/admin/profile', 'Profile', 'user', 0], ['/admin/password', 'Password', 'lock', 0]],
     ],
     'staff' => array_filter([
@@ -105,6 +105,7 @@ $siteLogo = \App\Services\SiteLogo::url(); // the logo replaces the shop name wh
     <script>(function(){try{var t=localStorage.getItem('theme');if(t!=='light'&&t!=='dark'){t=matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'}document.documentElement.dataset.theme=t;if(localStorage.getItem('sidebar')==='collapsed'){document.documentElement.dataset.sidebar='collapsed'}}catch(e){}})();</script>
     <link rel="stylesheet" href="<?= e(asset('css/app.css')) ?>">
     <link rel="stylesheet" href="<?= e(asset('css/portal.css')) ?>">
+    <link rel="stylesheet" href="<?= e(asset('css/invoice.css')) ?>">
     <link rel="stylesheet" href="<?= e(asset('vendor/sweetalert2/sweetalert2.min.css')) ?>">
     <script src="<?= e(asset('vendor/sweetalert2/sweetalert2.all.min.js')) ?>" defer></script>
     <script src="<?= e(asset('js/confirm.js')) ?>" defer></script>
@@ -194,6 +195,8 @@ $siteLogo = \App\Services\SiteLogo::url(); // the logo replaces the shop name wh
         </main>
     </div>
 </div>
+<?php require BASE_PATH . '/app/Views/partials/invoice_modal.php'; ?>
+<script src="<?= e(asset('js/invoice-modal.js')) ?>" defer></script>
 </body>
 </html>
 <?php flash_clear(); ?>

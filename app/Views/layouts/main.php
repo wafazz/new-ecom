@@ -32,6 +32,7 @@ $path = rtrim((string) parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH), 
     <script>(function(){try{var t=localStorage.getItem('theme');if(t!=='light'&&t!=='dark'){t=matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'}document.documentElement.dataset.theme=t}catch(e){}})();</script>
     <link rel="stylesheet" href="<?= e(asset('css/app.css')) ?>">
     <link rel="stylesheet" href="<?= e(asset('css/shop.css')) ?>">
+    <link rel="stylesheet" href="<?= e(asset('css/invoice.css')) ?>">
     <link rel="stylesheet" href="<?= e(asset('vendor/sweetalert2/sweetalert2.min.css')) ?>">
     <script src="<?= e(asset('vendor/sweetalert2/sweetalert2.all.min.js')) ?>" defer></script>
     <script src="<?= e(asset('js/confirm.js')) ?>" defer></script>
@@ -233,6 +234,8 @@ $path = rtrim((string) parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH), 
     </div>
 </aside>
 <script src="<?= e(asset('js/live-visitors.js')) ?>" defer></script>
+<?php require BASE_PATH . '/app/Views/partials/invoice_modal.php'; ?>
+<script src="<?= e(asset('js/invoice-modal.js')) ?>" defer></script>
 </body>
 </html>
 <?php flash_clear(); ?>

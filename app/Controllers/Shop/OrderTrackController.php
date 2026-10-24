@@ -108,6 +108,7 @@ final class OrderTrackController extends Controller
             'events' => OrderService::events((int) $order['id']),
             'cancelAction' => $order['status'] === 'pending' && $cancelBase !== null ? $cancelBase . '/cancel' : null,
             'payAction' => $cancelBase !== null && self::payable($order) ? $cancelBase . '/pay' : null,
+            'invoiceAction' => $cancelBase !== null ? $cancelBase . '/invoice' : null,
             'payment' => Payments::find($order['payment_method']),
             'proofs' => ReceiptService::forOrder((int) $order['id']),
             'proofAction' => $cancelBase !== null ? $cancelBase . '/receipt' : null,

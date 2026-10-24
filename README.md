@@ -97,6 +97,13 @@ HQ creates codes at `/admin/vouchers`: a percent or a fixed RM amount, an option
 - Affiliate commission is worked out on what the buyer paid for the items, so the discount comes off the commission base the same way shipping does.
 - Applying a code is limited to 20 tries per network every 10 minutes.
 
+## Invoices
+Every order that is not cancelled has a PDF invoice, numbered `INV-<year>-<order id>`. It is made when it is downloaded and not stored, so it always shows the current status and shop details.
+- Admin and staff download it from the order page. Members download it from their orders. A guest uses the order's secret link, the same way they track the order.
+- Set the company name, address, phone, email, registration number and footer note at `/admin/invoice`. The shop logo from Settings appears at the top.
+- The invoice shows the payment method: bank transfer details when the order is unpaid, or PAID / UNPAID.
+- **Not included:** SST (sales tax). The invoice shows no tax lines. If the business is registered for SST, add the tax lines before relying on these invoices for B2B buyers.
+
 ## Money rules
 All amounts are integer cents in code, `DECIMAL(10,2)` in the DB. Selling price = active discount else retail. Order lines snapshot price, cost, company base price and commission rate. Affiliate commission = rate % of (unit price - company base price) per line, created when an order is completed, then approved and paid out by an admin.
 

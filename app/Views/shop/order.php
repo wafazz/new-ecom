@@ -1,4 +1,4 @@
-<div class="page-head"><h1>Order <?= e($order['order_no']) ?></h1></div>
+<div class="page-head"><h1>Order <?= e($order['order_no']) ?></h1><?php if ($invoiceAction !== null && $order['status'] !== 'cancelled'): ?> <a class="btn secondary" href="<?= e(url($invoiceAction)) ?>" data-invoice-open target="_blank" rel="noopener">View invoice</a><?php endif; ?></div>
 <?php require __DIR__ . '/_tracker.php'; ?>
 <?php if ($order['user_id'] === null): ?>
     <p class="notice"><strong>Save this page's link</strong>: it is the only way to see your order without an account. Email notifications are not set up yet, so we can't send it to you.

@@ -17,6 +17,13 @@ final class SiteLogo
         return $path === '' ? null : url('/' . $path);
     }
 
+    /** The logo's file on disk (for documents such as invoices), or null while none is set. */
+    public static function file(): ?string
+    {
+        $path = Setting::get(self::KEY, '');
+        return $path === '' ? null : BASE_PATH . '/public/' . $path;
+    }
+
     /**
      * Store a new logo (JPG, PNG or WebP, max 2 MB) and remove the one it replaces.
      *

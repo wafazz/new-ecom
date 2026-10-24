@@ -164,6 +164,9 @@ $checkIcon = '<svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M
                 <?php if ($o['status'] === 'processing' && isset($shipments[$__id])): ?>
                     <a class="ot-view ot-print" href="<?= e(url($__viewUrl . '/shipment/awb?print=1')) ?>" target="_blank" rel="noopener">Print AWB</a>
                 <?php endif; ?>
+                <?php if ($o['status'] !== 'cancelled'): ?>
+                    <a class="ot-view" href="<?= e(url($__viewUrl . '/invoice')) ?>" data-invoice-open target="_blank" rel="noopener">Invoice</a>
+                <?php endif; ?>
                 <a class="ot-view" href="<?= e(url($__viewUrl)) ?>" data-order-details="<?= e(url($__viewUrl . '?popup=1')) ?>" data-order-no="<?= e($o['order_no']) ?>">View order</a>
             </div>
         </footer>

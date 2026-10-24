@@ -1,4 +1,4 @@
-<p><a href="<?= e(url('/member/orders')) ?>">← My orders</a></p>
+<p><a href="<?= e(url('/member/orders')) ?>">← My orders</a><?php if ($order['status'] !== 'cancelled'): ?> · <a href="<?= e(url('/member/orders/' . $order['order_no'] . '/invoice')) ?>" data-invoice-open target="_blank" rel="noopener">View invoice</a><?php endif; ?></p>
 <h1>Order <?= e($order['order_no']) ?></h1>
 <?php require BASE_PATH . '/app/Views/orders/_detail.php'; ?>
 <?php require BASE_PATH . '/app/Views/orders/_proof.php'; ?>

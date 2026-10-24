@@ -44,6 +44,7 @@ return function (Router $r): void {
         $r->post('/order/{orderNo}/{token}/cancel', 'Shop/OrderTrackController@cancel');
         $r->post('/order/{orderNo}/{token}/receipt', 'Shop/OrderTrackController@receipt');
         $r->get('/order/{orderNo}/{token}/receipt/{id}', 'Shop/OrderTrackController@receiptFile');
+        $r->get('/order/{orderNo}/{token}/invoice', 'Shop/InvoiceController@guest');
 
         // Guest-only pages (logged-in users are bounced to their dashboard)
         $r->group('', ['guest'], function (Router $r): void {
@@ -99,6 +100,7 @@ return function (Router $r): void {
             $r->post('/orders/move-next', 'Manage/OrderController@moveNext', ['permission:orders.update']);
             $r->post('/orders/{id}/details', 'Manage/OrderController@details', ['permission:orders.update']);
             $r->post('/orders/{id}/paid', 'Manage/OrderController@paid', ['permission:orders.update']);
+            $r->get('/orders/{id}/invoice', 'Manage/InvoiceController@show', ['permission:orders.view']);
             $r->get('/orders/{id}/proofs/{proofId}', 'Manage/OrderController@proofFile', ['permission:orders.view']);
             $r->post('/orders/{id}/proofs/{proofId}/approve', 'Manage/OrderController@approveProof', ['permission:orders.update']);
             $r->post('/orders/{id}/proofs/{proofId}/reject', 'Manage/OrderController@rejectProof', ['permission:orders.update']);
@@ -167,6 +169,8 @@ return function (Router $r): void {
             $r->post('/vouchers/{id}/active', 'Admin/VoucherController@toggle');
             $r->post('/vouchers/{id}/delete', 'Admin/VoucherController@delete');
             $r->post('/vouchers/{id}/email', 'Admin/VoucherController@email');
+            $r->get('/invoice', 'Admin/InvoiceSettingsController@edit');
+            $r->post('/invoice', 'Admin/InvoiceSettingsController@update');
             $r->get('/backup', 'Admin/BackupController@index');
             $r->post('/backup', 'Admin/BackupController@create');
             $r->get('/backup/download/{name}', 'Admin/BackupController@download');
@@ -208,6 +212,7 @@ return function (Router $r): void {
             $r->post('/verify-email/resend', 'Auth/VerifyEmailController@resend');
             $r->get('/orders', 'Member/OrderController@index');
             $r->get('/orders/{orderNo}', 'Member/OrderController@show');
+            $r->get('/orders/{orderNo}/invoice', 'Shop/InvoiceController@member');
             $r->post('/orders/{orderNo}/cancel', 'Member/OrderController@cancel');
             $r->post('/orders/{orderNo}/receipt', 'Member/OrderController@receipt');
             $r->get('/orders/{orderNo}/receipt/{id}', 'Member/OrderController@receiptFile');

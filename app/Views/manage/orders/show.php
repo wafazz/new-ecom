@@ -1,5 +1,5 @@
 <?php if (!$popup): ?>
-<p><a href="<?= e(url($base . '/orders')) ?>">← Orders</a></p>
+<p><a href="<?= e(url($base . '/orders')) ?>">← Orders</a><?php if ($order['status'] !== 'cancelled'): ?> · <a href="<?= e(url($base . '/orders/' . (int) $order['id'] . '/invoice')) ?>" data-invoice-open target="_blank" rel="noopener">View invoice</a><?php endif; ?></p>
 <h1>Order <?= e($order['order_no']) ?></h1>
 <?php endif; ?>
 <?php $showCost = $isAdmin; require BASE_PATH . '/app/Views/orders/_detail.php'; ?>
