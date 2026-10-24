@@ -62,7 +62,23 @@ Admin-editable (Settings page): guest checkout on/off, flat shipping fee, defaul
 2. `.env`: `APP_ENV=production`, `APP_DEBUG=false`, real `APP_URL` (https), `APP_KEY` from `php -r 'echo bin2hex(random_bytes(32));'`, DB credentials. Never commit `.env`.
 3. `php bin/migrate.php` (safe to re-run; applies only new files). Back up the DB first.
 4. `php bin/create-admin.php ...` for the first admin.
-5. Make `storage/` (logs, cached waybills) and `public/uploads/` writable by the web user; nothing else needs to be.
+5. Make these folders writable by the web server user (usually `www-data` on Ubuntu; check with `ps aux | grep php-fpm`). Nothing else needs to be writable:
+   - `public/uploads/`: product photos and the shop and brand logos. If it is not writable, saving a product with photos fails.
+   - `storage/logs/`: the app log. Errors are written here, so check it first when something breaks.
+   - `storage/receipts/`: bank transfer receipts (private, never public).
+   - `storage/backups/`: database backups from `/admin/backup` and `bin/backup.php`.
+   - `storage/cache/`: visitor counts and the worker's lock file.
+   - `storage/waybills/`: shipping labels.
+   - `storage/`: the install wizard writes `installed.lock` here.
+
+   Run this from the project folder, with your web user in place of `www-data` if it differs:
+
+   ```
+   sudo chown -R www-data:www-data public/uploads storage
+   sudo chmod -R 775 public/uploads storage
+   ```
+
+   Do not make `app/`, `config/` or `.env` writable by the web user. Permissions can reset after a redeploy or a server move, so check them again then.
 6. Cron, daily: `php bin/prune-carts.php` (removes stale guest carts and expired throttle/click rows). Also `php bin/retention.php` (deletes old email and WhatsApp logs, audit rows, daily visitor counts and app.log entries; see **Personal data** below).
 7. Cron, hourly: `php bin/expire-unpaid.php` (cancels unpaid online-payment orders after `UNPAID_HOLD_HOURS`, default 24, and restocks them).
 8. Cron, **every minute**: `php bin/worker.php` sends the queued emails and WhatsApp messages. Without it, nothing queued is sent. See **Background jobs** below.
