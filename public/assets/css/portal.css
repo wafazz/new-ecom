@@ -798,3 +798,19 @@ a.vis-card:hover{transform:translateY(-3px);box-shadow:0 14px 28px -12px rgba(47
 @keyframes msg-spin{to{transform:rotate(360deg)}}
 @media (max-width:700px){.msg-grid{grid-template-columns:1fr}}
 @media (prefers-reduced-motion:reduce){.msg-switch .track::after,.aud-card,.msg-card,.msg-savebar,.is-busy::after{transition:none;animation:none}}
+
+/* Dashboard: the attention and setup cards sit on the right on desktop */
+@media (min-width:1101px){
+  .dash-cols{grid-template-columns:minmax(0,1fr) minmax(260px,320px)}
+  .dash-side{order:2}
+}
+/* Phones and tablets: the cards start collapsed behind a toggle */
+.dash-side-body{display:flex;flex-direction:column;gap:1.25rem;min-width:0}
+.dash-side-toggle{display:none}
+@media (max-width:1100px){
+  .dash-side-toggle{display:flex;align-items:center;justify-content:space-between;gap:.75rem;width:100%;padding:.75rem 1rem;border:1px solid var(--border);border-radius:12px;background:var(--surface);color:var(--text);font:inherit;font-weight:600;cursor:pointer}
+  .dash-side-toggle .ico{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;transition:transform .2s ease}
+  .dash-side-toggle[aria-expanded="true"] .ico{transform:rotate(180deg)}
+  .dash-side-body{display:none}
+  .dash-side-body.is-open{display:flex}
+}

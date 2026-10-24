@@ -199,6 +199,12 @@
     var tv = $('dash-table-toggle');
     if (tv) tv.addEventListener('click', function () { st.table = !st.table; tv.setAttribute('aria-pressed', String(st.table)); tv.textContent = st.table ? 'Show chart' : 'Show table'; renderChart(st.data); });
     var rf = $('dash-refresh'); if (rf) rf.addEventListener('click', function () { load(st.data.days); });
+    var sideTog = $('dash-side-toggle');
+    if (sideTog) sideTog.addEventListener('click', function () {
+      var open = sideTog.getAttribute('aria-expanded') !== 'true';
+      sideTog.setAttribute('aria-expanded', String(open));
+      $('dash-side-body').classList.toggle('is-open', open);
+    });
 
     var rt; window.addEventListener('resize', function () { clearTimeout(rt); rt = setTimeout(function () { renderChart(st.data); Array.prototype.forEach.call(document.querySelectorAll('.tile-spark'), function () {}); }, 150); });
     render(st.data);

@@ -21,11 +21,17 @@
 
     <div class="dash-cols">
         <aside class="dash-side">
-            <section class="panel" aria-labelledby="q-title">
-                <h2 id="q-title">Needs attention</h2>
-                <div id="dash-queue" class="queue"></div>
-            </section>
-            <section class="panel" id="dash-setup" hidden></section>
+            <button type="button" class="dash-side-toggle" id="dash-side-toggle" aria-expanded="false" aria-controls="dash-side-body">
+                <span>Needs attention &amp; setup</span>
+                <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+            </button>
+            <div class="dash-side-body" id="dash-side-body">
+                <section class="panel" aria-labelledby="q-title">
+                    <h2 id="q-title">Needs attention</h2>
+                    <div id="dash-queue" class="queue"></div>
+                </section>
+                <section class="panel" id="dash-setup" hidden></section>
+            </div>
         </aside>
 
         <div class="dash-main">
