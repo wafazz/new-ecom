@@ -107,6 +107,6 @@ final class EmailController extends Controller
         if (is_string($r)) {
             $this->backWithErrors('/admin/email/announce', ['form' => $r]);
         }
-        $this->success('/admin/email/announce', "Sent to {$r['sent']} of {$r['recipients']} people" . ($r['failed'] > 0 ? " ({$r['failed']} failed; see the log)." : '.'));
+        $this->success('/admin/email/announce', "Queued {$r['recipients']} people in {$r['queued']} batch(es). They are sent in the background, and the email log shows each result.");
     }
 }

@@ -94,10 +94,15 @@ DB::query("INSERT INTO orders (order_no, customer_name, customer_email, customer
 check('customers include guests and count each valid email once (case-insensitive)', $audience('customers') === count(array_unique(array_map('strtolower', array_filter(array_column(DB::query("SELECT customer_email FROM orders WHERE customer_email <> ''")->fetchAll(), 'customer_email'), fn($e) => filter_var($e, FILTER_VALIDATE_EMAIL) !== false)))));
 check('everyone is members plus customers, each person once', $audience('everyone') === count(array_unique(array_map(fn($r) => strtolower($r['email']), array_merge(E::recipients('members'), E::recipients('customers'))))));
 $calls = [];
+$callsBefore = count($calls);
 $r = E::announce('Promo Raya', 'Hai {name}, promosi untuk {shop}.', 'customers', $admin);
-check('an announcement to 120+ people goes out in batches of 100', is_array($r) && $r['recipients'] === $audience('customers') && $r['sent'] === $r['recipients'] && count(array_filter($calls, fn($c) => $c['path'] === '/emails/batch')) === (int) ceil($r['recipients'] / 100));
+$queuedNow = (int) DB::query("SELECT COUNT(*) FROM jobs WHERE type = 'email.batch' AND status = 'pending'")->fetchColumn();
+check('the announcement is queued in batches of 100, not sent in the request', is_array($r) && $r['queued'] === (int) ceil($r['recipients'] / 100) && $queuedNow === $r['queued'] && count($calls) === $callsBefore);
+\App\Services\Queue::run(); // the worker sends the queued batches
+$sentCount = (int) DB::query('SELECT sent FROM email_campaigns WHERE id = ?', [$r['id']])->fetchColumn();
+check('the worker sends 120+ people in batches of 100', $sentCount === $r['recipients'] && count(array_filter($calls, fn($c) => $c['path'] === '/emails/batch')) === (int) ceil($r['recipients'] / 100));
 check('each batch carries its own idempotency key', $calls[0]['headers'] !== [] && str_starts_with($calls[0]['headers'][0], 'Idempotency-Key: campaign-'));
-check('the campaign is recorded with its counts', (int) DB::query('SELECT sent FROM email_campaigns WHERE id = ?', [$r['id']])->fetchColumn() === $r['sent']);
+check('the campaign is recorded with its counts', $sentCount === $r['recipients']);
 check('an unknown audience is refused', is_string(E::announce('x', 'y', 'nobody', $admin)));
 
 // tidy up: other tests never reach Resend

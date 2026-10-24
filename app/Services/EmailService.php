@@ -93,31 +93,41 @@ final class EmailService
         return (int) $row['user_id'];
     }
 
-    /** "Order created" email to the customer. Never throws. */
+    /** "Order created" email to the customer, sent now. Never throws. */
     public static function orderCreated(int $orderId, string $trackUrl): void
     {
         try {
-            if (!self::ready() || !EmailSettings::template('order')['on']) {
-                return;
-            }
-            $order = OrderService::find($orderId);
-            if ($order === null || trim((string) $order['customer_email']) === '' || filter_var($order['customer_email'], FILTER_VALIDATE_EMAIL) === false) {
-                return;
-            }
-            $tpl = EmailSettings::template('order');
-            $vars = [
-                'name' => (string) $order['customer_name'],
-                'order_no' => (string) $order['order_no'],
-                'total' => number_format((float) $order['total'], 2, '.', ''),
-                'items' => WhatsAppService::orderedItems($orderId),
-                'payment' => \App\Services\Payment\Payments::label((string) $order['payment_method']),
-                'track_url' => $trackUrl,
-                'shop' => (string) config('app.name'),
-            ];
-            MailService::send((string) $order['customer_email'], self::render($tpl['subject'], $vars), self::render($tpl['body'], $vars), 'order', $orderId);
+            self::orderCreatedSend($orderId, $trackUrl);
         } catch (\Throwable $e) {
             self::report('order email', $e); // an email problem must never break checkout
         }
+    }
+
+    /**
+     * The order-created email. True when it was sent, or when there was nothing to send (email off, no address).
+     * False when the provider refused it, so the queue tries again. Used by the queue worker.
+     */
+    public static function orderCreatedSend(int $orderId, string $trackUrl): bool
+    {
+        if (!self::ready() || !EmailSettings::template('order')['on']) {
+            return true;
+        }
+        $order = OrderService::find($orderId);
+        if ($order === null || trim((string) $order['customer_email']) === '' || filter_var($order['customer_email'], FILTER_VALIDATE_EMAIL) === false) {
+            return true;
+        }
+        $tpl = EmailSettings::template('order');
+        $vars = [
+            'name' => (string) $order['customer_name'],
+            'order_no' => (string) $order['order_no'],
+            'total' => number_format((float) $order['total'], 2, '.', ''),
+            'items' => WhatsAppService::orderedItems($orderId),
+            'payment' => \App\Services\Payment\Payments::label((string) $order['payment_method']),
+            'track_url' => $trackUrl,
+            'shop' => (string) config('app.name'),
+        ];
+        $r = MailService::send((string) $order['customer_email'], self::render($tpl['subject'], $vars), self::render($tpl['body'], $vars), 'order', $orderId);
+        return $r['ok'];
     }
 
     /**
@@ -148,10 +158,13 @@ final class EmailService
     }
 
     /**
-     * Send an announcement to an audience in batches of 100. Records the campaign and its counts.
-     * @return array{id:int, recipients:int, sent:int, failed:int}|string error message
+     * Queue an announcement to an audience: one background job per 100 people (bin/worker.php sends them).
+     * Records the campaign; its sent and failed counts fill in as the jobs run.
+     * @param array $skip lower-cased addresses to leave out (for example, people already sent a voucher)
+     * @param int|null $voucherId set for voucher codes: successful sends are recorded so nobody gets the code twice
+     * @return array{id:int, recipients:int, queued:int}|string error message
      */
-    public static function announce(string $subject, string $body, string $audience, int $actorId, array $skip = [], ?callable $onSent = null, string $kind = 'campaign')
+    public static function announce(string $subject, string $body, string $audience, int $actorId, array $skip = [], ?int $voucherId = null, string $kind = 'campaign')
     {
         if (!array_key_exists($audience, self::AUDIENCES)) {
             return 'Choose who should receive it.';
@@ -166,10 +179,9 @@ final class EmailService
         }
         Database::query('INSERT INTO email_campaigns (subject, audience, recipients, created_by) VALUES (?, ?, ?, ?)', [mb_substr($subject, 0, 255), $audience, count($people), $actorId]);
         $id = (int) Database::connection()->lastInsertId();
-        $sent = 0;
-        $failed = 0;
         $shop = (string) config('app.name');
-        foreach (array_chunk($people, MailService::BATCH_SIZE) as $i => $chunk) {
+        $chunks = array_chunk($people, MailService::BATCH_SIZE);
+        foreach ($chunks as $i => $chunk) {
             $items = array_map(function ($p) use ($body, $shop, $subject) {
                 $url = UnsubscribeService::url($p['email']);
                 $text = self::render($body, ['name' => $p['name'] !== '' ? $p['name'] : 'Pelanggan', 'shop' => $shop]);
@@ -181,23 +193,71 @@ final class EmailService
                     'headers' => ['List-Unsubscribe' => "<{$url}>", 'List-Unsubscribe-Post' => 'List-Unsubscribe=One-Click'],
                 ];
             }, $chunk);
-            foreach (MailService::batch($items, $kind, "campaign-{$id}-{$i}-" . bin2hex(random_bytes(6))) as $j => $r) {
-                if ($r['ok']) {
-                    $sent++;
-                    if ($onSent !== null) {
-                        $onSent($chunk[$j]['email']);
-                    }
-                } else {
-                    $failed++;
+            Queue::push('email.batch', [
+                'kind' => $kind,
+                'campaign_id' => $id,
+                'voucher_id' => $voucherId,
+                'idempotency_key' => "campaign-{$id}-{$i}-" . bin2hex(random_bytes(6)),
+                'items' => $items,
+                'round' => 0,
+            ]);
+        }
+        AuditService::log($actorId, 'email.announce', "campaign {$id} to {$audience}: " . count($people) . ' people queued');
+        return ['id' => $id, 'recipients' => count($people), 'queued' => count($chunks)];
+    }
+
+    /**
+     * Queue job: send one batch of a campaign. Voucher batches skip anyone who already has the code (checked now,
+     * since earlier jobs may have sent it). People whose email failed go into a new job, up to three more rounds.
+     * @return bool always true: the job is finished, and any failures are queued again or counted
+     */
+    public static function deliverBatch(array $p): bool
+    {
+        $kind = (string) ($p['kind'] ?? 'campaign');
+        $campaign = (int) ($p['campaign_id'] ?? 0);
+        $voucherId = isset($p['voucher_id']) ? (int) $p['voucher_id'] : null;
+        $round = (int) ($p['round'] ?? 0);
+        $items = (array) ($p['items'] ?? []);
+        if ($voucherId !== null) {
+            $already = VoucherService::emailedAddresses($voucherId);
+            $items = array_values(array_filter($items, fn($it) => !isset($already[strtolower((string) $it['to'])])));
+        }
+        if ($items === []) {
+            return true;
+        }
+
+        $results = MailService::batch($items, $kind, (string) $p['idempotency_key']);
+        usleep(150000); // stay well under Resend's 10 requests per second when many batches run back to back
+        $failed = [];
+        $sent = 0;
+        foreach ($items as $i => $it) {
+            if ($results[$i]['ok']) {
+                $sent++;
+                if ($voucherId !== null) {
+                    Database::query('INSERT IGNORE INTO voucher_sends (voucher_id, email) VALUES (?, ?)', [$voucherId, strtolower((string) $it['to'])]);
                 }
-            }
-            if (count($people) > MailService::BATCH_SIZE) {
-                usleep(150000); // stay well under Resend's 10 requests per second
+            } else {
+                $failed[] = $it;
             }
         }
-        Database::query('UPDATE email_campaigns SET sent = ?, failed = ? WHERE id = ?', [$sent, $failed, $id]);
-        AuditService::log($actorId, 'email.announce', "campaign {$id} to {$audience}: {$sent} sent, {$failed} failed");
-        return ['id' => $id, 'recipients' => count($people), 'sent' => $sent, 'failed' => $failed];
+        if ($campaign > 0 && $sent > 0) {
+            Database::query('UPDATE email_campaigns SET sent = sent + ? WHERE id = ?', [$sent, $campaign]);
+        }
+        if ($failed !== []) {
+            if ($round < 3) {
+                Queue::push('email.batch', [
+                    'kind' => $kind,
+                    'campaign_id' => $campaign,
+                    'voucher_id' => $voucherId,
+                    'idempotency_key' => 'campaign-' . $campaign . '-retry-' . bin2hex(random_bytes(6)),
+                    'items' => $failed,
+                    'round' => $round + 1,
+                ], 300); // five minutes later
+            } elseif ($campaign > 0) {
+                Database::query('UPDATE email_campaigns SET failed = failed + ? WHERE id = ?', [count($failed), $campaign]);
+            }
+        }
+        return true;
     }
 
     /** Errors go to the app log, never to the customer. */

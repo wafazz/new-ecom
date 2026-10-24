@@ -41,7 +41,7 @@ final class VoucherController extends Controller
         if (is_string($r)) {
             $this->backWithErrors('/admin/vouchers', ['form' => $r]);
         }
-        $this->success('/admin/vouchers', "Sent to {$r['recipients']} new member(s): {$r['sent']} sent, {$r['failed']} failed. {$r['already']} had already received this code.");
+        $this->success('/admin/vouchers', "Queued for {$r['recipients']} new member(s). {$r['already']} had already received this code. They are sent in the background.");
     }
 
     public function store(Request $request): void

@@ -136,8 +136,9 @@ final class CheckoutService
             Database::query('INSERT INTO order_events (order_id, event, note, actor_id) VALUES (?, ?, ?, ?)', [$orderId, 'placed', 'Order placed', $userId]);
             Database::query('DELETE FROM cart_items WHERE cart_id = ?', [$cartId]);
             $pdo->commit();
-            WhatsAppService::notifyStatus($orderId, 'pending'); // the customer hears that the order is placed
-            EmailService::orderCreated($orderId, $userId !== null ? url('/member/orders/' . $orderNo) : url('/order/' . $orderNo . '/' . $token));
+            // After the commit, and queued: the customer hears that the order is placed, and a slow or failed send never delays checkout.
+            Queue::later('whatsapp.status', ['order_id' => $orderId, 'status' => 'pending']);
+            Queue::later('email.order_created', ['order_id' => $orderId, 'track_url' => $userId !== null ? url('/member/orders/' . $orderNo) : url('/order/' . $orderNo . '/' . $token)]);
             return ['order_id' => $orderId, 'order_no' => $orderNo, 'token' => $token, 'user_id' => $userId];
         } catch (\Throwable $e) {
             $pdo->rollBack();

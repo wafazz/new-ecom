@@ -48,6 +48,7 @@ check('someone who unsubscribed is left out of the audience', !in_array('leave@e
 
 // Announcements: each one carries that person's own unsubscribe link and the mail-client headers.
 $result = E::announce('Promosi', 'Hai {name}, ada promosi baru.', 'members', $admin);
+\App\Services\Queue::run(); // the worker sends the queued announcement
 check('the announcement goes only to people still subscribed', is_array($result) && $result['recipients'] === 1 && count($sent) === 1);
 $msg = $sent[0];
 check('the email tells people how to unsubscribe, with their own link', str_contains((string) $msg['text'], '/unsubscribe/' . U::token('keep@example.test')));

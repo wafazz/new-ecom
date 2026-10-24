@@ -89,7 +89,9 @@ W::setTransport(function (string $m, string $url, string $tok, ?string $body): a
     return ['code' => 200, 'json' => ['success' => true, 'message_id' => 9]];
 });
 $o2 = $order('0123456789', 'pending');
-check('a status change sends that status message', O::transition($o2, 'processing', null) === null && (int) DB::query("SELECT COUNT(*) FROM whatsapp_log WHERE order_id = ? AND status_key = 'processing'", [$o2])->fetchColumn() === 1);
+$transitioned = O::transition($o2, 'processing', null);
+\App\Services\Queue::run(); // the worker sends the queued status message
+check('a status change sends that status message', $transitioned === null &&(int) DB::query("SELECT COUNT(*) FROM whatsapp_log WHERE order_id = ? AND status_key = 'processing'", [$o2])->fetchColumn() === 1);
 check('a refused status change sends nothing', O::transition($o2, 'returned', null) !== null && (int) DB::query("SELECT COUNT(*) FROM whatsapp_log WHERE order_id = ? AND status_key = 'returned'", [$o2])->fetchColumn() === 0);
 
 W::setTransport(null);

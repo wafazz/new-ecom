@@ -93,12 +93,11 @@ final class VoucherService
         if ($fresh === []) {
             return 'Every member has already received this code.';
         }
-        $r = EmailService::announce($subject, $body, 'members', $actorId, $already, function (string $email) use ($id): void {
-            Database::query('INSERT IGNORE INTO voucher_sends (voucher_id, email) VALUES (?, ?)', [$id, strtolower($email)]);
-        }, 'voucher');
+        // Queued: the worker sends it and records each member who gets the code, so the next click skips them.
+        $r = EmailService::announce($subject, $body, 'members', $actorId, $already, $id, 'voucher');
         if (is_array($r)) {
             $r['already'] = count($members) - count($fresh);
-            AuditService::log($actorId, 'voucher.email', "{$v['code']} to {$r['recipients']} members: {$r['sent']} sent, {$r['failed']} failed, {$r['already']} already had it");
+            AuditService::log($actorId, 'voucher.email', "{$v['code']} queued for {$r['recipients']} members, {$r['already']} already had it");
         }
         return $r;
     }

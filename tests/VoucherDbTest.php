@@ -108,8 +108,12 @@ foreach (S::KINDS as $kind) {
     $tpl[$kind] = ['on' => '1', 'subject' => S::defaults()[$kind]['subject'], 'body' => S::defaults()[$kind]['body']];
 }
 S::save(['enabled' => '1', 'key' => 're_VOUCHERKEY1234', 'from_name' => 'Lure Shop', 'from_email' => 'shop@example.test', 'reply_to' => '', 'tpl' => $tpl], $actor);
+DB::query('DELETE FROM jobs'); // earlier orders queued their own emails; only this section's jobs should run here
 $sent = [];
 M::setTransport(function (string $m, string $path, string $key, ?string $body, array $headers) use (&$sent): array {
+    if ($path !== '/emails/batch') {
+        return ['code' => 200, 'json' => ['id' => 're-single']];
+    }
     $items = json_decode((string) $body, true);
     foreach ($items as $msg) {
         $sent[] = $msg;
@@ -117,7 +121,8 @@ M::setTransport(function (string $m, string $path, string $key, ?string $body, a
     return ['code' => 200, 'json' => ['data' => array_map(fn($i) => ['id' => "b{$i}"], range(0, count($items) - 1))]];
 });
 $r = V::emailMembers($raya, $actor);
-check('the code goes to active members who have not unsubscribed, and only them', is_array($r) && $r['recipients'] === 1 && $r['sent'] === 1 && count($sent) === 1 && $sent[0]['to'] === ['ali-v@example.test']);
+\App\Services\Queue::run(); // the worker sends the queued code
+check('the code goes to active members who have not unsubscribed, and only them', is_array($r) && $r['recipients'] === 1 && $r['queued'] === 1 &&count($sent) === 1 && $sent[0]['to'] === ['ali-v@example.test']);
 check('the email carries the code, the offer and an unsubscribe link', str_contains((string) $sent[0]['text'], 'Kod: RAYA10') && str_contains((string) $sent[0]['text'], '10% off the items') && str_contains((string) $sent[0]['text'], '/unsubscribe/'));
 
 // One email per member per code: a second click sends nothing to people who already have it.
@@ -126,17 +131,24 @@ check('a second click refuses when everyone already has the code, and sends noth
 User::create('member', 'Bo Member', 'bo-v@example.test', 'Passw0rd!x');
 $sent = [];
 $third = V::emailMembers($raya, $actor);
+\App\Services\Queue::run();
 check('a member added later gets the code, and only them', is_array($third) && $third['recipients'] === 1 && $third['already'] === 1 && count($sent) === 1 && $sent[0]['to'] === ['bo-v@example.test']);
 check('the voucher emails are logged as voucher type', (string) DB::query("SELECT kind FROM email_log WHERE to_email = 'bo-v@example.test' ORDER BY id DESC LIMIT 1")->fetchColumn() === 'voucher');
 check('the code is recorded for each member it reached',(int) DB::query('SELECT COUNT(*) FROM voucher_sends WHERE voucher_id = ?', [$raya])->fetchColumn() === 2);
 
-// A member whose email fails is not recorded, so the next click tries them again.
+// A member whose email fails is not recorded as sent, and the worker queues them again five minutes later.
 User::create('member', 'Cy Member', 'cy-v@example.test', 'Passw0rd!x');
 M::setTransport(function (string $m, string $path, string $key, ?string $body, array $headers): array {
     return ['code' => 500, 'json' => ['message' => 'temporary']];
 });
 $failed = V::emailMembers($raya, $actor);
-check('a failed email is counted as failed and not recorded', is_array($failed) && $failed['failed'] === 1 && (int) DB::query('SELECT COUNT(*) FROM voucher_sends WHERE voucher_id = ?', [$raya])->fetchColumn() === 2);
+\App\Services\Queue::run();
+check('a failed email is not recorded as sent', is_array($failed) && (int) DB::query('SELECT COUNT(*) FROM voucher_sends WHERE voucher_id = ?', [$raya])->fetchColumn() === 2);
+$retryJob = DB::query("SELECT payload, run_at > NOW() AS later FROM jobs WHERE type = 'email.batch' AND status = 'pending'")->fetch();
+check('the failed member is queued again, five minutes later', $retryJob !== false && (int) $retryJob['later'] === 1 && str_contains((string) $retryJob['payload'], 'cy-v@example.test'));
+
+// The retry is due and the provider accepts it: only that member gets the code.
+DB::query("UPDATE jobs SET run_at = NOW() WHERE status = 'pending'");
 M::setTransport(function (string $m, string $path, string $key, ?string $body, array $headers) use (&$sent): array {
     $items = json_decode((string) $body, true);
     foreach ($items as $msg) {
@@ -145,5 +157,6 @@ M::setTransport(function (string $m, string $path, string $key, ?string $body, a
     return ['code' => 200, 'json' => ['data' => array_map(fn($i) => ['id' => "b{$i}"], range(0, count($items) - 1))]];
 });
 $sent = [];
-$retry = V::emailMembers($raya, $actor);
-check('the next click retries only the member whose email failed', is_array($retry) && $retry['recipients'] === 1 && $sent[0]['to'] === ['cy-v@example.test']);
+\App\Services\Queue::run();
+check('the retry sends only the member whose email failed', count($sent) === 1 && $sent[0]['to'] === ['cy-v@example.test']);
+check('and the code is now recorded for them too', (int) DB::query('SELECT COUNT(*) FROM voucher_sends WHERE voucher_id = ?', [$raya])->fetchColumn() === 3);

@@ -167,7 +167,7 @@ final class OrderService
                 AffiliateService::recordCommission($order, self::items($orderId));
             }
             $pdo->commit();
-            WhatsAppService::notifyStatus($orderId, $to); // after the commit: a WhatsApp problem cannot undo the change
+            Queue::later('whatsapp.status', ['order_id' => $orderId, 'status' => $to]); // queued after the commit: a WhatsApp problem cannot undo the change
             return null;
         } catch (\Throwable $e) {
             $pdo->rollBack();

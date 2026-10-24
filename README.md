@@ -65,6 +65,7 @@ Admin-editable (Settings page): guest checkout on/off, flat shipping fee, defaul
 5. Make `storage/` (logs, cached waybills) and `public/uploads/` writable by the web user; nothing else needs to be.
 6. Cron, daily: `php bin/prune-carts.php` (removes stale guest carts and expired throttle/click rows). Also `php bin/retention.php` (deletes old email and WhatsApp logs, audit rows, daily visitor counts and app.log entries; see **Personal data** below).
 7. Cron, hourly: `php bin/expire-unpaid.php` (cancels unpaid online-payment orders after `UNPAID_HOLD_HOURS`, default 24, and restocks them).
+8. Cron, **every minute**: `php bin/worker.php` sends the queued emails and WhatsApp messages. Without it, nothing queued is sent. See **Background jobs** below.
 8. NinjaVan: register `APP_URL/shipping/ninjavan/webhook` in the Ninja Dashboard for tracking updates, and ask NinjaVan support to enable the waybill API for your account. Billplz needs to reach `APP_URL/payments/billplz/callback`, so APP_URL must be a public https address (a local URL cannot receive payment confirmations). Try it in Sandbox mode first.
 9. Backups: schedule `php bin/backup.php` daily and keep a copy off the server (see **Backups** below).
 10. Rate limits (login, checkout, register, track) key on the connecting IP (`REMOTE_ADDR`). Behind a reverse proxy or CDN every visitor shares the proxy's IP, so limits would hit everyone at once: terminate TLS on the web server itself, or add trusted-proxy handling before going behind one.
@@ -103,6 +104,42 @@ Every order that is not cancelled has a PDF invoice, numbered `INV-<year>-<order
 - Set the company name, address, phone, email, registration number and footer note at `/admin/invoice`. The shop logo from Settings appears at the top.
 - The invoice shows the payment method: bank transfer details when the order is unpaid, or PAID / UNPAID.
 - **Not included:** SST (sales tax). The invoice shows no tax lines. If the business is registered for SST, add the tax lines before relying on these invoices for B2B buyers.
+
+## Background jobs
+Some sends are slow or depend on an outside service, so the shop does not make the customer or the admin wait for them. They are put in a queue (the `jobs` table) and sent by `bin/worker.php`:
+
+| Work | When it is queued | What the worker does |
+|---|---|---|
+| Order placed: the "order created" email | right after checkout | sends it |
+| Order placed or status changed: WhatsApp message | right after the change is saved | sends it |
+| Announcements (`/admin/email/announce`) | when you click send | sends them in batches of 100 |
+| Voucher codes (`/admin/vouchers`, Email members) | when you click send | sends them, and records each member who got the code |
+
+**Set up the worker.** On the server, add this cron line (every minute):
+
+```
+* * * * * cd /path/to/ecommerce && php bin/worker.php >> storage/logs/worker.log 2>&1
+```
+
+Each run works for up to 50 seconds and then exits. A run that starts while another is still going does nothing, so runs never overlap. Migration `040_jobs.sql` creates the table, so run `php bin/migrate.php` first.
+
+**Check and retry:**
+- `php bin/worker.php --status` shows how many jobs are pending, running, done and failed.
+- `php bin/worker.php --retry-failed` puts failed jobs back in the queue.
+
+**What happens when something fails:**
+- A failed job is tried again after 1, 2, 4 and 8 minutes: five tries in all. If the fifth fails, it is marked **failed** and waits for you to retry it.
+- An announcement or voucher batch that fails for some people is queued again for just those people, five minutes later, up to three more rounds. Each email still shows in the email log with its result.
+- A voucher code is never sent twice: the worker checks who already has the code each time it sends.
+- WhatsApp messages the provider rejects are recorded in the WhatsApp log and are **not** retried. Only a crash or a timeout is retried.
+- An order is never affected by a queue problem. If a job cannot be saved, the order is still placed, and the problem is written to the app log.
+
+**Things to know:**
+- **If the worker is not running, nothing queued is sent.** The jobs wait safely, and they go out once the worker runs again. Check `--status` if an announcement seems stuck.
+- Messages can arrive up to a minute after the event, because the worker runs once a minute.
+- A crash after an email is sent but before it is marked done can send it again. Batches are protected by Resend's idempotency key, which covers the same batch for 24 hours.
+- Jobs hold customer addresses and message text. Finished jobs are removed after 7 days and failed ones after 30 days.
+- The queue uses the database, so it needs no extra service such as Redis. It is designed for one shop, not for many workers running at once.
 
 ## Money rules
 All amounts are integer cents in code, `DECIMAL(10,2)` in the DB. Selling price = active discount else retail. Order lines snapshot price, cost, company base price and commission rate. Affiliate commission = rate % of (unit price - company base price) per line, created when an order is completed, then approved and paid out by an admin.
