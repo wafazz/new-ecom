@@ -66,10 +66,23 @@ Admin-editable (Settings page): guest checkout on/off, flat shipping fee, defaul
 6. Cron, daily: `php bin/prune-carts.php` (removes stale guest carts and expired throttle/click rows).
 7. Cron, hourly: `php bin/expire-unpaid.php` (cancels unpaid online-payment orders after `UNPAID_HOLD_HOURS`, default 24, and restocks them).
 8. NinjaVan: register `APP_URL/shipping/ninjavan/webhook` in the Ninja Dashboard for tracking updates, and ask NinjaVan support to enable the waybill API for your account. Billplz needs to reach `APP_URL/payments/billplz/callback`, so APP_URL must be a public https address (a local URL cannot receive payment confirmations). Try it in Sandbox mode first.
-9. Back up the database and `public/uploads/` regularly.
+9. Backups: schedule `php bin/backup.php` daily and keep a copy off the server (see **Backups** below).
 10. Rate limits (login, checkout, register, track) key on the connecting IP (`REMOTE_ADDR`). Behind a reverse proxy or CDN every visitor shares the proxy's IP, so limits would hit everyone at once: terminate TLS on the web server itself, or add trusted-proxy handling before going behind one.
 11. Bank transfer receipts are uploaded files (JPG, PNG, WebP or PDF, up to 5 MB) kept in `storage/receipts/` (never public). Set PHP `upload_max_filesize` to at least 6M and `post_max_size` to at least 8M, and make `storage/receipts/` writable by the web user; back it up with the database.
 12. Confirm: `/.env`, `/app/...`, `/storage/logs/app.log` return 403/404; `/health` returns OK.
+
+## Backups
+Admins can make a backup at `/admin/backup`, with or without the uploads and receipts zip. For a scheduled backup, add this to the server's crontab (daily at 02:30):
+
+```
+30 2 * * * cd /path/to/ecommerce && php bin/backup.php >> storage/logs/backup.log 2>&1
+```
+
+- `php bin/backup.php` saves a database dump plus a zip of `public/uploads/` and `storage/receipts/`. Add `--db-only` to skip the zip.
+- It keeps the newest 14 database backups and deletes older ones; each zip is removed with its dump. Change the number with `--keep=N`.
+- Backups are written to `storage/backups/`, which is never public and is not committed to git. The cron user must be able to write there.
+- A backup on the same server does not protect against losing the server. Copy the newest files off the server regularly.
+- Restore is not automated yet. To restore, import a `.sql` or `.sql.gz` backup into the database (gunzip first if needed) and unzip the files zip over the project folder.
 
 ## Money rules
 All amounts are integer cents in code, `DECIMAL(10,2)` in the DB. Selling price = active discount else retail. Order lines snapshot price, cost, company base price and commission rate. Affiliate commission = rate % of (unit price - company base price) per line, created when an order is completed, then approved and paid out by an admin.
