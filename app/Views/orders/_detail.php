@@ -27,11 +27,14 @@ $cost = 0;
     </tbody>
     <tfoot>
         <tr><td colspan="3" class="num">Subtotal</td><td class="num"><?= e(money($order['subtotal'])) ?></td></tr>
+        <?php if ((float) $order['discount_total'] > 0): ?>
+            <tr><td colspan="3" class="num">Discount<?= $order['voucher_code'] ? ' (' . e($order['voucher_code']) . ')' : '' ?></td><td class="num">−<?= e(money($order['discount_total'])) ?></td></tr>
+        <?php endif; ?>
         <tr><td colspan="3" class="num">Shipping</td><td class="num"><?= e(money($order['shipping_fee'])) ?></td></tr>
         <tr><td colspan="3" class="num"><strong>Total</strong></td><td class="num"><strong><?= e(money($order['total'])) ?></strong></td></tr>
         <?php if ($showCost): ?>
             <tr class="muted"><td colspan="3" class="num">Cost of goods (admin only)</td><td class="num"><?= e(money($cost)) ?></td></tr>
-            <tr class="muted"><td colspan="3" class="num">Gross profit (subtotal − cost)</td><td class="num"><?= e(money((float) $order['subtotal'] - $cost)) ?></td></tr>
+            <tr class="muted"><td colspan="3" class="num">Gross profit (subtotal − discount − cost)</td><td class="num"><?= e(money((float) $order['subtotal'] - (float) $order['discount_total'] - $cost)) ?></td></tr>
         <?php endif; ?>
     </tfoot>
 </table>

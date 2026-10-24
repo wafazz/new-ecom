@@ -17,10 +17,11 @@ final class CheckoutService
      * @param array $contact  name,email,phone,line1,line2,city,state,postcode,notes
      * @param array|null $newAccount ['password' => ...] to register the buyer in the same transaction
      * @param string|null $refCode affiliate code from the `ref` cookie; ignored when unknown or a self-referral
+     * @param string|null $voucherCode discount code; checked again here against the live subtotal
      * @return array{order_id:int, order_no:string, token:?string, user_id:?int}
      * @throws CheckoutException
      */
-    public static function place(int $cartId, array $contact, string $paymentMethod, ?int $userId, ?array $newAccount = null, ?string $refCode = null): array
+    public static function place(int $cartId, array $contact, string $paymentMethod, ?int $userId, ?array $newAccount = null, ?string $refCode = null, ?string $voucherCode = null): array
     {
         $pdo = Database::connection();
         $pdo->beginTransaction();
@@ -90,19 +91,33 @@ final class CheckoutService
             }
             $affiliateId = $aff !== null ? (int) $aff['id'] : null;
 
+            // A discount code is checked against this live subtotal and used up in this same transaction.
+            $voucher = null;
+            $discount = 0;
+            if ($voucherCode !== null && $voucherCode !== '') {
+                $q = VoucherService::quote($voucherCode, $subtotal);
+                if (!$q['ok']) {
+                    throw new CheckoutException($q['message'] . ' Remove it and try again.');
+                }
+                $voucher = $q['voucher'];
+                $discount = $q['discount'];
+                VoucherService::redeem((int) $voucher['id']);
+            }
+
             $shipping = Setting::shippingCents();
             $token = $userId === null ? bin2hex(random_bytes(16)) : null;
             $orderNo = self::newOrderNo();
 
             Database::query(
                 'INSERT INTO orders (order_no, user_id, customer_name, customer_email, customer_phone, ship_line1, ship_line2, ship_city, ship_state, ship_postcode,
-                                     subtotal, shipping_fee, total, payment_method, track_hash, notes, affiliate_id)
-                 VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',
+                                     subtotal, shipping_fee, total, payment_method, track_hash, notes, affiliate_id, voucher_id, voucher_code, discount_total)
+                 VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',
                 [
                     $orderNo, $userId, $contact['name'], strtolower($contact['email']), $contact['phone'],
                     $contact['line1'], $contact['line2'] ?: null, $contact['city'], $contact['state'], $contact['postcode'],
-                    PricingService::format($subtotal), PricingService::format($shipping), PricingService::format($subtotal + $shipping),
+                    PricingService::format($subtotal), PricingService::format($shipping), PricingService::format($subtotal - $discount + $shipping),
                     $paymentMethod, $token === null ? null : hash('sha256', $token), $contact['notes'] ?: null, $affiliateId,
+                    $voucher === null ? null : (int) $voucher['id'], $voucher === null ? null : $voucher['code'], PricingService::format($discount),
                 ]
             );
             $orderId = (int) $pdo->lastInsertId();

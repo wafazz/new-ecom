@@ -141,7 +141,8 @@ final class AffiliateService
      * @param array<array{line_total:string,commission_rate:?string}> $items
      * @return array{base:int, amount:int} cents; amount rounds half-up per line
      */
-    public static function calculate(array $items, int $shippingCents = 0): array
+    /** Base = what the buyer paid for the items: line sales less each line's share of the shipping and of any discount code. */
+    public static function calculate(array $items, int $shippingCents = 0, int $discountCents = 0): array
     {
         $subtotal = 0;
         foreach ($items as $it) {
@@ -155,7 +156,8 @@ final class AffiliateService
             }
             $line = PricingService::cents((string) $it['line_total']);
             $share = $subtotal > 0 ? intdiv($shippingCents * $line + intdiv($subtotal, 2), $subtotal) : 0;
-            $net = max(0, $line - $share);
+            $cut = $subtotal > 0 ? intdiv($discountCents * $line + intdiv($subtotal, 2), $subtotal) : 0;
+            $net = max(0, $line - $share - $cut);
             $base += $net;
             $amount += intdiv($net * PricingService::cents((string) $it['commission_rate']) + 5000, 10000);
         }
@@ -168,7 +170,7 @@ final class AffiliateService
         if ($order['affiliate_id'] === null) {
             return;
         }
-        $c = self::calculate($items, PricingService::cents((string) ($order['shipping_fee'] ?? '0')));
+        $c = self::calculate($items, PricingService::cents((string) ($order['shipping_fee'] ?? '0')), PricingService::cents((string) ($order['discount_total'] ?? '0')));
         if ($c['amount'] < 1) {
             return;
         }

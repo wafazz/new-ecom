@@ -157,6 +157,9 @@ final class OrderService
             if (in_array($to, ['cancelled', 'returned'], true)) {
                 self::restock($orderId, $actorId, $to === 'returned' ? 'return' : 'cancel');
             }
+            if ($to === 'cancelled') {
+                VoucherService::release($orderId); // the discount code can be used again
+            }
             $paid = $to === 'completed' && $order['payment_method'] === 'cod' ? ", payment_status = 'paid'" : '';
             Database::query("UPDATE orders SET status = ?{$paid} WHERE id = ?", [$to, $orderId]);
             Database::query('INSERT INTO order_events (order_id, event, note, actor_id) VALUES (?, ?, ?, ?)', [$orderId, $to, $note ?: null, $actorId]);

@@ -1,7 +1,7 @@
 <?php
 $guest = $member === null;
 $val = fn(string $k) => old($k, (string) ($defaults[$k] ?? ''));
-$total = $cart['subtotal_cents'] + $shipping_cents;
+$total = $cart['subtotal_cents'] + $shipping_cents - $discount_cents;
 $count = (int) $cart['count'];
 $defaultMethod = isset($methods['cod']) ? 'cod' : (string) array_key_first($methods);
 ?>
@@ -120,7 +120,26 @@ $defaultMethod = isset($methods['cod']) ? 'cod' : (string) array_key_first($meth
             </li>
         <?php endforeach; ?>
     </ul>
+    <?php if ($voucher !== null): ?>
+        <form method="post" action="<?= e(url('/checkout/voucher/remove')) ?>" class="co-voucher">
+            <?= csrf_field() ?>
+            <p class="sum-row"><span>Code <strong><?= e($voucher['code']) ?></strong></span><button class="s-btn secondary" type="submit">Remove</button></p>
+        </form>
+    <?php else: ?>
+        <form method="post" action="<?= e(url('/checkout/voucher')) ?>" class="co-voucher">
+            <?= csrf_field() ?>
+            <label>Discount code
+                <input name="code" value="<?= e(old('code')) ?>" autocomplete="off" maxlength="40" style="text-transform:uppercase">
+            </label>
+            <?= field_error('voucher') ?>
+            <button class="s-btn secondary block" type="submit">Apply code</button>
+        </form>
+    <?php endif; ?>
+    <?php if ($voucher_note): ?><p class="alert bad"><?= e($voucher_note) ?></p><?php endif; ?>
     <p class="sum-row"><span>Subtotal</span><span><?= e(money($cart['subtotal_cents'] / 100)) ?></span></p>
+    <?php if ($discount_cents > 0): ?>
+        <p class="sum-row"><span>Discount</span><span>−<?= e(money($discount_cents / 100)) ?></span></p>
+    <?php endif; ?>
     <p class="sum-row"><span>Shipping</span><span><?= e(money($shipping_cents / 100)) ?></span></p>
     <p class="sum-row total"><span>Total</span><span><?= e(money($total / 100)) ?></span></p>
     <p><a href="<?= e(url('/cart')) ?>"><?= icon('left', 'i i-sm') ?> Edit cart</a></p>

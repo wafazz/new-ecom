@@ -19,6 +19,7 @@ use App\Services\Payment\BillplzGateway;
 use App\Services\Payment\Payments;
 use App\Services\RateLimiter;
 use App\Services\ReceiptService;
+use App\Services\VoucherService;
 use App\Services\PaymentSettings;
 
 final class CheckoutController extends Controller
@@ -57,9 +58,28 @@ final class CheckoutController extends Controller
             }
         }
 
+        // A discount code kept from earlier: re-check it against the current cart, and drop it if it no longer applies.
+        $voucher = null;
+        $discount = 0;
+        $voucherNote = null;
+        $code = Session::get('voucher');
+        if (is_string($code)) {
+            $q = VoucherService::quote($code, (int) $cart['subtotal_cents']);
+            if ($q['ok']) {
+                $voucher = $q['voucher'];
+                $discount = $q['discount'];
+            } else {
+                Session::forget('voucher');
+                $voucherNote = $q['message'];
+            }
+        }
+
         $this->view('shop/checkout', [
             'title' => 'Checkout',
             'cart' => $cart,
+            'voucher' => $voucher,
+            'discount_cents' => $discount,
+            'voucher_note' => $voucherNote,
             'member' => $member,
             'defaults' => $defaults,
             'saved' => $saved,
@@ -139,11 +159,13 @@ final class CheckoutController extends Controller
             $this->backWithErrors('/checkout', $errors, $request->body);
         }
 
+        $voucherCode = Session::get('voucher');
         try {
-            $result = CheckoutService::place((int) CartService::id(), $in, $method, $memberId, $newAccount, is_string($_COOKIE['ref'] ?? null) ? $_COOKIE['ref'] : null);
+            $result = CheckoutService::place((int) CartService::id(), $in, $method, $memberId, $newAccount, is_string($_COOKIE['ref'] ?? null) ? $_COOKIE['ref'] : null, is_string($voucherCode) ? $voucherCode : null);
         } catch (CheckoutException $e) {
             $this->backWithErrors($e->getMessage() === 'Your cart is empty.' ? '/cart' : '/checkout', ['form' => $e->getMessage()], $request->body);
         }
+        Session::forget('voucher');
 
         if ($newAccount !== null) {
             Auth::login(User::find($result['user_id']));
@@ -177,6 +199,33 @@ final class CheckoutController extends Controller
     }
 
     /** Cart must exist, be non-empty and have no unavailable lines; guests need guest checkout on. */
+    /** Apply a discount code to this checkout. Rate limited per network, so codes cannot be guessed in bulk. */
+    public function applyVoucher(Request $request): void
+    {
+        if (RateLimiter::tooMany('voucher', $request->ip(), 20, 10)) {
+            $this->backWithErrors('/checkout', ['voucher' => 'Too many codes tried. Please wait a few minutes.']);
+        }
+        RateLimiter::hit('voucher', $request->ip());
+
+        $code = VoucherService::normalize($request->str('code'));
+        if ($code === '') {
+            $this->backWithErrors('/checkout', ['voucher' => 'Enter a code.']);
+        }
+        $cart = CartService::summary();
+        $q = VoucherService::quote($code, (int) $cart['subtotal_cents']);
+        if (!$q['ok']) {
+            $this->backWithErrors('/checkout', ['voucher' => $q['message']]);
+        }
+        Session::set('voucher', $code);
+        $this->success('/checkout', 'Code applied. You save RM' . number_format($q['discount'] / 100, 2) . '.');
+    }
+
+    public function removeVoucher(Request $request): void
+    {
+        Session::forget('voucher');
+        $this->success('/checkout', 'Code removed.');
+    }
+
     private function readyCart(): array
     {
         $me = Auth::user();

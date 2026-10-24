@@ -36,6 +36,8 @@ return function (Router $r): void {
         // Checkout (members and guests) + guest order access
         $r->get('/checkout', 'Shop/CheckoutController@show');
         $r->post('/checkout', 'Shop/CheckoutController@place');
+        $r->post('/checkout/voucher', 'Shop/CheckoutController@applyVoucher');
+        $r->post('/checkout/voucher/remove', 'Shop/CheckoutController@removeVoucher');
         $r->get('/track', 'Shop/OrderTrackController@form');
         $r->post('/track', 'Shop/OrderTrackController@lookup');
         $r->get('/order/{orderNo}/{token}', 'Shop/OrderTrackController@show');
@@ -160,6 +162,10 @@ return function (Router $r): void {
             $r->post('/staff/{id}/toggle', 'Admin/StaffController@toggle');
             $r->get('/staff/{id}/edit', 'Admin/StaffController@edit');
             $r->post('/staff/{id}/permissions', 'Admin/StaffController@permissions');
+            $r->get('/vouchers', 'Admin/VoucherController@index');
+            $r->post('/vouchers', 'Admin/VoucherController@store');
+            $r->post('/vouchers/{id}/active', 'Admin/VoucherController@toggle');
+            $r->post('/vouchers/{id}/delete', 'Admin/VoucherController@delete');
             $r->get('/backup', 'Admin/BackupController@index');
             $r->post('/backup', 'Admin/BackupController@create');
             $r->get('/backup/download/{name}', 'Admin/BackupController@download');

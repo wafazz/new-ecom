@@ -89,6 +89,14 @@ Admins can make a backup at `/admin/backup`, with or without the uploads and rec
 - **Retention** (`php bin/retention.php`, daily) removes email and WhatsApp logs after 180 days, audit rows after 365 days, daily visitor counts after 400 days, and app.log entries after 90 days. Change the periods with `--logs-days`, `--audit-days`, `--visitor-days` and `--app-log-days`.
 - Visitors are stored as a hash of a browser cookie. The all-time visitor total is kept, because it holds no personal data.
 
+## Discount codes
+HQ creates codes at `/admin/vouchers`: a percent or a fixed RM amount, an optional minimum spend, an optional use limit and start and end dates. A buyer enters the code on checkout.
+- A percent code takes that share of the items; a fixed code takes RM off the items. Shipping is never discounted, and a discount never takes more than the items cost the buyer. A 100% code can take the items to RM0, below the cost price, so only give such codes out deliberately.
+- Checkout re-checks the code against the live cart and uses it up in the same transaction as the order, so a code cannot be used past its limit.
+- Cancelling an order gives its use back. Used codes cannot be deleted, only switched off.
+- Affiliate commission is worked out on what the buyer paid for the items, so the discount comes off the commission base the same way shipping does.
+- Applying a code is limited to 20 tries per network every 10 minutes.
+
 ## Money rules
 All amounts are integer cents in code, `DECIMAL(10,2)` in the DB. Selling price = active discount else retail. Order lines snapshot price, cost, company base price and commission rate. Affiliate commission = rate % of (unit price - company base price) per line, created when an order is completed, then approved and paid out by an admin.
 

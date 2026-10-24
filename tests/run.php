@@ -18,7 +18,7 @@ function reset_test_db(): void
 {
     $pdo = App\Core\Database::connection();
     $pdo->exec('SET FOREIGN_KEY_CHECKS = 0');
-    foreach (['shipment_events', 'shipments', 'audit_logs', 'affiliate_commissions', 'affiliate_payouts', 'affiliate_clicks', 'wishlist_items', 'addresses', 'order_events', 'order_items', 'orders', 'cart_items', 'carts', 'variant_option_values', 'product_option_values', 'product_options', 'stock_movements', 'product_variants', 'product_images', 'products', 'brands', 'visitors', 'visitor_days', 'email_log', 'email_campaigns', 'email_verifications', 'password_resets', 'email_unsubscribes', 'whatsapp_log', 'users'] as $t) {
+    foreach (['shipment_events', 'shipments', 'audit_logs', 'affiliate_commissions', 'affiliate_payouts', 'affiliate_clicks', 'wishlist_items', 'addresses', 'order_events', 'order_items', 'orders', 'cart_items', 'carts', 'variant_option_values', 'product_option_values', 'product_options', 'stock_movements', 'product_variants', 'product_images', 'products', 'brands', 'visitors', 'visitor_days', 'email_log', 'email_campaigns', 'email_verifications', 'password_resets', 'email_unsubscribes', 'whatsapp_log', 'vouchers', 'users'] as $t) {
         $pdo->exec("TRUNCATE TABLE `{$t}`");
     }
     $pdo->exec('SET FOREIGN_KEY_CHECKS = 1');
