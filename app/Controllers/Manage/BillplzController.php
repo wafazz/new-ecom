@@ -28,6 +28,7 @@ final class BillplzController extends ManageController
         $in = [
             'mode' => $request->str('mode'),
             'collection_id' => trim($request->str('collection_id')),
+            'payment_order_collection_id' => trim($request->str('payment_order_collection_id')),
             'api_key' => trim($request->str('api_key')),
             'x_signature_key' => trim($request->str('x_signature_key')),
         ];
@@ -35,7 +36,7 @@ final class BillplzController extends ManageController
         $errors = BillplzSettings::validate($in);
         if ($errors !== []) {
             // Secrets are deliberately NOT echoed back into the session/old input.
-            $this->backWithErrors($back, $errors, ['mode' => $in['mode'], 'collection_id' => $in['collection_id']]);
+            $this->backWithErrors($back, $errors, ['mode' => $in['mode'], 'collection_id' => $in['collection_id'], 'payment_order_collection_id' => $in['payment_order_collection_id']]);
         }
         $changed = BillplzSettings::save($in, (int) Auth::user()['id']);
         $this->success($back, $changed === [] ? 'Nothing changed.' : 'Billplz details saved. Use "Test connection" to confirm them.');

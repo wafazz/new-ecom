@@ -9,18 +9,8 @@
 </div>
 
 <section>
-    <h2>Record payout</h2>
-    <?php if ((float) $stats['approved'] <= 0): ?>
-        <p class="muted">Nothing approved to pay out.</p>
-    <?php else: ?>
-        <form method="post" action="<?= e(url('/admin/affiliates/' . (int) $aff['id'] . '/payout')) ?>" class="card-form">
-            <?= csrf_field() ?>
-            <p>Pays all approved commissions: <strong><?= e(money($stats['approved'])) ?></strong>. Transfer the money first, then record it here.</p>
-            <label>Payment reference (e.g. bank transfer ref) <input name="reference" maxlength="190" value="<?= old('reference') ?>"><?= field_error('reference') ?></label>
-            <label>Note (optional) <input name="note" maxlength="255" value="<?= old('note') ?>"></label>
-            <button class="btn">Record payout</button>
-        </form>
-    <?php endif; ?>
+    <h2>Payouts</h2>
+    <p class="muted">Payouts are made from the <a href="<?= e(url('/admin/withdrawals')) ?>">Withdrawals</a> page. The member asks for an amount there, and HQ pays it.</p>
 </section>
 
 <h2>Commissions</h2>

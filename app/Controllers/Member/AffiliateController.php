@@ -8,6 +8,9 @@ use App\Core\Controller;
 use App\Core\Database;
 use App\Core\Request;
 use App\Services\AffiliateService;
+use App\Services\AffiliateWithdrawalService;
+use App\Services\Banks;
+use App\Services\RateLimiter;
 
 final class AffiliateController extends Controller
 {
@@ -24,6 +27,30 @@ final class AffiliateController extends Controller
             'days' => AffiliateService::cookieDays(),
             'commissions' => Database::query('SELECT amount, status, created_at FROM affiliate_commissions WHERE affiliate_id = ? ORDER BY id DESC LIMIT 50', [$id])->fetchAll(),
             'payouts' => Database::query('SELECT amount, reference, paid_at FROM affiliate_payouts WHERE affiliate_id = ? ORDER BY id DESC LIMIT 20', [$id])->fetchAll(),
+            'balance' => AffiliateWithdrawalService::balance($id),
+            'withdrawals' => Database::query('SELECT amount, fee, net, status, bank_name, reference, note, requested_at, processed_at FROM affiliate_withdrawals WHERE affiliate_id = ? ORDER BY id DESC LIMIT 20', [$id])->fetchAll(),
+            'banks' => Banks::groups(),
         ], 'portal');
+    }
+
+    /** Ask HQ to pay out an amount of the approved commission. The account number is never shown back. */
+    public function withdraw(Request $request): void
+    {
+        $id = (int) Auth::user()['id'];
+        $back = '/member/affiliate';
+        if (RateLimiter::tooMany('withdraw', 'u' . $id, 10, 60)) {
+            $this->backWithErrors($back, ['form' => 'Too many requests. Please wait a while and try again.']);
+        }
+        RateLimiter::hit('withdraw', 'u' . $id);
+
+        $r = AffiliateWithdrawalService::request($id, $request->str('amount'), $request->str('bank_name'), $request->str('account_holder'), $request->str('account_no'));
+        if ($r['error'] !== null) {
+            $this->backWithErrors($back, ['form' => $r['error']], [
+                'amount' => $request->str('amount'),
+                'bank_name' => $request->str('bank_name'),
+                'account_holder' => $request->str('account_holder'),
+            ]);
+        }
+        $this->success($back, 'Withdrawal requested. HQ will transfer it to your bank account. The RM' . AffiliateWithdrawalService::FEE . ' fee is taken from the amount.');
     }
 }

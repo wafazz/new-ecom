@@ -141,6 +141,16 @@ Each run works for up to 50 seconds and then exits. A run that starts while anot
 - Jobs hold customer addresses and message text. Finished jobs are removed after 7 days and failed ones after 30 days.
 - The queue uses the database, so it needs no extra service such as Redis. It is designed for one shop, not for many workers running at once.
 
+## Affiliate withdrawals
+Members with approved commission ask HQ to pay them out, from their affiliate page.
+- **Member:** enters any amount up to the balance, the bank, the account holder name and the account number. A RM1.00 transaction fee is taken from the amount, so asking for RM200 pays RM199. The amount must be more than RM1.00. One request can be waiting at a time.
+- **While waiting,** the amount is held back from the member's balance, so it cannot be asked for twice.
+- **HQ:** `/admin/withdrawals` lists requests, pending first, with the full bank details. HQ transfers the money by bank transfer, then clicks **Mark paid** and enters the bank reference. Or HQ clicks **Reject**, which gives the amount back to the member.
+- **Oldest first:** a payment takes the oldest approved commission first. A commission can be paid in parts, so the rest stays owed until a later withdrawal covers it.
+- **Account numbers** are stored encrypted with `APP_KEY`, like the other secrets. Losing `APP_KEY` loses them, so back it up with the database.
+- The old "pay all approved" button on the affiliate page was removed, because it could pay out money a withdrawal already held.
+- **Not yet:** paying through Billplz's payout API (Payment Orders). It needs the signature format confirmed against your sandbox first.
+
 ## Money rules
 All amounts are integer cents in code, `DECIMAL(10,2)` in the DB. Selling price = active discount else retail. Order lines snapshot price, cost, company base price and commission rate. Affiliate commission = rate % of (unit price - company base price) per line, created when an order is completed, then approved and paid out by an admin.
 

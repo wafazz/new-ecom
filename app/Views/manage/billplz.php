@@ -28,6 +28,7 @@ $hint = fn(string $f, string $label) => $cfg[$f . '_set']
         </select><?= field_error('mode') ?>
         <small class="muted">Sandbox and production use different keys. Switching mode asks you to re-enter them.</small></label>
     <label>Collection ID <input name="collection_id" value="<?= old('collection_id', $cfg['collection_id']) ?>" maxlength="64" spellcheck="false"><?= field_error('collection_id') ?></label>
+    <label>Payment order collection ID <input name="payment_order_collection_id" value="<?= old('payment_order_collection_id', $cfg['payment_order_collection_id']) ?>" maxlength="64" spellcheck="false"><small class="muted">Used for paying affiliate withdrawals. Leave empty until payouts are set up.</small><?= field_error('payment_order_collection_id') ?></label>
     <label>API secret key <input type="password" name="api_key" autocomplete="new-password" spellcheck="false" maxlength="200" placeholder="<?= e($hint('api_key', 'API secret key')) ?>"><?= field_error('api_key') ?></label>
     <label>X-Signature key <input type="password" name="x_signature_key" autocomplete="new-password" spellcheck="false" maxlength="200" placeholder="<?= e($hint('x_signature_key', 'X-Signature key')) ?>"><?= field_error('x_signature_key') ?></label>
     <button class="btn">Save</button>

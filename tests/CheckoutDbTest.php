@@ -53,9 +53,11 @@ $expAmount = intdiv($expBase * 1000 + 5000, 10000);                             
 check('completion creates one pending commission: 10% of (sales - shipping)', count($rows) === 1 && (int) round((float) $rows[0]['base_amount'] * 100) === $expBase && (int) round((float) $rows[0]['amount'] * 100) === $expAmount && $rows[0]['status'] === 'pending');
 
 $cid = (int) $rows[0]['id'];
-check('payout refused before approval', A::payout($affId, $affId, 'REF', null) !== null);
+check('a withdrawal is refused before approval', \App\Services\AffiliateWithdrawalService::request($affId, '5.00', 'Maybank', 'Test Holder', '1234567890')['error'] !== null);
 check('approve ok, second approve refused', A::decide($cid, 'approved', $affId) === null && A::decide($cid, 'approved', $affId) !== null);
-check('payout ok then cannot repeat', A::payout($affId, $affId, 'REF', null) === null && A::payout($affId, $affId, 'REF2', null) !== null);
+$wdAmount = number_format(\App\Services\AffiliateWithdrawalService::balance($affId)['available'] / 100, 2, '.', '');
+$wd = \App\Services\AffiliateWithdrawalService::request($affId, $wdAmount, 'Maybank', 'Test Holder', '1234567890');
+check('a withdrawal after approval is paid once', $wd['error'] === null && \App\Services\AffiliateWithdrawalService::markPaid((int) $wd['id'], $affId, 'REF') === null && \App\Services\AffiliateWithdrawalService::markPaid((int) $wd['id'], $affId, 'REF2') !== null);
 check('paid commission cannot be rejected', A::decide($cid, 'rejected', $affId) !== null);
 check('stats: paid equals the commission, nothing pending/approved', A::stats($affId)['paid'] === $rows[0]['amount'] && A::stats($affId)['pending'] === '0.00' && A::stats($affId)['approved'] === '0.00');
 

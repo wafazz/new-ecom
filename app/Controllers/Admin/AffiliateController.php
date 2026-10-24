@@ -47,22 +47,6 @@ final class AffiliateController extends Controller
         ], 'portal');
     }
 
-    public function payout(Request $request, string $id): void
-    {
-        $aff = $this->affiliate($id);
-        $back = "/admin/affiliates/{$aff['id']}";
-        $reference = trim($request->str('reference'));
-        $note = trim($request->str('note'));
-        if ($reference === '' || mb_strlen($reference) > 190 || mb_strlen($note) > 255) {
-            $this->backWithErrors($back, ['reference' => 'A payment reference is required (max 190 chars); note max 255.'], $request->body);
-        }
-        $error = AffiliateService::payout((int) $aff['id'], (int) Auth::user()['id'], $reference, $note);
-        if ($error !== null) {
-            $this->backWithErrors($back, ['form' => $error]);
-        }
-        $this->success($back, 'Payout recorded.');
-    }
-
     public function commissions(Request $request): void
     {
         $status = $request->str('status');

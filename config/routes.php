@@ -192,9 +192,11 @@ return function (Router $r): void {
             $r->post('/settings', 'Admin/SettingsController@update');
             $r->post('/settings/logo', 'Admin/SettingsController@logo');
             $r->post('/settings/logo/remove', 'Admin/SettingsController@removeLogo');
+            $r->get('/withdrawals', 'Admin/WithdrawalController@index');
+            $r->post('/withdrawals/{id}/paid', 'Admin/WithdrawalController@paid');
+            $r->post('/withdrawals/{id}/reject', 'Admin/WithdrawalController@reject');
             $r->get('/affiliates', 'Admin/AffiliateController@index');
             $r->get('/affiliates/{id}', 'Admin/AffiliateController@show');
-            $r->post('/affiliates/{id}/payout', 'Admin/AffiliateController@payout');
             $r->get('/commissions', 'Admin/AffiliateController@commissions');
             $r->post('/commissions/{id}/approve', 'Admin/AffiliateController@approve');
             $r->post('/commissions/{id}/reject', 'Admin/AffiliateController@reject');
@@ -218,6 +220,7 @@ return function (Router $r): void {
             $r->get('/orders/{orderNo}/receipt/{id}', 'Member/OrderController@receiptFile');
             $r->post('/orders/{orderNo}/pay', 'Member/OrderController@pay');
             $r->get('/affiliate', 'Member/AffiliateController@show');
+            $r->post('/affiliate/withdraw', 'Member/AffiliateController@withdraw');
             $r->get('/addresses', 'Member/AddressController@index');
             $r->post('/addresses', 'Member/AddressController@store');
             $r->get('/addresses/{id}/edit', 'Member/AddressController@edit');

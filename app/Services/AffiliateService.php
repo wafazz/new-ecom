@@ -199,55 +199,22 @@ final class AffiliateService
         return $stmt->rowCount() === 1 ? null : "This commission can't be marked {$to} from its current state.";
     }
 
-    /** Pay out everything currently approved for one affiliate as a single payout. @return string|null error */
-    public static function payout(int $affiliateId, int $adminId, string $reference, ?string $note): ?string
-    {
-        $pdo = Database::connection();
-        $pdo->beginTransaction();
-        try {
-            if (!Database::query('SELECT id FROM users WHERE id = ? FOR UPDATE', [$affiliateId])->fetch()) {
-                $pdo->rollBack();
-                return 'Affiliate not found.';
-            }
-            $rows = Database::query("SELECT id, amount FROM affiliate_commissions WHERE affiliate_id = ? AND status = 'approved' FOR UPDATE", [$affiliateId])->fetchAll();
-            if ($rows === []) {
-                $pdo->rollBack();
-                return 'There are no approved commissions to pay out.';
-            }
-            $total = array_sum(array_map(fn($r) => PricingService::cents((string) $r['amount']), $rows));
-            Database::query(
-                'INSERT INTO affiliate_payouts (affiliate_id, amount, reference, note, paid_by) VALUES (?, ?, ?, ?, ?)',
-                [$affiliateId, PricingService::format($total), $reference, $note ?: null, $adminId]
-            );
-            $payoutId = (int) $pdo->lastInsertId();
-            $ids = array_column($rows, 'id');
-            Database::query(
-                "UPDATE affiliate_commissions SET status = 'paid', payout_id = ? WHERE status = 'approved' AND id IN (" . implode(',', array_fill(0, count($ids), '?')) . ')',
-                [$payoutId, ...$ids]
-            );
-            $pdo->commit();
-            return null;
-        } catch (\Throwable $e) {
-            $pdo->rollBack();
-            throw $e;
-        }
-    }
+    // Paying out is done through AffiliateWithdrawalService: a member asks for an amount, and HQ pays it.
+    // The old "pay everything approved" action was removed, because it could pay money that a withdrawal already holds.
 
     // ---- read models -----------------------------------------------------------------------
 
     /** @return array{clicks:int, orders:int, pending:string, approved:string, paid:string} */
     public static function stats(int $affiliateId): array
     {
-        $sum = fn(string $status) => (string) Database::query(
-            "SELECT COALESCE(SUM(amount),0) FROM affiliate_commissions WHERE affiliate_id = ? AND status = '{$status}'",
-            [$affiliateId]
-        )->fetchColumn();
+        // A commission can be paid in parts, so "approved" is what is still owed and "paid" is what has gone out.
+        $sum = fn(string $sql) => (string) Database::query($sql, [$affiliateId])->fetchColumn();
         return [
             'clicks' => (int) Database::query('SELECT COUNT(*) FROM affiliate_clicks WHERE affiliate_id = ?', [$affiliateId])->fetchColumn(),
             'orders' => (int) Database::query('SELECT COUNT(*) FROM orders WHERE affiliate_id = ?', [$affiliateId])->fetchColumn(),
-            'pending' => $sum('pending'),
-            'approved' => $sum('approved'),
-            'paid' => $sum('paid'),
+            'pending' => $sum("SELECT COALESCE(SUM(amount),0) FROM affiliate_commissions WHERE affiliate_id = ? AND status = 'pending'"),
+            'approved' => $sum("SELECT COALESCE(SUM(amount - paid_amount),0) FROM affiliate_commissions WHERE affiliate_id = ? AND status = 'approved'"),
+            'paid' => $sum('SELECT COALESCE(SUM(paid_amount),0) FROM affiliate_commissions WHERE affiliate_id = ?'),
         ];
     }
 

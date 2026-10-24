@@ -49,7 +49,13 @@ final class BillplzSettings
     /** Safe-for-display view: no secret ever leaves this method. */
     public static function overview(): array
     {
-        $out = ['mode' => self::mode(), 'collection_id' => Setting::get(self::k('collection_id')), 'unreadable' => false];
+        $out = [
+            'mode' => self::mode(),
+            'collection_id' => Setting::get(self::k('collection_id')),
+            // A separate collection, for paying out affiliate withdrawals. Optional until payouts are set up.
+            'payment_order_collection_id' => Setting::get(self::k('payment_order_collection_id')),
+            'unreadable' => false,
+        ];
         foreach (self::SECRETS as $s) {
             $stored = Setting::get(self::k($s));
             $plain = $stored === '' ? null : SecretBox::decrypt($stored);
@@ -83,6 +89,9 @@ final class BillplzSettings
         if (!preg_match('/^[A-Za-z0-9_\-]{4,64}$/', $in['collection_id'])) {
             $errors['collection_id'] = 'Collection ID must be 4-64 letters, numbers, "-" or "_".';
         }
+        if (($in['payment_order_collection_id'] ?? '') !== '' && !preg_match('/^[A-Za-z0-9_\-]{4,64}$/', $in['payment_order_collection_id'])) {
+            $errors['payment_order_collection_id'] = 'Payment order collection ID must be 4-64 letters, numbers, "-" or "_".';
+        }
         $modeChanged = $current['collection_id'] !== '' && isset(self::MODES[$in['mode']]) && $in['mode'] !== $current['mode'];
         foreach ([['api_key', 'API secret key'], ['x_signature_key', 'X-Signature key']] as [$f, $label]) {
             $v = $in[$f];
@@ -114,6 +123,10 @@ final class BillplzSettings
         if ($in['collection_id'] !== $before['collection_id']) {
             Setting::set(self::k('collection_id'), $in['collection_id']);
             $changed[] = 'collection_id';
+        }
+        if (($in['payment_order_collection_id'] ?? '') !== ($before['payment_order_collection_id'] ?? '')) {
+            Setting::set(self::k('payment_order_collection_id'), $in['payment_order_collection_id']);
+            $changed[] = 'payment_order_collection_id';
         }
         foreach (self::SECRETS as $s) {
             if ($in[$s] !== '') {
