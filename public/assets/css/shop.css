@@ -675,3 +675,14 @@ body.shop .select2-container--default .select2-results>.select2-results__options
 /* A number that just changed flashes so live updates are easy to see */
 @keyframes live-bump-anim{0%{transform:scale(1.22);color:#16a34a}100%{transform:scale(1);color:inherit}}
 .live-bump{display:inline-block;animation:live-bump-anim .55s ease-out}
+
+/* Cart lines on phones: photo left; name and remove on top; quantity and price below */
+@media (max-width:640px){
+  .cl{grid-template-columns:72px minmax(0,1fr) auto;grid-template-areas:"img info rm" "img qty total";gap:.35rem .75rem;padding:.75rem}
+  .cl-img{grid-area:img;width:72px;height:72px;border-radius:10px}
+  .cl-info{grid-area:info;min-width:0}
+  .cl .qty{grid-area:qty;justify-self:start}
+  .cl-total{grid-area:total;align-self:center;min-width:0;text-align:right;white-space:nowrap}
+  .cl-remove{grid-area:rm;width:34px;height:34px;align-self:start}
+  .cl-name{font-size:.95rem}
+}
