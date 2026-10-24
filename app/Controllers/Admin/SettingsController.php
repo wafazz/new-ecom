@@ -4,10 +4,13 @@ declare(strict_types=1);
 namespace App\Controllers\Admin;
 
 use App\Core\Controller;
+use App\Core\Auth;
 use App\Core\Request;
 use App\Models\Setting;
 use App\Services\AffiliateService;
 use App\Services\PricingService;
+use App\Services\SiteLogo;
+use App\Services\UploadService;
 
 final class SettingsController extends Controller
 {
@@ -18,7 +21,30 @@ final class SettingsController extends Controller
             'guest' => Setting::guestCheckoutEnabled(),
             'shipping' => PricingService::format(Setting::shippingCents()),
             'rate' => AffiliateService::globalRate(),
+            'logo' => SiteLogo::url(),
+            'scripts' => ['logo-upload.js'],
         ], 'portal');
+    }
+
+    /** HQ uploads the shop logo (the route is admin-only). */
+    public function logo(Request $request): void
+    {
+        $files = UploadService::normalise($_FILES['logo'] ?? null);
+        if ($files === []) {
+            $this->backWithErrors('/admin/settings', ['logo' => 'Choose an image to upload.']);
+        }
+        try {
+            SiteLogo::save($files[0], (int) Auth::user()['id']);
+        } catch (\InvalidArgumentException | \RuntimeException $e) {
+            $this->backWithErrors('/admin/settings', ['logo' => $e->getMessage()]);
+        }
+        $this->success('/admin/settings', 'Logo updated.');
+    }
+
+    public function removeLogo(Request $request): void
+    {
+        SiteLogo::remove((int) Auth::user()['id']);
+        $this->success('/admin/settings', 'Logo removed. The first letter of the shop name is shown again.');
     }
 
     public function update(Request $request): void

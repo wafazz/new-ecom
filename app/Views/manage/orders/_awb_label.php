@@ -10,7 +10,7 @@ $shipBy = $ship['pickup_required'] && $ship['pickup_date'] ? date('d-m-Y', strto
 ?>
 <main class="label">
     <header class="top">
-        <div class="brand">NinjaVan</div>
+        <div class="brand"><?php $__shop = \App\Services\SiteLogo::url(); if ($__shop): ?><img class="brand-shop" src="<?= e($__shop) ?>" alt=""><?php endif; ?><span>NinjaVan</span></div>
         <svg class="top-bc" data-barcode="<?= e($tn) ?>" data-stretch="1" aria-label="Barcode for <?= e($tn) ?>"></svg>
         <div class="tn"><?= e($tn) ?></div>
     </header>

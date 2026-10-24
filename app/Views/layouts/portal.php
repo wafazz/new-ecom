@@ -94,6 +94,7 @@ $icons = [
 ];
 $svg = fn(string $name, string $class = 'ico') => '<svg class="' . $class . '" viewBox="0 0 24 24" aria-hidden="true">' . $icons[$name] . '</svg>';
 $appName = (string) config('app.name');
+$siteLogo = \App\Services\SiteLogo::url(); // the logo replaces the shop name wherever it shows
 ?>
 <!doctype html>
 <html lang="en" data-currency="<?= e((string) config('app.currency')) ?>">
@@ -123,8 +124,8 @@ $appName = (string) config('app.name');
 <div class="shell">
     <aside class="sidebar" id="sidebar" aria-label="Main navigation">
         <div class="sidebar-head">
-            <span class="logo" aria-hidden="true"><?= e(mb_strtoupper(mb_substr($appName, 0, 1))) ?></span>
-            <span class="brand-text"><strong><?= e($appName) ?></strong><small><?= e($role === 'member' ? 'My account' : $role . ' portal') ?></small></span>
+            <span class="logo<?= $siteLogo ? ' logo-only' : '' ?>" aria-hidden="true"><?php if ($siteLogo): ?><img class="s-logo-img" src="<?= e($siteLogo) ?>" alt="<?= e($appName) ?>"><?php else: ?><?= e(mb_strtoupper(mb_substr($appName, 0, 1))) ?><?php endif; ?></span>
+            <?php if (!$siteLogo): ?><span class="brand-text"><strong><?= e($appName) ?></strong><small><?= e($role === 'member' ? 'My account' : $role . ' portal') ?></small></span><?php endif; ?>
         </div>
         <nav class="nav">
             <?php foreach ($groups as $group => $items): if ($items === []) { continue; } ?>

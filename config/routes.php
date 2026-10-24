@@ -150,6 +150,8 @@ return function (Router $r): void {
             $r->post('/staff/{id}/permissions', 'Admin/StaffController@permissions');
             $r->get('/settings', 'Admin/SettingsController@edit');
             $r->post('/settings', 'Admin/SettingsController@update');
+            $r->post('/settings/logo', 'Admin/SettingsController@logo');
+            $r->post('/settings/logo/remove', 'Admin/SettingsController@removeLogo');
             $r->get('/affiliates', 'Admin/AffiliateController@index');
             $r->get('/affiliates/{id}', 'Admin/AffiliateController@show');
             $r->post('/affiliates/{id}/payout', 'Admin/AffiliateController@payout');

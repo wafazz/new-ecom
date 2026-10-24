@@ -1,4 +1,4 @@
-<?php $appName = (string) config('app.name'); ?>
+<?php $appName = (string) config('app.name'); $siteLogo = \App\Services\SiteLogo::url(); ?>
 <!doctype html>
 <html lang="en">
 <head>
@@ -14,7 +14,7 @@
     <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false"><symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7"/></symbol><symbol id="i-left" viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></symbol></svg>
     <div class="auth-wrap">
         <aside class="auth-art" aria-hidden="true">
-            <a class="s-logo" href="<?= e(url('/')) ?>" tabindex="-1"><span class="s-logo-mark"><?= e(mb_strtoupper(mb_substr($appName, 0, 1))) ?></span><span class="s-logo-text"><?= e($appName) ?></span></a>
+            <a class="s-logo<?= $siteLogo ? ' s-logo-only' : '' ?>" href="<?= e(url('/')) ?>" tabindex="-1"><span class="s-logo-mark"><?php if ($siteLogo): ?><img class="s-logo-img" src="<?= e($siteLogo) ?>" alt="<?= e($appName) ?>"><?php else: ?><?= e(mb_strtoupper(mb_substr($appName, 0, 1))) ?><?php endif; ?></span><?php if (!$siteLogo): ?><span class="s-logo-text"><?= e($appName) ?></span><?php endif; ?></a>
             <h2>Good to see you.</h2>
             <p>Save your favourites, check out faster and follow every order from one place.</p>
             <ul><li><?= icon('check', 'i i-sm') ?> Order history and tracking</li><li><?= icon('check', 'i i-sm') ?> Saved addresses</li><li><?= icon('check', 'i i-sm') ?> A wishlist for later</li></ul>

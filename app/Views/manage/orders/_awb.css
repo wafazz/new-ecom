@@ -6,7 +6,8 @@ html, body { margin: 0; background: #e9ebef; font-family: Arial, Helvetica, sans
 .screen button + button { background: #fff; color: #1a1f29; }
 .label { width: 100mm; height: 133mm; margin: 0 auto 2rem; padding: 2mm; background: #fff; border: 1px solid #999; display: flex; flex-direction: column; font-size: 5.6pt; overflow: hidden; }
 .top { display: flex; flex-direction: column; gap: .8mm; flex: none; }
-.brand { font-size: 7pt; font-weight: 700; }
+.brand { font-size: 7pt; font-weight: 700; display: flex; align-items: center; gap: 1.5mm; }
+        .brand-shop { display: block; height: 7mm; width: auto; max-width: 34mm; object-fit: contain; }
 .top-bc { display: block; width: 100%; height: 12mm; }
 .tn { font-size: 5.6pt; font-weight: 700; letter-spacing: .2pt; text-align: center; }
 .main { display: flex; gap: 2mm; flex: 1; min-height: 0; margin-top: 1.5mm; }

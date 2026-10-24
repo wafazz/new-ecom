@@ -8,6 +8,7 @@ $nav = StoreFront::nav();
 $isMember = StoreFront::isMember();
 $wishCount = $isMember ? count(StoreFront::wished() ?? []) : 0;
 $appName = (string) config('app.name');
+$siteLogo = \App\Services\SiteLogo::url(); // the logo replaces the shop name wherever it shows
 $scripts = $scripts ?? [];
 $pageTitle = ($title ?? '') !== '' ? $title . ' · ' . $appName : $appName;
 $desc = (string) ($metaDescription ?? '');
@@ -84,7 +85,7 @@ $path = rtrim((string) parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH), 
 <header class="s-header" id="s-header">
     <div class="s-wrap s-bar">
         <button type="button" class="s-icon-btn s-burger" data-menu-open aria-label="Open menu" aria-controls="s-menu"><?= $ico('menu') ?></button>
-        <a class="s-logo" href="<?= e(url('/')) ?>" aria-label="<?= e($appName) ?> home"><span class="s-logo-mark" aria-hidden="true"><?= e(mb_strtoupper(mb_substr($appName, 0, 1))) ?></span><span class="s-logo-text"><?= e($appName) ?></span></a>
+        <a class="s-logo<?= $siteLogo ? ' s-logo-only' : '' ?>" href="<?= e(url('/')) ?>" aria-label="<?= e($appName) ?> home"><span class="s-logo-mark" aria-hidden="true"><?php if ($siteLogo): ?><img class="s-logo-img" src="<?= e($siteLogo) ?>" alt="<?= e($appName) ?>"><?php else: ?><?= e(mb_strtoupper(mb_substr($appName, 0, 1))) ?><?php endif; ?></span><?php if (!$siteLogo): ?><span class="s-logo-text"><?= e($appName) ?></span><?php endif; ?></a>
 
         <form class="s-search" role="search" method="get" action="<?= e(url('/products')) ?>" data-search autocomplete="off">
             <?= $ico('search', 'i s-search-ico') ?>
@@ -184,7 +185,7 @@ $path = rtrim((string) parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH), 
 <footer class="s-footer">
     <div class="s-wrap s-foot-grid">
         <div class="s-foot-brand">
-            <a class="s-logo" href="<?= e(url('/')) ?>"><span class="s-logo-mark" aria-hidden="true"><?= e(mb_strtoupper(mb_substr($appName, 0, 1))) ?></span><span class="s-logo-text"><?= e($appName) ?></span></a>
+            <a class="s-logo<?= $siteLogo ? ' s-logo-only' : '' ?>" href="<?= e(url('/')) ?>"><span class="s-logo-mark" aria-hidden="true"><?php if ($siteLogo): ?><img class="s-logo-img" src="<?= e($siteLogo) ?>" alt="<?= e($appName) ?>"><?php else: ?><?= e(mb_strtoupper(mb_substr($appName, 0, 1))) ?><?php endif; ?></span><?php if (!$siteLogo): ?><span class="s-logo-text"><?= e($appName) ?></span><?php endif; ?></a>
             <p>Everyday favourites, delivered to your door. Browse the collection, save what you like and check out as a guest or with an account.</p>
         </div>
         <div>
