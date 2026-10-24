@@ -99,12 +99,15 @@ $reopen = !empty($_SESSION['_errors']);
                                 <?= csrf_field() ?><button class="btn secondary" type="submit"><?= (int) $v['active'] === 1 ? 'Switch off' : 'Switch on' ?></button>
                             </form>
                             <?php if ($tone === 'ok'): ?>
-                                <?php if ($canEmail): ?>
-                                    <form method="post" action="<?= e(url('/admin/vouchers/' . (int) $v['id'] . '/email')) ?>" class="inline" data-swal-confirm="Email <?= e($v['code']) ?> to <?= (int) $memberCount ?> member(s)?" data-swal-text="Each member who has not unsubscribed gets this code by email. Emails cannot be unsent." data-swal-button="Send">
+                                <?php $due = (int) ($newCounts[(int) $v['id']] ?? 0); ?>
+                                <?php if (!$canEmail): ?>
+                                    <button class="btn secondary" type="button" disabled title="Turn email on and save the sender first">Email members</button>
+                                <?php elseif ($due === 0): ?>
+                                    <button class="btn secondary" type="button" disabled title="Every member has already received this code">Email members</button>
+                                <?php else: ?>
+                                    <form method="post" action="<?= e(url('/admin/vouchers/' . (int) $v['id'] . '/email')) ?>" class="inline" data-swal-confirm="Email <?= e($v['code']) ?> to <?= $due ?> member(s)?" data-swal-text="Only members who have not had this code yet, and who have not unsubscribed, get it. Emails cannot be unsent." data-swal-button="Send">
                                         <?= csrf_field() ?><button class="btn" type="submit">Email members</button>
                                     </form>
-                                <?php else: ?>
-                                    <button class="btn secondary" type="button" disabled title="Turn email on and save the sender first">Email members</button>
                                 <?php endif; ?>
                             <?php endif; ?>
                             <?php if ((int) $v['used_count'] === 0): ?>

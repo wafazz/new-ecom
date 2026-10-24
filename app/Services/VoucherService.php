@@ -86,11 +86,31 @@ final class VoucherService
         // The code holds only A-Z, 0-9, dash and underscore, so it cannot clash with the {name} and {shop} placeholders.
         $body = "Hai {name},\n\nAda tawaran khas untuk anda dari {shop}!\n\nKod: {$v['code']}\nPotongan: {$offer}\n{$min}{$until}\n"
             . "Gunakan kod ini semasa checkout. Selamat berbelanja!\n\n{shop}";
-        $r = EmailService::announce($subject, $body, 'members', $actorId);
+        // One email per member per code: skip everyone already recorded for this code.
+        $already = self::emailedAddresses($id);
+        $members = EmailService::recipients('members');
+        $fresh = array_filter($members, fn($p) => !isset($already[strtolower($p['email'])]));
+        if ($fresh === []) {
+            return 'Every member has already received this code.';
+        }
+        $r = EmailService::announce($subject, $body, 'members', $actorId, $already, function (string $email) use ($id): void {
+            Database::query('INSERT IGNORE INTO voucher_sends (voucher_id, email) VALUES (?, ?)', [$id, strtolower($email)]);
+        }, 'voucher');
         if (is_array($r)) {
-            AuditService::log($actorId, 'voucher.email', "{$v['code']} to {$r['recipients']} members: {$r['sent']} sent, {$r['failed']} failed");
+            $r['already'] = count($members) - count($fresh);
+            AuditService::log($actorId, 'voucher.email', "{$v['code']} to {$r['recipients']} members: {$r['sent']} sent, {$r['failed']} failed, {$r['already']} already had it");
         }
         return $r;
+    }
+
+    /** Lower-cased addresses already emailed this code. @return array<string,true> */
+    public static function emailedAddresses(int $id): array
+    {
+        $out = [];
+        foreach (Database::query('SELECT email FROM voucher_sends WHERE voucher_id = ?', [$id])->fetchAll(\PDO::FETCH_COLUMN) as $email) {
+            $out[strtolower((string) $email)] = true;
+        }
+        return $out;
     }
 
     /** Count one use. Call inside the order transaction; throws if the code ran out or expired in the meantime. */

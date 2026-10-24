@@ -151,7 +151,7 @@ final class EmailService
      * Send an announcement to an audience in batches of 100. Records the campaign and its counts.
      * @return array{id:int, recipients:int, sent:int, failed:int}|string error message
      */
-    public static function announce(string $subject, string $body, string $audience, int $actorId)
+    public static function announce(string $subject, string $body, string $audience, int $actorId, array $skip = [], ?callable $onSent = null, string $kind = 'campaign')
     {
         if (!array_key_exists($audience, self::AUDIENCES)) {
             return 'Choose who should receive it.';
@@ -159,7 +159,8 @@ final class EmailService
         if (!self::ready()) {
             return 'Turn email on and save the API key and sender first.';
         }
-        $people = self::recipients($audience);
+        // $skip: lower-cased addresses to leave out (for example, people already sent this voucher).
+        $people = array_values(array_filter(self::recipients($audience), fn($p) => !isset($skip[strtolower($p['email'])])));
         if ($people === []) {
             return 'No one matches that audience yet.';
         }
@@ -180,8 +181,15 @@ final class EmailService
                     'headers' => ['List-Unsubscribe' => "<{$url}>", 'List-Unsubscribe-Post' => 'List-Unsubscribe=One-Click'],
                 ];
             }, $chunk);
-            foreach (MailService::batch($items, 'campaign', "campaign-{$id}-{$i}-" . bin2hex(random_bytes(6))) as $r) {
-                $r['ok'] ? $sent++ : $failed++;
+            foreach (MailService::batch($items, $kind, "campaign-{$id}-{$i}-" . bin2hex(random_bytes(6))) as $j => $r) {
+                if ($r['ok']) {
+                    $sent++;
+                    if ($onSent !== null) {
+                        $onSent($chunk[$j]['email']);
+                    }
+                } else {
+                    $failed++;
+                }
             }
             if (count($people) > MailService::BATCH_SIZE) {
                 usleep(150000); // stay well under Resend's 10 requests per second

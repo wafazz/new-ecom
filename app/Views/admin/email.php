@@ -112,6 +112,7 @@ $state = $overview['enabled'] && $overview['key_set'] && $overview['from_email']
                 <button type="button" data-filter="failed" aria-pressed="false">Failed</button>
             </div>
         </div>
+        <p class="muted" style="margin:.6rem 0 0"><a href="<?= e(url('/admin/email/log')) ?>">Open the full email log, with filters →</a></p>
         <?php if ($log === []): ?>
             <p class="msg-empty" style="margin-top:.8rem">No emails sent yet.</p>
         <?php else: ?>

@@ -7,6 +7,7 @@ use App\Core\Auth;
 use App\Core\Controller;
 use App\Core\Database;
 use App\Core\Request;
+use App\Services\EmailLog;
 use App\Services\EmailService;
 use App\Services\EmailSettings;
 use App\Services\MailService;
@@ -24,6 +25,25 @@ final class EmailController extends Controller
             'defaults' => EmailSettings::defaults(),
             'scripts' => ['messaging.js'],
             'log' => Database::query('SELECT created_at, kind, to_email, subject, ok, error FROM email_log ORDER BY id DESC LIMIT 20')->fetchAll(),
+        ], 'portal');
+    }
+
+    /** Every email sent, filtered by type, result, address or subject, and date range. */
+    public function log(Request $request): void
+    {
+        header('Cache-Control: no-store');
+        $filters = [
+            'kind' => $request->str('kind'),
+            'status' => $request->str('status'),
+            'q' => $request->str('q'),
+            'from' => $request->str('from'),
+            'to' => $request->str('to'),
+        ];
+        $this->view('admin/email_log', [
+            'title' => 'Email log',
+            'filters' => $filters,
+            'kinds' => EmailLog::KINDS,
+            'result' => EmailLog::search($filters, (int) $request->str('page', '1')),
         ], 'portal');
     }
 

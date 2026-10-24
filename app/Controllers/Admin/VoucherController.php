@@ -16,11 +16,19 @@ final class VoucherController extends Controller
 {
     public function index(Request $request): void
     {
+        $vouchers = Database::query('SELECT * FROM vouchers ORDER BY id DESC')->fetchAll();
+        // How many members would get each code now: members who have not unsubscribed and have not had it yet.
+        $members = EmailService::recipients('members');
+        $newCounts = [];
+        foreach ($vouchers as $v) {
+            $already = VoucherService::emailedAddresses((int) $v['id']);
+            $newCounts[(int) $v['id']] = count(array_filter($members, fn($p) => !isset($already[strtolower($p['email'])])));
+        }
         $this->view('admin/vouchers', [
             'title' => 'Vouchers',
-            'vouchers' => Database::query('SELECT * FROM vouchers ORDER BY id DESC')->fetchAll(),
+            'vouchers' => $vouchers,
             'types' => VoucherService::TYPES,
-            'memberCount' => count(EmailService::recipients('members')),
+            'newCounts' => $newCounts,
             'canEmail' => EmailService::ready(),
             'scripts' => ['vouchers.js'],
         ], 'portal');
@@ -33,7 +41,7 @@ final class VoucherController extends Controller
         if (is_string($r)) {
             $this->backWithErrors('/admin/vouchers', ['form' => $r]);
         }
-        $this->success('/admin/vouchers', "Sent to {$r['recipients']} member(s): {$r['sent']} sent, {$r['failed']} failed.");
+        $this->success('/admin/vouchers', "Sent to {$r['recipients']} new member(s): {$r['sent']} sent, {$r['failed']} failed. {$r['already']} had already received this code.");
     }
 
     public function store(Request $request): void

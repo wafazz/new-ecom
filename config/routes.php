@@ -173,6 +173,7 @@ return function (Router $r): void {
             $r->post('/backup/{name}/delete', 'Admin/BackupController@delete');
             $r->post('/backup/{name}/restore', 'Admin/BackupController@restore');
             $r->get('/email', 'Admin/EmailController@show');
+            $r->get('/email/log', 'Admin/EmailController@log');
             $r->post('/email', 'Admin/EmailController@update');
             $r->post('/email/test', 'Admin/EmailController@test');
             $r->get('/email/announce', 'Admin/EmailController@announceForm');
