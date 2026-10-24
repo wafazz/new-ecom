@@ -16,6 +16,7 @@ final class App
         (require BASE_PATH . '/config/routes.php')($router);
         $request = Request::capture();
         \App\Services\AffiliateService::captureFromQuery($request);
+        \App\Services\VisitorService::track($request);
         $router->dispatch($request);
     }
 

@@ -12,6 +12,7 @@ return function (Router $r): void {
         // Public shop
         $r->get('/', 'Shop/HomeController@index');
         $r->get('/health', 'Shop/HomeController@health');
+        $r->get('/live/visitors', 'Shop/HomeController@liveVisitors');
         $r->get('/products', 'Shop/CatalogController@index');
         $r->get('/products/{slug}', 'Shop/CatalogController@show');
         $r->post('/wishlist/toggle', 'Shop/WishlistController@toggle', ['auth:member']);
@@ -148,6 +149,8 @@ return function (Router $r): void {
             $r->post('/staff/{id}/toggle', 'Admin/StaffController@toggle');
             $r->get('/staff/{id}/edit', 'Admin/StaffController@edit');
             $r->post('/staff/{id}/permissions', 'Admin/StaffController@permissions');
+            $r->get('/visitors', 'Admin/VisitorsController@index');
+            $r->get('/visitors/stats', 'Admin/VisitorsController@stats');
             $r->get('/settings', 'Admin/SettingsController@edit');
             $r->post('/settings', 'Admin/SettingsController@update');
             $r->post('/settings/logo', 'Admin/SettingsController@logo');

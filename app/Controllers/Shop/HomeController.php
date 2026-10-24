@@ -39,4 +39,11 @@ final class HomeController extends Controller
         }
         Response::json(['app' => 'ok', 'db' => $db]);
     }
+
+    /** Live counts for the storefront strip (polled by live-visitors.js). */
+    public function liveVisitors(Request $request): void
+    {
+        header('Cache-Control: no-store');
+        \App\Core\Response::json(\App\Services\VisitorService::live());
+    }
 }

@@ -219,6 +219,20 @@ $path = rtrim((string) parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH), 
 
 <div class="s-toasts" id="s-toasts" aria-live="polite" role="region" aria-label="Notifications"></div>
 <button type="button" class="s-top" data-top aria-label="Back to top" hidden><?= $ico('arrow', 'i i-up') ?></button>
+<?php $__live = \App\Services\VisitorService::live(); ?>
+<aside class="live-float" data-live-visitors data-live-url="<?= e(url('/live/visitors')) ?>" aria-label="Shoppers online now">
+    <button type="button" class="live-float-toggle" data-live-toggle aria-expanded="true">
+        <span class="live-dot" aria-hidden="true"></span><span data-live-label>Online</span>
+        <svg class="live-chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+    </button>
+    <div class="live-float-body">
+        <div class="live-row"><strong class="live-float-num" data-live="online"><?= (int) $__live['online'] ?></strong><small>online now</small></div>
+        <div class="live-row"><strong data-live="today"><?= (int) $__live['today'] ?></strong><small>today</small></div>
+        <div class="live-row"><strong data-live="week"><?= (int) $__live['week'] ?></strong><small>last 7 days</small></div>
+        <div class="live-row"><strong data-live="overall"><?= (int) $__live['overall'] ?></strong><small>all time</small></div>
+    </div>
+</aside>
+<script src="<?= e(asset('js/live-visitors.js')) ?>" defer></script>
 </body>
 </html>
 <?php flash_clear(); ?>

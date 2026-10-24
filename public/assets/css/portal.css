@@ -681,3 +681,8 @@ iframe.proof-view-media{height:62vh}
 /* A logo replaces the shop name: the logo itself is the brand, at full height */
 .logo.logo-only{background:none;width:auto;min-width:30px;height:36px;border-radius:0}
 .logo.logo-only img{width:auto;height:36px;max-width:200px;object-fit:contain}
+.visitors-online{display:flex;align-items:center;gap:1rem;padding:1rem 1.2rem;border:1px solid var(--border);border-radius:12px;background:var(--surface);margin:0 0 1rem}
+.visitors-online-num{font-size:2.4rem;font-weight:700;color:var(--ok-fg);min-width:3ch;text-align:center;font-variant-numeric:tabular-nums}
+.visitors-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:.8rem}
+.visitors-card{padding:1rem;border:1px solid var(--border);border-radius:12px;background:var(--surface)}
+.visitors-num{font-size:1.9rem;font-weight:700;font-variant-numeric:tabular-nums;margin:.3rem 0}

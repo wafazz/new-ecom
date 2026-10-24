@@ -626,3 +626,49 @@ body.shop .select2-container--default .select2-results>.select2-results__options
 .s-logo-only .s-logo-mark{background:none;width:auto;height:auto;border-radius:0}
 .s-logo-only .s-logo-img{display:block;width:auto;height:40px;max-width:240px;object-fit:contain}
 .auth-art .s-logo-only .s-logo-mark{background:none}
+/* Floating "online now" badge: top-left, under the header, can be hidden */
+.live-float{position:fixed;left:12px;top:calc(var(--head-h) + 3.6rem);z-index:9000;width:clamp(116px,12.5vw,168px);transition:transform .38s cubic-bezier(.2,.8,.2,1);background:var(--surface);border:1px solid var(--border);border-radius:14px;box-shadow:0 8px 24px rgba(15,23,42,.12);font-size:.82rem;overflow:hidden}
+.live-float-toggle{display:flex;align-items:center;gap:.45rem;width:100%;padding:.5rem .65rem;background:var(--accent-soft,#eef2ff);border:0;color:var(--text);font:inherit;font-weight:600;cursor:pointer;text-align:left}
+.live-float-toggle:hover{background:var(--surface-2,#f1f5f9)}
+.live-chev{flex:none;width:18px;height:18px;margin-left:auto;fill:none;stroke:currentColor;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round;transition:transform .2s}
+/* the chevron points left (open: hide to the left) or right (hidden: show again) */
+.live-chev{transform:rotate(90deg)}
+.live-float.is-hidden .live-chev{transform:rotate(-90deg)}
+@media (prefers-reduced-motion:reduce){.live-float,.live-float-body,.live-chev{transition:none}}
+.live-float-toggle:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+.live-float-body{display:flex;flex-direction:column;gap:.2rem;padding:.15rem .65rem .6rem;transition:opacity .25s}
+.live-row{display:flex;align-items:baseline;justify-content:space-between;gap:.5rem}
+.live-row strong{font-size:.95rem;font-variant-numeric:tabular-nums;color:var(--text)}
+.live-row small{color:var(--muted);font-size:.74rem}
+/* Hidden: the whole badge slides out to the left; only the chevron handle stays on the edge */
+.live-float.is-hidden{transform:translateX(calc(-100% + 34px));background:transparent;border-color:transparent;box-shadow:none}
+.live-float.is-hidden .live-float-body{opacity:0}
+.live-float.is-hidden .live-dot,.live-float.is-hidden [data-live-label]{display:none}
+.live-float.is-hidden .live-chev{order:-1}
+.live-float-num{font-size:1.5rem;line-height:1;font-variant-numeric:tabular-nums;color:var(--text)}
+.live-float-body small{color:var(--muted)}
+.live-dot{flex:none;width:9px;height:9px;border-radius:50%;background:#16a34a;box-shadow:0 0 0 0 rgba(22,163,74,.6);animation:live-pulse 2s infinite}
+@keyframes live-pulse{0%{box-shadow:0 0 0 0 rgba(22,163,74,.55)}70%{box-shadow:0 0 0 8px rgba(22,163,74,0)}100%{box-shadow:0 0 0 0 rgba(22,163,74,0)}}
+@media (prefers-reduced-motion:reduce){.live-dot{animation:none}}
+@media (max-width:640px){.live-float{top:calc(var(--head-h) + 3.6rem);left:8px;width:112px}.live-float-num{font-size:1.25rem}.live-float.is-hidden{transform:translateX(calc(-100% + 34px))}}
+/* Floating bubble look: soft glass panel, glow, gentle bob (margin, so the hide slide keeps working) */
+.live-float{border-radius:24px;border:1px solid rgba(255,255,255,.75);background:linear-gradient(160deg,rgba(255,255,255,.94),rgba(233,239,255,.86));-webkit-backdrop-filter:blur(14px) saturate(1.3);backdrop-filter:blur(14px) saturate(1.3);box-shadow:0 22px 44px -14px rgba(47,91,234,.42),0 6px 16px rgba(15,23,42,.12),inset 0 1px 0 rgba(255,255,255,.9);animation:live-bob 6s ease-in-out infinite}
+.live-float.is-hidden{animation:none}
+@keyframes live-bob{0%,100%{margin-top:0}50%{margin-top:-5px}}
+.live-float-toggle{background:transparent;padding:.6rem .8rem .35rem;font-size:.84rem;letter-spacing:.01em}
+.live-float-toggle:hover{background:rgba(47,91,234,.06)}
+.live-float-body{padding:.1rem .8rem .8rem;gap:.35rem}
+.live-row{padding:.2rem .15rem;border-radius:10px}
+.live-row strong{font-size:1rem}
+.live-float-num{font-size:1.9rem;color:#16a34a;font-weight:800}
+.live-row:first-child small{font-weight:600;color:#15803d}
+.live-chev{color:var(--accent,#2f5bea)}
+.live-dot{width:10px;height:10px;box-shadow:0 0 0 0 rgba(22,163,74,.6),0 0 10px rgba(22,163,74,.55)}
+.live-float.is-hidden{box-shadow:none}
+@media (prefers-reduced-motion:reduce){.live-float{animation:none}}
+@media (max-width:640px){.live-float-num{font-size:1.5rem}}
+.live-row .live-float-num{font-size:1.9rem;color:#16a34a;font-weight:800;line-height:1}
+@media (max-width:640px){.live-row .live-float-num{font-size:1.5rem}}
+/* Clear layered shadow so the bubble lifts off the page */
+.live-float{box-shadow:0 1px 2px rgba(2,6,23,.25),0 8px 18px rgba(2,6,23,.28),0 28px 52px -14px rgba(47,91,234,.6),inset 0 1px 0 rgba(255,255,255,.95)}
+.live-float.is-hidden{box-shadow:none}

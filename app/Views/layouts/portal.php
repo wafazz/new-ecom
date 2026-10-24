@@ -27,7 +27,7 @@ $groups = match ($role) {
         'Catalog' => [['/admin/products', 'Products', 'box', 0], ['/admin/categories', 'Categories', 'tag', 0], ['/admin/brands', 'Brands', 'tag', 0]],
         'Inventory' => [['/admin/stock', 'Stock Control', 'stack', 0], ['/admin/stock/movements', 'Stock Movement', 'swap', 0]],
         'Sales' => [['/admin/orders', 'Orders', 'cart', $pendingOrders, $orderSub('/admin')], ['/admin/affiliates', 'Affiliates', 'link', 0], ['/admin/commissions', 'Commissions', 'coin', $pendingCommissions]],
-        'Administration' => [['/admin/staff', 'Staff', 'users', 0], ['/admin/payments', 'Payments', 'card', 0], ['/admin/payments/billplz', 'Billplz', 'link', 0], ['/admin/shipping/ninjavan', 'NinjaVan', 'truck', 0], ['/admin/settings', 'Settings', 'gear', 0]],
+        'Administration' => [['/admin/staff', 'Staff', 'users', 0], ['/admin/visitors', 'Visitors', 'pin', 0], ['/admin/payments', 'Payments', 'card', 0], ['/admin/payments/billplz', 'Billplz', 'link', 0], ['/admin/shipping/ninjavan', 'NinjaVan', 'truck', 0], ['/admin/settings', 'Settings', 'gear', 0]],
         'Account' => [['/admin/profile', 'Profile', 'user', 0], ['/admin/password', 'Password', 'lock', 0]],
     ],
     'staff' => array_filter([
