@@ -14,6 +14,9 @@ return function (Router $r): void {
         $r->get('/health', 'Shop/HomeController@health');
         $r->get('/live/visitors', 'Shop/HomeController@liveVisitors');
         $r->get('/verify-email/{token}', 'Auth/VerifyEmailController@confirm');
+        $r->get('/install', 'InstallController@show');
+        $r->post('/install/check', 'InstallController@check');
+        $r->post('/install/finish', 'InstallController@finish');
         $r->get('/products', 'Shop/CatalogController@index');
         $r->get('/products/{slug}', 'Shop/CatalogController@show');
         $r->post('/wishlist/toggle', 'Shop/WishlistController@toggle', ['auth:member']);
@@ -150,6 +153,10 @@ return function (Router $r): void {
             $r->post('/staff/{id}/toggle', 'Admin/StaffController@toggle');
             $r->get('/staff/{id}/edit', 'Admin/StaffController@edit');
             $r->post('/staff/{id}/permissions', 'Admin/StaffController@permissions');
+            $r->get('/backup', 'Admin/BackupController@index');
+            $r->post('/backup', 'Admin/BackupController@create');
+            $r->get('/backup/download/{name}', 'Admin/BackupController@download');
+            $r->post('/backup/{name}/delete', 'Admin/BackupController@delete');
             $r->get('/email', 'Admin/EmailController@show');
             $r->post('/email', 'Admin/EmailController@update');
             $r->post('/email/test', 'Admin/EmailController@test');

@@ -5,7 +5,7 @@ declare(strict_types=1);
 define('BASE_PATH', dirname(__DIR__));
 require BASE_PATH . '/app/bootstrap.php';
 
-use App\Core\Database;
+use App\Services\Migrator;
 
 if (in_array('--create-db', $argv, true)) {
     $c = config('database');
@@ -15,27 +15,8 @@ if (in_array('--create-db', $argv, true)) {
     echo "Database `{$name}` ready.\n";
 }
 
-$pdo = Database::connection();
-$pdo->exec('CREATE TABLE IF NOT EXISTS migrations (
-    id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-    name VARCHAR(255) NOT NULL UNIQUE,
-    ran_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4');
-
-$done = array_column(Database::query('SELECT name FROM migrations')->fetchAll(), 'name');
-$files = glob(BASE_PATH . '/database/migrations/*.sql');
-sort($files);
-
-$ran = 0;
-foreach ($files as $file) {
-    $name = basename($file);
-    if (in_array($name, $done, true)) {
-        continue;
-    }
-    // MySQL DDL auto-commits, so a failed file can be partially applied; keep files small and single-purpose.
-    $pdo->exec((string) file_get_contents($file));
-    Database::query('INSERT INTO migrations (name) VALUES (?)', [$name]);
+$applied = Migrator::run();
+foreach ($applied as $name) {
     echo "Migrated: {$name}\n";
-    $ran++;
 }
-echo $ran === 0 ? "Nothing to migrate.\n" : "Done ({$ran}).\n";
+echo $applied === [] ? "Nothing to migrate.\n" : 'Done (' . count($applied) . ").\n";

@@ -9,7 +9,14 @@ final class Setting
 {
     public static function get(string $key, string $default = ''): string
     {
-        $v = Database::query('SELECT `value` FROM settings WHERE `key` = ?', [$key])->fetchColumn();
+        try {
+            $v = Database::query('SELECT `value` FROM settings WHERE `key` = ?', [$key])->fetchColumn();
+        } catch (\PDOException $e) {
+            if ($e->getCode() === '42S02') {
+                return $default; // a new database before its tables exist (the install wizard shows this)
+            }
+            throw $e;
+        }
         return $v === false || $v === null ? $default : (string) $v;
     }
 
