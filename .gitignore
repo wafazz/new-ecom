@@ -1,0 +1,16 @@
+.env
+storage/logs/*
+storage/cache/*
+!storage/logs/.gitkeep
+!storage/cache/.gitkeep
+public/uploads/*
+!public/uploads/.gitkeep
+.DS_Store
+!public/uploads/.htaccess
+k2.jar
+*.log
+storage/waybills/*
+!storage/waybills/.gitkeep
+
+storage/receipts/*
+!storage/receipts/.gitkeep

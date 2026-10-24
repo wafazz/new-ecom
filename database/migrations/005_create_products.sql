@@ -1,0 +1,23 @@
+CREATE TABLE products (
+    id                 INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    category_id        INT UNSIGNED NULL,
+    name               VARCHAR(190) NOT NULL,
+    slug               VARCHAR(210) NOT NULL,
+    sku                VARCHAR(60) NULL,
+    description        TEXT NULL,
+    base_price         DECIMAL(10,2) NOT NULL,
+    company_base_price DECIMAL(10,2) NOT NULL,
+    retail_price       DECIMAL(10,2) NOT NULL,
+    discount_price     DECIMAL(10,2) NULL,
+    discount_start     DATETIME NULL,
+    discount_end       DATETIME NULL,
+    stock              INT NOT NULL DEFAULT 0,
+    status             ENUM('draft','active') NOT NULL DEFAULT 'draft',
+    deleted_at         DATETIME NULL,
+    created_at         TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at         TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    UNIQUE KEY uq_products_slug (slug),
+    UNIQUE KEY uq_products_sku (sku),
+    KEY idx_products_status (status, deleted_at),
+    CONSTRAINT fk_products_category FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

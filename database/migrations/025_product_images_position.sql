@@ -1,0 +1,1 @@
+ALTER TABLE product_images ADD COLUMN position TINYINT UNSIGNED NOT NULL DEFAULT 0 AFTER is_primary;

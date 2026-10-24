@@ -1,0 +1,51 @@
+-- user_id NULL = guest order. Contact/address are snapshots; later profile edits never change history.
+CREATE TABLE orders (
+    id             INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    order_no       VARCHAR(20) NOT NULL,
+    user_id        INT UNSIGNED NULL,
+    customer_name  VARCHAR(120) NOT NULL,
+    customer_email VARCHAR(190) NOT NULL,
+    customer_phone VARCHAR(30) NOT NULL,
+    ship_line1     VARCHAR(190) NOT NULL,
+    ship_line2     VARCHAR(190) NULL,
+    ship_city      VARCHAR(100) NOT NULL,
+    ship_state     VARCHAR(60) NOT NULL,
+    ship_postcode  VARCHAR(10) NOT NULL,
+    ship_country   CHAR(2) NOT NULL DEFAULT 'MY',
+    subtotal       DECIMAL(10,2) NOT NULL,
+    shipping_fee   DECIMAL(10,2) NOT NULL DEFAULT 0,
+    total          DECIMAL(10,2) NOT NULL,
+    payment_method VARCHAR(30) NOT NULL,
+    payment_status ENUM('unpaid','paid') NOT NULL DEFAULT 'unpaid',
+    status         ENUM('pending','processing','shipped','completed','cancelled') NOT NULL DEFAULT 'pending',
+    track_hash     CHAR(64) NULL,
+    notes          VARCHAR(500) NULL,
+    created_at     TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at     TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    UNIQUE KEY uq_orders_no (order_no),
+    KEY idx_orders_user (user_id),
+    KEY idx_orders_status (status, created_at),
+    KEY idx_orders_email (customer_email),
+    CONSTRAINT fk_orders_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- Price + cost snapshots: base/company prices are kept for margin and affiliate commission (admin-only).
+CREATE TABLE order_items (
+    id                 INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    order_id           INT UNSIGNED NOT NULL,
+    product_id         INT UNSIGNED NULL,
+    variant_id         INT UNSIGNED NULL,
+    product_name       VARCHAR(190) NOT NULL,
+    variant_label      VARCHAR(190) NULL,
+    sku                VARCHAR(60) NULL,
+    unit_price         DECIMAL(10,2) NOT NULL,
+    retail_price       DECIMAL(10,2) NOT NULL,
+    base_price         DECIMAL(10,2) NOT NULL,
+    company_base_price DECIMAL(10,2) NOT NULL,
+    qty                SMALLINT UNSIGNED NOT NULL,
+    line_total         DECIMAL(10,2) NOT NULL,
+    KEY idx_oi_order (order_id),
+    CONSTRAINT fk_oi_order FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE,
+    CONSTRAINT fk_oi_product FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE SET NULL,
+    CONSTRAINT fk_oi_variant FOREIGN KEY (variant_id) REFERENCES product_variants(id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

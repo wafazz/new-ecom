@@ -1,0 +1,6 @@
+# Safety net if the web root points at the project folder instead of public/
+RewriteEngine On
+RewriteRule ^(app|config|database|storage|bin|Docs|tests)(/|$) - [F,L]
+RewriteRule (^|/)\.(?!well-known) - [F,L]
+RewriteRule ^$ public/ [L]
+RewriteRule (.*) public/$1 [L]

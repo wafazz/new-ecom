@@ -1,0 +1,5 @@
+# Uploads are static files only: never execute anything here.
+Options -Indexes -ExecCGI
+<FilesMatch "\.(php|phtml|phar|php[0-9])$">
+    Require all denied
+</FilesMatch>

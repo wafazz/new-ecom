@@ -1,0 +1,10 @@
+Options -Indexes
+RewriteEngine On
+
+# Never allow a .php extension in a public URL (index.php stays internal only).
+RewriteCond %{THE_REQUEST} \.php([?/\s]|$) [NC]
+RewriteRule ^ - [R=404,L]
+
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^ index.php [QSA,L]

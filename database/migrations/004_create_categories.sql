@@ -1,0 +1,7 @@
+CREATE TABLE categories (
+    id         INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    name       VARCHAR(120) NOT NULL,
+    slug       VARCHAR(140) NOT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY uq_categories_slug (slug)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
