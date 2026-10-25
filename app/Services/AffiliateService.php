@@ -10,7 +10,7 @@ use App\Models\Setting;
 
 /**
  * Referral codes, click tracking, attribution and commissions. Money is integer cents; rates are
- * "10.00" strings (percent of margin = unit price - company base price, per line, never below 0).
+ * "10.00" strings (percent of what the buyer paid for each line, after its share of shipping and discount; never below 0).
  */
 final class AffiliateService
 {
@@ -141,8 +141,11 @@ final class AffiliateService
      * @param array<array{line_total:string,commission_rate:?string}> $items
      * @return array{base:int, amount:int} cents; amount rounds half-up per line
      */
-    /** Base = what the buyer paid for the items: line sales less each line's share of the shipping and of any discount code. */
-    public static function calculate(array $items, int $shippingCents = 0, int $discountCents = 0): array
+    /**
+     * Base = what the buyer paid for the items, after any discount code. Shipping is not taken off here: the
+     * buyer's total is items + shipping, so (total - shipping) is exactly the items. Line totals never include shipping.
+     */
+    public static function calculate(array $items, int $discountCents = 0): array
     {
         $subtotal = 0;
         foreach ($items as $it) {
@@ -155,13 +158,52 @@ final class AffiliateService
                 continue;
             }
             $line = PricingService::cents((string) $it['line_total']);
-            $share = $subtotal > 0 ? intdiv($shippingCents * $line + intdiv($subtotal, 2), $subtotal) : 0;
             $cut = $subtotal > 0 ? intdiv($discountCents * $line + intdiv($subtotal, 2), $subtotal) : 0;
-            $net = max(0, $line - $share - $cut);
+            $net = max(0, $line - $cut);
             $base += $net;
             $amount += intdiv($net * PricingService::cents((string) $it['commission_rate']) + 5000, 10000);
         }
         return ['base' => $base, 'amount' => $amount];
+    }
+
+    /**
+     * Recalculate pending and approved commissions with the current formula. A commission with any part already paid
+     * is left alone, so money already sent is never changed. Without $apply nothing is written.
+     * @return array{changes: array<int,array{id:int, old:int, new:int, status:string}>, skipped:int, unchanged:int} cents
+     */
+    public static function recalculateOpen(bool $apply, ?int $actorId = null, ?int $onlyId = null): array
+    {
+        $out = ['changes' => [], 'skipped' => 0, 'unchanged' => 0];
+        $rows = Database::query(
+            "SELECT c.id, c.order_id, c.base_amount, c.amount, c.status, c.paid_amount, o.discount_total
+             FROM affiliate_commissions c JOIN orders o ON o.id = c.order_id
+             WHERE c.status IN ('pending', 'approved') AND (? IS NULL OR c.id = ?) ORDER BY c.id",
+            [$onlyId, $onlyId]
+        )->fetchAll();
+        foreach ($rows as $r) {
+            if (PricingService::cents((string) $r['paid_amount']) > 0) {
+                $out['skipped']++;
+                continue;
+            }
+            $items = Database::query('SELECT line_total, commission_rate FROM order_items WHERE order_id = ?', [(int) $r['order_id']])->fetchAll();
+            $c = self::calculate($items, PricingService::cents((string) $r['discount_total']));
+            $oldAmount = PricingService::cents((string) $r['amount']);
+            if ($c['amount'] === $oldAmount && $c['base'] === PricingService::cents((string) $r['base_amount'])) {
+                $out['unchanged']++;
+                continue;
+            }
+            $out['changes'][] = ['id' => (int) $r['id'], 'old' => $oldAmount, 'new' => $c['amount'], 'status' => (string) $r['status']];
+            if ($apply) {
+                Database::query(
+                    "UPDATE affiliate_commissions SET base_amount = ?, amount = ? WHERE id = ? AND paid_amount = 0 AND status IN ('pending', 'approved')",
+                    [PricingService::format($c['base']), PricingService::format($c['amount']), (int) $r['id']]
+                );
+            }
+        }
+        if ($apply && $out['changes'] !== []) {
+            AuditService::log($actorId, 'commission.recalc', count($out['changes']) . ' pending or approved commission(s) recalculated');
+        }
+        return $out;
     }
 
     /** Call inside the order-completion transaction. Idempotent: one row per order. */
@@ -170,7 +212,7 @@ final class AffiliateService
         if ($order['affiliate_id'] === null) {
             return;
         }
-        $c = self::calculate($items, PricingService::cents((string) ($order['shipping_fee'] ?? '0')), PricingService::cents((string) ($order['discount_total'] ?? '0')));
+        $c = self::calculate($items, PricingService::cents((string) ($order['discount_total'] ?? '0')));
         if ($c['amount'] < 1) {
             return;
         }
@@ -221,5 +263,11 @@ final class AffiliateService
     public static function link(string $code): string
     {
         return url('/r/' . $code);
+    }
+
+    /** The affiliate link that opens one product: /r/CODE?to=/products/slug. The redirect accepts only such paths. */
+    public static function productLink(string $code, string $slug): string
+    {
+        return url('/r/' . $code . '?to=/products/' . $slug);
     }
 }

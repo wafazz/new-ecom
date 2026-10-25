@@ -91,8 +91,8 @@ check('cancelling the order gives the use back', $err === null && $uses('RAYA10'
 
 // Affiliates: the discount comes off their base, like shipping does.
 $items = [['line_total' => '60.00', 'commission_rate' => '10.00']];
-check('the commission base is the items less the discount', AffiliateService::calculate($items, 0, 600) === ['base' => 5400, 'amount' => 540]);
-check('with no discount the commission is unchanged', AffiliateService::calculate($items, 0, 0) === ['base' => 6000, 'amount' => 600]);
+check('the commission base is the items less the discount', AffiliateService::calculate($items, 600) === ['base' => 5400, 'amount' => 540]);
+check('with no discount the commission is unchanged', AffiliateService::calculate($items, 0) === ['base' => 6000, 'amount' => 600]);
 
 // Emailing a live code to members. Nothing goes out unless email is set up and the code is live.
 DB::query("DELETE FROM settings WHERE `key` LIKE 'email.%'");

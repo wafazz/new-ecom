@@ -30,6 +30,8 @@ final class AffiliateController extends Controller
             'balance' => AffiliateWithdrawalService::balance($id),
             'withdrawals' => Database::query('SELECT amount, fee, net, status, bank_name, reference, note, requested_at, processed_at FROM affiliate_withdrawals WHERE affiliate_id = ? ORDER BY id DESC LIMIT 20', [$id])->fetchAll(),
             'banks' => Banks::groups(),
+            'products' => Database::query("SELECT name, slug FROM products WHERE deleted_at IS NULL AND status = 'active' ORDER BY name LIMIT 300")->fetchAll(),
+            'scripts' => ['copy-link.js'],
         ], 'portal');
     }
 

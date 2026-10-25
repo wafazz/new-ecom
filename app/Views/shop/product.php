@@ -110,6 +110,16 @@ $wishInit = $wish === true;
             <?php endif; ?>
         </form>
 
+        <?php if (!empty($affiliateLink)): ?>
+        <div class="aff-copy" style="margin:.9rem 0;padding:.75rem .9rem;border:1px dashed var(--border-strong, #c8cdd6);border-radius:12px">
+            <small class="muted">Your affiliate link for this product. Share it, and you earn commission on any sale made through it.</small>
+            <div style="display:flex;gap:.5rem;margin-top:.4rem;flex-wrap:wrap">
+                <input readonly value="<?= e($affiliateLink) ?>" onfocus="this.select()" aria-label="Your affiliate link for this product" style="flex:1;min-width:200px">
+                <button type="button" class="s-btn secondary" data-copy="<?= e($affiliateLink) ?>">Copy link</button>
+            </div>
+        </div>
+        <?php endif; ?>
+
         <ul class="pdp-trust">
             <li><?= icon('truck') ?> <span><?= $ship > 0 ? 'Flat-rate shipping ' . e(money($ship / 100)) : 'Delivered to your door' ?></span></li>
             <li><?= icon('shield') ?> <span>Secure checkout<?= $methods !== [] ? ': ' . e(implode(', ', $methods)) : '' ?></span></li>

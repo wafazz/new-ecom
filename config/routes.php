@@ -198,6 +198,8 @@ return function (Router $r): void {
             $r->get('/affiliates', 'Admin/AffiliateController@index');
             $r->get('/affiliates/{id}', 'Admin/AffiliateController@show');
             $r->get('/commissions', 'Admin/AffiliateController@commissions');
+            $r->post('/commissions/recalculate', 'Admin/AffiliateController@recalculate');
+            $r->post('/commissions/{id}/recalculate', 'Admin/AffiliateController@recalculateOne');
             $r->post('/commissions/{id}/approve', 'Admin/AffiliateController@approve');
             $r->post('/commissions/{id}/reject', 'Admin/AffiliateController@reject');
         });

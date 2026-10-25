@@ -8,7 +8,13 @@ $tabs = array_merge([''], $statuses);
             <h1>Commissions</h1>
             <p class="muted">Commission on each referred order. Approve a pending one before it can be withdrawn; reject one that should not pay.</p>
         </div>
-        <span class="msg-pill"><?= (int) $total ?> commission<?= (int) $total === 1 ? '' : 's' ?></span>
+        <div class="msg-row">
+            <span class="msg-pill"><?= (int) $total ?> commission<?= (int) $total === 1 ? '' : 's' ?></span>
+            <form method="post" action="<?= e(url('/admin/commissions/recalculate')) ?>" class="inline" data-busy-form
+                  data-swal-confirm="Recalculate commissions?" data-swal-text="Pending and approved commissions are updated to the current formula (items after any discount, shipping not deducted again). Any part already paid is never changed." data-swal-button="Yes, recalculate">
+                <?= csrf_field() ?><button class="btn secondary">Recalculate</button>
+            </form>
+        </div>
     </header>
 
     <nav class="msg-tabs" aria-label="Commission status">

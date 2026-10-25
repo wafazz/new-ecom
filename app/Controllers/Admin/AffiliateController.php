@@ -75,6 +75,28 @@ final class AffiliateController extends Controller
         ], 'portal');
     }
 
+    /** Recalculate pending and approved commissions with the current formula. Paid parts are never changed. */
+    public function recalculate(Request $request): void
+    {
+        $r = AffiliateService::recalculateOpen(true, (int) Auth::user()['id']);
+        $this->success('/admin/commissions', 'Recalculated ' . count($r['changes']) . ' commission(s). ' . $r['unchanged'] . ' were already right; ' . $r['skipped'] . ' had a part already paid and were left alone.');
+    }
+
+    /** Recalculate one commission. Only pending or approved commissions with nothing paid yet can change. */
+    public function recalculateOne(Request $request, string $id): void
+    {
+        $r = AffiliateService::recalculateOpen(true, (int) Auth::user()['id'], (int) $id);
+        if ($r['changes'] === []) {
+            $this->success('/admin/commissions', match (true) {
+                $r['skipped'] > 0 => 'That commission has a part already paid, so it was not changed.',
+                $r['unchanged'] > 0 => 'That commission was already right.',
+                default => 'Only pending or approved commissions can be recalculated.',
+            });
+        }
+        $c = $r['changes'][0];
+        $this->success('/admin/commissions', 'Recalculated: RM' . \App\Services\PricingService::format($c['old']) . ' → RM' . \App\Services\PricingService::format($c['new']) . '.');
+    }
+
     public function approve(Request $request, string $id): void
     {
         $this->decide($request, $id, 'approved');

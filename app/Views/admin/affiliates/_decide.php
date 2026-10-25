@@ -9,3 +9,8 @@
         <input type="hidden" name="back" value="<?= e($m_back === 'affiliate' ? 'affiliate' : '') ?>"><input type="hidden" name="affiliate_id" value="<?= (int) $m['affiliate_id'] ?>">
         <button class="btn secondary">Reject</button></form>
 <?php endif; ?>
+<?php if (in_array($m['status'], ['pending', 'approved'], true)): ?>
+    <form method="post" action="<?= e(url('/admin/commissions/' . (int) $m['id'] . '/recalculate')) ?>" class="inline" data-busy-form
+          data-swal-confirm="Recalculate this commission?" data-swal-text="It is updated to the current formula. If part of it is already paid, it is not changed." data-swal-button="Yes, recalculate"><?= csrf_field() ?>
+        <button class="msg-link">Recalculate</button></form>
+<?php endif; ?>

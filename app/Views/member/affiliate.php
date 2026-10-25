@@ -13,6 +13,34 @@
     </section>
 
     <section class="msg-card">
+        <div class="msg-row">
+            <div>
+                <h2>Product links</h2>
+                <p class="muted">A ready-made link for each product. Copy it and share it; sales through it earn you commission.</p>
+            </div>
+            <input type="search" data-link-filter placeholder="Find a product…" aria-label="Find a product" style="max-width:260px">
+        </div>
+        <?php if ($products === []): ?>
+            <p class="msg-empty" style="margin-top:.8rem">No products are on sale yet.</p>
+        <?php else: ?>
+        <div class="table-wrap" style="margin-top:.6rem">
+        <table class="msg-table">
+            <thead><tr><th>Product</th><th>Your link</th><th></th></tr></thead>
+            <tbody>
+            <?php foreach ($products as $p): $pl = \App\Services\AffiliateService::productLink($code, (string) $p['slug']); ?>
+                <tr data-link-row data-name="<?= e(mb_strtolower((string) $p['name'])) ?>">
+                    <td><strong><?= e($p['name']) ?></strong></td>
+                    <td><input readonly value="<?= e($pl) ?>" onfocus="this.select()" aria-label="Link for <?= e($p['name']) ?>" style="width:100%;min-width:220px"></td>
+                    <td class="num"><button type="button" class="btn secondary" data-copy="<?= e($pl) ?>">Copy</button></td>
+                </tr>
+            <?php endforeach; ?>
+            </tbody>
+        </table>
+        </div>
+        <?php endif; ?>
+    </section>
+
+    <section class="msg-card">
         <div class="msg-grid" style="grid-template-columns:repeat(auto-fit,minmax(150px,1fr))">
             <div><strong><?= (int) $stats['clicks'] ?></strong><br><span class="muted">Clicks</span></div>
             <div><strong><?= (int) $stats['orders'] ?></strong><br><span class="muted">Referred orders</span></div>

@@ -111,7 +111,7 @@ HQ creates codes at `/admin/vouchers`: a percent or a fixed RM amount, an option
 - A percent code takes that share of the items; a fixed code takes RM off the items. Shipping is never discounted, and a discount never takes more than the items cost the buyer. A 100% code can take the items to RM0, below the cost price, so only give such codes out deliberately.
 - Checkout re-checks the code against the live cart and uses it up in the same transaction as the order, so a code cannot be used past its limit.
 - Cancelling an order gives its use back. Used codes cannot be deleted, only switched off.
-- Affiliate commission is worked out on what the buyer paid for the items, so the discount comes off the commission base the same way shipping does.
+- Affiliate commission = rate % of (what the buyer paid − shipping), per product line, after any discount code. In other words, it is calculated on the items only: RM19 item + RM10 shipping (buyer pays RM29) at 10% gives RM1.90.
 - Applying a code is limited to 20 tries per network every 10 minutes.
 
 ## Invoices
@@ -168,7 +168,7 @@ Members with approved commission ask HQ to pay them out, from their affiliate pa
 - **Not yet:** paying through Billplz's payout API (Payment Orders). It needs the signature format confirmed against your sandbox first.
 
 ## Money rules
-All amounts are integer cents in code, `DECIMAL(10,2)` in the DB. Selling price = active discount else retail. Order lines snapshot price, cost, company base price and commission rate. Affiliate commission = rate % of (unit price - company base price) per line, created when an order is completed, then approved and paid out by an admin.
+All amounts are integer cents in code, `DECIMAL(10,2)` in the DB. Selling price = active discount else retail. Order lines snapshot price, cost, company base price and commission rate. Affiliate commission = rate % of the item line sales after any discount code's share, per line. Shipping is not part of it, since it is not in the line totals. The company base price is not used for commission. Commission is created when an order is completed, then approved, and paid out by withdrawal (see **Affiliate withdrawals**).
 
 ## Known limits
 No email sending, password reset, online payment gateway, refunds, tax/invoices. See `Docs/Planning.md` section 13 for per-phase notes.
