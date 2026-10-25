@@ -29,10 +29,4 @@ final class Setting
     {
         return self::get('guest_checkout_enabled', '1') === '1';
     }
-
-    public static function shippingCents(): int
-    {
-        $v = self::get('shipping_flat', '0.00');
-        return \App\Services\PricingService::isMoney($v) ? \App\Services\PricingService::cents($v) : 0;
-    }
 }

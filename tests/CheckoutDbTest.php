@@ -17,7 +17,7 @@ if (!str_ends_with((string) env('DB_NAME', ''), '_test')) {
 reset_test_db();
 $affId = User::create('member', 'Aff', 'aff@db.test', 'Passw0rd!x');
 $code = A::ensureCode($affId);
-$pid = Product::insert(['name' => 'Widget', 'slug' => 'widget', 'sku' => 'W1', 'base_price' => '50.00', 'company_base_price' => '70.00', 'retail_price' => '100.00', 'stock' => 5, 'status' => 'active']);
+$pid = Product::insert(['weight_kg' => '1.000', 'width_cm' => '10', 'length_cm' => '10', 'height_cm' => '10', 'name' => 'Widget', 'slug' => 'widget', 'sku' => 'W1', 'base_price' => '50.00', 'company_base_price' => '70.00', 'retail_price' => '100.00', 'stock' => 5, 'status' => 'active']);
 $contact = fn(string $email) => ['name' => 'Buyer', 'email' => $email, 'phone' => '0123456789', 'line1' => '1 Jalan', 'line2' => '', 'city' => 'KL', 'state' => 'Kuala Lumpur', 'postcode' => '50000', 'notes' => ''];
 $cart = function (int $qty) use ($pid): int {
     DB::query('INSERT INTO carts (session_hash) VALUES (?)', [bin2hex(random_bytes(32))]);
@@ -48,9 +48,9 @@ O::completeFromCourier($oid, 'NinjaVan: Successful Delivery');
 O::completeFromCourier($oid, 'NinjaVan: Successful Delivery'); // a repeated webhook changes nothing
 $rows = DB::query('SELECT * FROM affiliate_commissions')->fetchAll();
 $ordRow = O::find($oid);
-$expBase = max(0, (int) round((float) $ordRow['subtotal'] * 100) - (int) round((float) $ordRow['shipping_fee'] * 100)); // sales minus shipping
+$expBase = (int) round((float) $ordRow["subtotal"] * 100); // the items, no shipping (line totals never include it)
 $expAmount = intdiv($expBase * 1000 + 5000, 10000);                                                              // 10% of that base
-check('completion creates one pending commission: 10% of (sales - shipping)', count($rows) === 1 && (int) round((float) $rows[0]['base_amount'] * 100) === $expBase && (int) round((float) $rows[0]['amount'] * 100) === $expAmount && $rows[0]['status'] === 'pending');
+check('completion creates one pending commission: 10% of the items', count($rows) === 1 && (int) round((float) $rows[0]['base_amount'] * 100) === $expBase && (int) round((float) $rows[0]['amount'] * 100) === $expAmount && $rows[0]['status'] === 'pending');
 
 $cid = (int) $rows[0]['id'];
 check('a withdrawal is refused before approval', \App\Services\AffiliateWithdrawalService::request($affId, '5.00', 'Maybank', 'Test Holder', '1234567890')['error'] !== null);

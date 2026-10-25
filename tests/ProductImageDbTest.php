@@ -10,8 +10,8 @@ if (!str_ends_with((string) env('DB_NAME', ''), '_test')) {
 }
 reset_test_db();
 DB::query('DELETE FROM product_images');
-$pid = Product::insert(['name' => 'Vase', 'slug' => 'vase', 'sku' => 'V1', 'base_price' => '5', 'company_base_price' => '10', 'retail_price' => '30', 'status' => 'active', 'stock' => 1]);
-$other = Product::insert(['name' => 'Jar', 'slug' => 'jar', 'sku' => 'J1', 'base_price' => '5', 'company_base_price' => '10', 'retail_price' => '30', 'status' => 'active', 'stock' => 1]);
+$pid = Product::insert(['weight_kg' => '1.000', 'width_cm' => '10', 'length_cm' => '10', 'height_cm' => '10', 'name' => 'Vase', 'slug' => 'vase', 'sku' => 'V1', 'base_price' => '5', 'company_base_price' => '10', 'retail_price' => '30', 'status' => 'active', 'stock' => 1]);
+$other = Product::insert(['weight_kg' => '1.000', 'width_cm' => '10', 'length_cm' => '10', 'height_cm' => '10', 'name' => 'Jar', 'slug' => 'jar', 'sku' => 'J1', 'base_price' => '5', 'company_base_price' => '10', 'retail_price' => '30', 'status' => 'active', 'stock' => 1]);
 $mk = function (int $p, string $name, int $primary = 0) {
     DB::query('INSERT INTO product_images (product_id, path, is_primary) VALUES (?, ?, ?)', [$p, "uploads/products/{$name}.jpg", $primary]);
     return (int) DB::connection()->lastInsertId();

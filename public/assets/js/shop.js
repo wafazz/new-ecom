@@ -144,7 +144,7 @@
     });
     foot.textContent = ''; foot.hidden = false;
     var s1 = el('p', 'sum-row'); s1.appendChild(el('span', '', 'Subtotal')); s1.appendChild(el('span', '', cart.subtotal)); foot.appendChild(s1);
-    if (cart.shipping) foot.appendChild(el('small', 'muted', 'Flat-rate shipping ' + cart.shipping + ' is added at checkout.'));
+    foot.appendChild(el('small', 'muted', 'Shipping is worked out at checkout by weight and zone.'));
     var view = el('a', 's-btn ghost block', 'View cart'); view.href = cfg.cartUrl; foot.appendChild(view);
     var co = el('a', 's-btn block' + (cart.has_problem ? ' disabled' : ''), 'Checkout'); co.href = cfg.checkoutUrl; if (cart.has_problem) co.setAttribute('aria-disabled', 'true'); co.appendChild(icon('arrow')); foot.appendChild(co);
     if (cart.has_problem) foot.appendChild(el('small', 'mc-warn', 'Review the items marked above to check out.'));

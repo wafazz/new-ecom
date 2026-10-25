@@ -87,6 +87,7 @@ Admin-editable (Settings page): guest checkout on/off, flat shipping fee, defaul
 10. Rate limits (login, checkout, register, track) key on the connecting IP (`REMOTE_ADDR`). Behind a reverse proxy or CDN every visitor shares the proxy's IP, so limits would hit everyone at once: terminate TLS on the web server itself, or add trusted-proxy handling before going behind one.
 11. Bank transfer receipts are uploaded files (JPG, PNG, WebP or PDF, up to 5 MB) kept in `storage/receipts/` (never public). Set PHP `upload_max_filesize` to at least 6M and `post_max_size` to at least 12M, and make `storage/receipts/` writable by the web user; back it up with the database. **nginx also limits uploads**, and its default (1 MB) rejects most phone photos with an error page. In the server block, set `client_max_body_size 12M;` and reload nginx. Product photos are up to 2 MB each, five per product, so the same 12M covers them.
 12. Confirm: `/.env`, `/app/...`, `/storage/logs/app.log` return 403/404; `/health` returns OK.
+13. Shipping: set both zones' rates at `/admin/shipping-rates` before taking orders. Checkout stays closed until every rate is filled in. Every product needs its weight and size (the product form requires them).
 
 ## Backups
 Admins can make a backup at `/admin/backup`, with or without the uploads and receipts zip. For a scheduled backup, add this to the server's crontab (daily at 02:30):
@@ -166,6 +167,20 @@ Members with approved commission ask HQ to pay them out, from their affiliate pa
 - **Account numbers** are stored encrypted with `APP_KEY`, like the other secrets. Losing `APP_KEY` loses them, so back it up with the database.
 - The old "pay all approved" button on the affiliate page was removed, because it could pay out money a withdrawal already held.
 - **Not yet:** paying through Billplz's payout API (Payment Orders). It needs the signature format confirmed against your sandbox first.
+
+## Shipping
+Postage depends on the buyer's state and the order's weight. Two zones:
+- **Zone 1:** Peninsular Malaysia (every state except the three below).
+- **Zone 2:** Sabah, Sarawak and Labuan.
+
+Each zone has its own rates, set at `/admin/shipping-rates`:
+- **First kilo rate** and **each next kilo** rate. The total weight of the cart is rounded up to whole kilos (1.2 kg is charged as 2 kg). The page still shows the real weight.
+- **Non-COD orders** pay normal postage only.
+- **COD orders** pay normal postage plus a COD surcharge. The surcharge is a percent of the items' sales, after any discount and before shipping. Sales at or below the zone's benchmark use the first percent; sales above it use the second.
+
+Every product has a required weight and size (width, length and height in cm), set on the product form. Checkout refuses a cart with an item that has no weight. Postage is calculated on the server from the state and payment method the buyer picks, and the buyer sees it as they choose on the checkout page. Each order keeps its zone, billable kilos and COD surcharge.
+
+The courier shipment form still takes its weight by hand. Connecting it to the order's billable weight is a planned follow-up.
 
 ## Money rules
 All amounts are integer cents in code, `DECIMAL(10,2)` in the DB. Selling price = active discount else retail. Order lines snapshot price, cost, company base price and commission rate. Affiliate commission = rate % of the item line sales after any discount code's share, per line. Shipping is not part of it, since it is not in the line totals. The company base price is not used for commission. Commission is created when an order is completed, then approved, and paid out by withdrawal (see **Affiliate withdrawals**).

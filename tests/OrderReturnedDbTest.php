@@ -12,7 +12,7 @@ if (!str_ends_with((string) env('DB_NAME', ''), '_test')) {
 reset_test_db();
 DB::query("INSERT INTO users (role, name, email, password_hash, status) VALUES ('admin', 'Ret Admin', 'ret@example.test', 'x', 'active')");
 $actor = (int) DB::connection()->lastInsertId();
-$p = Product::insert(['name' => 'Lure', 'slug' => 'lure', 'sku' => 'LURE-R', 'category_id' => null, 'base_price' => '5', 'company_base_price' => '10', 'retail_price' => '30', 'stock' => 10, 'status' => 'active']);
+$p = Product::insert(['weight_kg' => '1.000', 'width_cm' => '10', 'length_cm' => '10', 'height_cm' => '10', 'name' => 'Lure', 'slug' => 'lure', 'sku' => 'LURE-R', 'category_id' => null, 'base_price' => '5', 'company_base_price' => '10', 'retail_price' => '30', 'stock' => 10, 'status' => 'active']);
 $stock = fn() => (int) Product::find($p)['stock'];
 
 $mk = function (string $status) use ($p, $actor): int {

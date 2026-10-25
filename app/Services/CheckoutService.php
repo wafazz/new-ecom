@@ -33,6 +33,7 @@ final class CheckoutService
             }
 
             $items = [];
+            $shipLines = []; // weight and quantity per line, for postage
             $subtotal = 0;
             foreach ($lines as $l) {
                 $p = Database::query('SELECT * FROM products WHERE id = ? FOR UPDATE', [$l['product_id']])->fetch();
@@ -58,6 +59,7 @@ final class CheckoutService
                 $cost = PricingService::resolveVariant($p, $v ?? []);
                 $unit = PricingService::cents($eff['price']);
                 $subtotal += $unit * (int) $l['qty'];
+                $shipLines[] = ['weight_kg' => $p['weight_kg'], 'qty' => (int) $l['qty']];
                 $items[] = [
                     'product_id' => (int) $p['id'],
                     'variant_id' => $v ? (int) $v['id'] : null,
@@ -104,20 +106,24 @@ final class CheckoutService
                 VoucherService::redeem((int) $voucher['id']);
             }
 
-            $shipping = Setting::shippingCents();
+            // Postage is worked out here from the zone, weight and payment method. The browser never sets it.
+            $quote = ShippingRates::quote($shipLines, $subtotal - $discount, (string) $contact['state'], $paymentMethod);
+            $shipping = $quote['fee'];
             $token = $userId === null ? bin2hex(random_bytes(16)) : null;
             $orderNo = self::newOrderNo();
 
             Database::query(
                 'INSERT INTO orders (order_no, user_id, customer_name, customer_email, customer_phone, ship_line1, ship_line2, ship_city, ship_state, ship_postcode,
-                                     subtotal, shipping_fee, total, payment_method, track_hash, notes, affiliate_id, voucher_id, voucher_code, discount_total)
-                 VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',
+                                     subtotal, shipping_fee, total, payment_method, track_hash, notes, affiliate_id, voucher_id, voucher_code, discount_total,
+                                     shipping_zone, billable_kg, cod_fee)
+                 VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',
                 [
                     $orderNo, $userId, $contact['name'], strtolower($contact['email']), $contact['phone'],
                     $contact['line1'], $contact['line2'] ?: null, $contact['city'], $contact['state'], $contact['postcode'],
                     PricingService::format($subtotal), PricingService::format($shipping), PricingService::format($subtotal - $discount + $shipping),
                     $paymentMethod, $token === null ? null : hash('sha256', $token), $contact['notes'] ?: null, $affiliateId,
                     $voucher === null ? null : (int) $voucher['id'], $voucher === null ? null : $voucher['code'], PricingService::format($discount),
+                    $quote['zone'], $quote['kg'], PricingService::format($quote['cod']),
                 ]
             );
             $orderId = (int) $pdo->lastInsertId();

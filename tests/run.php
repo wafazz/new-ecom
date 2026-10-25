@@ -22,6 +22,21 @@ function reset_test_db(): void
         $pdo->exec("TRUNCATE TABLE `{$t}`");
     }
     $pdo->exec('SET FOREIGN_KEY_CHECKS = 1');
+    seed_default_shipping();
+}
+
+/** Default postage in settings, so checkout works in every DB test. Shipping tests clear it, then call this again. */
+function seed_default_shipping(): void
+{
+    $pdo = App\Core\Database::connection();
+    $pdo->exec("DELETE FROM settings WHERE `key` LIKE 'shipping.%'");
+    $rates = ['zone1' => ['first' => '8.00', 'next' => '2.00', 'benchmark' => '100.00', 'cod_at_or_below' => '5', 'cod_above' => '3'], 'zone2' => ['first' => '15.00', 'next' => '5.00', 'benchmark' => '150.00', 'cod_at_or_below' => '6', 'cod_above' => '4']];
+    $set = $pdo->prepare('INSERT INTO settings (`key`, `value`) VALUES (?, ?)');
+    foreach ($rates as $zone => $fields) {
+        foreach ($fields as $k => $v) {
+            $set->execute(["shipping.{$zone}.{$k}", $v]);
+        }
+    }
 }
 
 // TEST_ONLY=ReceiptServiceDbTest,SeedDemoTest runs just those files (handy for chasing an interaction between tests)

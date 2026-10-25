@@ -1,5 +1,4 @@
 <?php
-$ship = \App\Models\Setting::shippingCents();
 $empty = $cart['items'] === [];
 $nav = \App\Services\StoreFront::nav();
 ?>
@@ -47,8 +46,8 @@ $nav = \App\Services\StoreFront::nav();
     <aside class="cart-summary">
         <h2>Order summary</h2>
         <p class="sum-row"><span>Subtotal</span><span><?= e(money($cart['subtotal_cents'] / 100)) ?></span></p>
-        <p class="sum-row"><span>Shipping</span><span><?= $ship > 0 ? e(money($ship / 100)) : 'At checkout' ?></span></p>
-        <p class="sum-row total"><span>Total</span><span><?= e(money(($cart['subtotal_cents'] + $ship) / 100)) ?></span></p>
+        <p class="sum-row"><span>Shipping</span><span>Calculated at checkout</span></p>
+        <p class="sum-row total"><span>Subtotal</span><span><?= e(money($cart['subtotal_cents'] / 100)) ?></span></p>
         <?php if ($cart['has_problem']): ?>
             <p class="cl-warn">Fix the items marked above to continue.</p>
             <span class="s-btn lg block disabled" aria-disabled="true">Checkout</span>

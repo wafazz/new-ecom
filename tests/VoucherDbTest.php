@@ -19,10 +19,9 @@ if (!str_ends_with((string) env('DB_NAME', ''), '_test')) {
 }
 reset_test_db();
 putenv('APP_KEY=voucher-db-test-key-0123456789abcdef0123'); // the email API key is stored encrypted
-DB::query("DELETE FROM settings WHERE `key` LIKE 'shipping%'");
 DB::query("INSERT INTO users (role, name, email, password_hash, status) VALUES ('admin', 'Vee Admin', 'vee@example.test', 'x', 'active')");
 $actor = (int) DB::connection()->lastInsertId();
-$mug = Product::insert(['name' => 'Mug', 'slug' => 'mug', 'sku' => 'MUG-V', 'category_id' => null, 'base_price' => '5', 'company_base_price' => '10', 'retail_price' => '30', 'stock' => 50, 'status' => 'active']);
+$mug = Product::insert(['weight_kg' => '1.000', 'width_cm' => '10', 'length_cm' => '10', 'height_cm' => '10', 'name' => 'Mug', 'slug' => 'mug', 'sku' => 'MUG-V', 'category_id' => null, 'base_price' => '5', 'company_base_price' => '10', 'retail_price' => '30', 'stock' => 50, 'status' => 'active']);
 $cart = function (int $qty) use ($mug): int {
     DB::query('INSERT INTO carts (session_hash) VALUES (?)', [hash('sha256', random_bytes(8))]);
     $id = (int) DB::connection()->lastInsertId();
@@ -56,10 +55,10 @@ V::setActive((int) V::find('SAVE5')['id'], false, $actor);
 check('a switched-off code is not valid', V::quote('SAVE5', 6000)['message'] === 'That code is not valid.');
 V::setActive((int) V::find('SAVE5')['id'], true, $actor);
 
-// A real checkout: the total takes the discount off the items, not the shipping.
-$shipping = Setting::shippingCents();
+// A real checkout: the total takes the discount off the items, and adds the postage the order recorded.
 $o = CheckoutService::place($cart(2), $contact, 'cod', null, null, null, 'RAYA10');
 $row = DB::query('SELECT * FROM orders WHERE id = ?', [$o['order_id']])->fetch();
+$shipping = (int) round((float) $row['shipping_fee'] * 100); // the postage the order recorded (cash on delivery)
 check('the order records the code and the discount', $row['voucher_code'] === 'RAYA10' && $row['discount_total'] === '6.00' && (int) $row['voucher_id'] === (int) V::find('RAYA10')['id']);
 check('the total is the items less the discount, plus shipping', $row['total'] === number_format((6000 - 600 + $shipping) / 100, 2, '.', ''));
 check('the code is counted as used once', $uses('RAYA10') === 1);
@@ -89,7 +88,7 @@ check('a code with no uses left is refused at checkout, and the cart is kept', $
 $err = OrderService::transition((int) $o['order_id'], 'cancelled', $actor, 'test');
 check('cancelling the order gives the use back', $err === null && $uses('RAYA10') === 0);
 
-// Affiliates: the discount comes off their base, like shipping does.
+// Affiliates: the discount comes off their base.
 $items = [['line_total' => '60.00', 'commission_rate' => '10.00']];
 check('the commission base is the items less the discount', AffiliateService::calculate($items, 600) === ['base' => 5400, 'amount' => 540]);
 check('with no discount the commission is unchanged', AffiliateService::calculate($items, 0) === ['base' => 6000, 'amount' => 600]);

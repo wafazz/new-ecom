@@ -140,7 +140,7 @@ final class CartService
         if ($cartId !== null) {
             $rows = Database::query(
                 'SELECT ci.id AS item_id, ci.qty AS requested, ci.product_id, ci.variant_id,
-                        p.name, p.slug, p.status, p.deleted_at, p.stock AS p_stock, p.retail_price, p.discount_price, p.discount_start, p.discount_end,
+                        p.name, p.slug, p.status, p.deleted_at, p.stock AS p_stock, p.retail_price, p.discount_price, p.discount_start, p.discount_end, p.weight_kg,
                         v.id AS v_id, v.stock AS v_stock, v.retail_price AS v_retail, v.discount_price AS v_discount, v.deleted_at AS v_deleted,
                         (SELECT i.path FROM product_images i WHERE i.product_id = p.id ORDER BY i.is_primary DESC, i.id LIMIT 1) AS image
                  FROM cart_items ci
@@ -173,6 +173,7 @@ final class CartService
                     'on_sale' => $price['on_sale'],
                     'requested' => (int) $r['requested'],
                     'qty' => $qty,
+                    'weight_kg' => $r['weight_kg'],
                     'stock' => $stock,
                     'available' => $available,
                     'adjusted' => $available && $qty < (int) $r['requested'],
@@ -190,13 +191,12 @@ final class CartService
     public static function payload(): array
     {
         $c = self::summary();
-        $ship = \App\Models\Setting::shippingCents();
         return [
             'count' => $c['count'],
             'subtotal' => money($c['subtotal_cents'] / 100),
             'subtotal_cents' => $c['subtotal_cents'],
-            'shipping' => $ship > 0 ? money($ship / 100) : null,
-            'total' => money(($c['subtotal_cents'] + ($c['items'] === [] ? 0 : $ship)) / 100),
+            'shipping' => null, // worked out at checkout, by weight and zone
+            'total' => money($c['subtotal_cents'] / 100),
             'has_problem' => $c['has_problem'],
             'items' => array_map(fn($l) => [
                 'item_id' => $l['item_id'], 'name' => $l['name'], 'variant' => $l['variant_label'],

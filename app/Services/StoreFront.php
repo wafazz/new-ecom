@@ -34,12 +34,11 @@ final class StoreFront
                 $tree[(int) $c['id']] = $c + ['children' => []]; // its parent has no products of its own listed: show it on its own
             }
         }
-        $ship = Setting::shippingCents();
         return self::$nav = [
             'categories' => array_values($tree),
             'hasSale' => (int) Database::query("SELECT COUNT(*) FROM products p WHERE p.status = 'active' AND p.deleted_at IS NULL AND p.discount_price IS NOT NULL AND p.discount_price < p.retail_price
                 AND (p.discount_start IS NULL OR p.discount_start <= NOW()) AND (p.discount_end IS NULL OR p.discount_end >= NOW())")->fetchColumn() > 0,
-            'shipping' => $ship > 0 ? money($ship / 100) : null,
+            'shipping' => null, // postage depends on weight and zone, so it is shown at checkout only
             'methods' => array_values(array_map(fn($m) => $m->label(), Payments::checkoutMethods())),
         ];
     }

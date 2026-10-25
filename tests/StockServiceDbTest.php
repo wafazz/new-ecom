@@ -17,7 +17,7 @@ DB::query("INSERT INTO categories (name, slug) VALUES ('Home', 'home')");
 $home = (int) DB::query("SELECT id FROM categories WHERE slug = 'home'")->fetchColumn();
 DB::query("INSERT INTO users (role, name, email, password_hash, status) VALUES ('admin', 'Ann Admin', 'ann@example.test', 'x', 'active')");
 $actor = (int) DB::connection()->lastInsertId();
-$mk = fn(string $name, string $sku, int $stock, string $status = 'active', ?int $cat = null) => Product::insert(['name' => $name, 'slug' => strtolower(str_replace(' ', '-', $name)), 'sku' => $sku, 'category_id' => $cat, 'base_price' => '5', 'company_base_price' => '10', 'retail_price' => '30', 'stock' => $stock, 'status' => $status]);
+$mk = fn(string $name, string $sku, int $stock, string $status = 'active', ?int $cat = null) => Product::insert(['weight_kg' => '1.000', 'width_cm' => '10', 'length_cm' => '10', 'height_cm' => '10', 'name' => $name, 'slug' => strtolower(str_replace(' ', '-', $name)), 'sku' => $sku, 'category_id' => $cat, 'base_price' => '5', 'company_base_price' => '10', 'retail_price' => '30', 'stock' => $stock, 'status' => $status]);
 $mug = $mk('Mug', 'MUG-1', 10, 'active', $home);
 $gone = $mk('Old Lamp', 'LAMP-1', 4);
 Product::softDelete($gone);

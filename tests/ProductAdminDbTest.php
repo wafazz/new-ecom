@@ -12,7 +12,7 @@ reset_test_db();
 DB::query('DELETE FROM categories');
 DB::query("INSERT INTO categories (name, slug) VALUES ('Bags', 'bags'), ('Candles', 'candles')");
 $bags = (int) DB::query("SELECT id FROM categories WHERE slug = 'bags'")->fetchColumn();
-$mk = fn(string $name, string $sku, string $retail, int $stock, string $status = 'active', ?int $cat = null) => Product::insert(['name' => $name, 'slug' => strtolower(str_replace(' ', '-', $name)), 'sku' => $sku, 'category_id' => $cat, 'base_price' => '1', 'company_base_price' => '2', 'retail_price' => $retail, 'stock' => $stock, 'status' => $status]);
+$mk = fn(string $name, string $sku, string $retail, int $stock, string $status = 'active', ?int $cat = null) => Product::insert(['weight_kg' => '1.000', 'width_cm' => '10', 'length_cm' => '10', 'height_cm' => '10', 'name' => $name, 'slug' => strtolower(str_replace(' ', '-', $name)), 'sku' => $sku, 'category_id' => $cat, 'base_price' => '1', 'company_base_price' => '2', 'retail_price' => $retail, 'stock' => $stock, 'status' => $status]);
 $tote = $mk('Linen Tote', 'TOTE-1', '45', 12, 'active', $bags);
 $scarf = $mk('Silk Scarf', 'SCARF-1', '89', 0, 'active', $bags);
 $cand = $mk('Cedar Candle', 'CAN-1', '35', 3, 'draft');

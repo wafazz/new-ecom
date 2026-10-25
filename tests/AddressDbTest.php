@@ -28,8 +28,8 @@ check('saveFromOrder skips a duplicate (line1+postcode, case-insensitive)', (A::
 for ($i = A::count($a); $i < A::MAX; $i++) { A::create($a, $addr("{$i} Lorong")); }
 check('limit enforced', A::count($a) === A::MAX && A::create($a, $addr('overflow')) === null);
 
-$p1 = Product::insert(['name' => 'P1', 'slug' => 'p1', 'base_price' => '1', 'company_base_price' => '2', 'retail_price' => '3', 'stock' => 1, 'status' => 'active']);
-$p2 = Product::insert(['name' => 'P2', 'slug' => 'p2', 'base_price' => '1', 'company_base_price' => '2', 'retail_price' => '3', 'stock' => 1, 'status' => 'draft']);
+$p1 = Product::insert(['weight_kg' => '1.000', 'width_cm' => '10', 'length_cm' => '10', 'height_cm' => '10', 'name' => 'P1', 'slug' => 'p1', 'base_price' => '1', 'company_base_price' => '2', 'retail_price' => '3', 'stock' => 1, 'status' => 'active']);
+$p2 = Product::insert(['weight_kg' => '1.000', 'width_cm' => '10', 'length_cm' => '10', 'height_cm' => '10', 'name' => 'P2', 'slug' => 'p2', 'base_price' => '1', 'company_base_price' => '2', 'retail_price' => '3', 'stock' => 1, 'status' => 'draft']);
 check('toggle adds, then removes', W::toggle($a, $p1) === true && W::has($a, $p1) && W::toggle($a, $p1) === false && !W::has($a, $p1));
 check('draft or missing product cannot be added', W::toggle($a, $p2) === null && W::toggle($a, 99999) === null);
 W::toggle($a, $p1);

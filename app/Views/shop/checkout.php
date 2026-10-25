@@ -20,7 +20,7 @@ $defaultMethod = isset($methods['cod']) ? 'cod' : (string) array_key_first($meth
 </button>
 
 <div class="checkout" data-checkout>
-<form method="post" action="<?= e(url('/checkout')) ?>" novalidate class="co-form" enctype="multipart/form-data">
+<form method="post" action="<?= e(url('/checkout')) ?>" novalidate class="co-form" enctype="multipart/form-data" data-shipping-url="<?= e(url('/checkout/shipping')) ?>">
     <?= csrf_field() ?>
     <section class="co-card">
         <h2><span class="num-dot">1</span> Your details</h2>
@@ -76,7 +76,7 @@ $defaultMethod = isset($methods['cod']) ? 'cod' : (string) array_key_first($meth
         <div class="proof-panel" data-bank-proof<?= old('payment_method', $defaultMethod) === 'bank_transfer' ? '' : ' hidden' ?>>
             <h3>Pay by bank transfer</h3>
             <div class="bank-box">
-                <p class="bank-title">Transfer <strong><?= e(money($total / 100)) ?></strong> to this account</p>
+                <p class="bank-title">Transfer <strong id="co-bank-total"><?= e(money($total / 100)) ?></strong> to this account</p>
                 <dl>
                     <div><dt>Bank</dt><dd><?= e($bank['name']) ?></dd></div>
                     <div><dt>Account name</dt><dd><?= e($bank['holder']) ?></dd></div>
@@ -105,7 +105,7 @@ $defaultMethod = isset($methods['cod']) ? 'cod' : (string) array_key_first($meth
         <script>document.getElementById('mk').addEventListener('change',function(){document.getElementById('acct').hidden=!this.checked;});</script>
     <?php endif; ?>
 
-    <button class="s-btn lg block" data-place-order>Place order · <?= e(money($total / 100)) ?></button>
+    <button class="s-btn lg block" data-place-order id="co-place"<?= $shipping_error ? ' disabled' : '' ?>>Place order · <span id="co-place-total"><?= e(money($total / 100)) ?></span></button>
     <p class="co-fine"><?= icon('shield', 'i i-sm') ?> Your details are only used to deliver this order.</p>
 </form>
 
@@ -140,8 +140,9 @@ $defaultMethod = isset($methods['cod']) ? 'cod' : (string) array_key_first($meth
     <?php if ($discount_cents > 0): ?>
         <p class="sum-row"><span>Discount</span><span>−<?= e(money($discount_cents / 100)) ?></span></p>
     <?php endif; ?>
-    <p class="sum-row"><span>Shipping</span><span><?= e(money($shipping_cents / 100)) ?></span></p>
-    <p class="sum-row total"><span>Total</span><span><?= e(money($total / 100)) ?></span></p>
+    <p class="sum-row"><span>Shipping <small class="muted">by weight and zone</small></span><span id="co-shipping"><?= e(money($shipping_cents / 100)) ?></span></p>
+    <p class="alert bad" id="co-shipping-error"<?= $shipping_error ? '' : ' hidden' ?>><?= e((string) $shipping_error) ?></p>
+    <p class="sum-row total"><span>Total</span><span id="co-total"><?= e(money($total / 100)) ?></span></p>
     <p><a href="<?= e(url('/cart')) ?>"><?= icon('left', 'i i-sm') ?> Edit cart</a></p>
 </aside>
 </div>

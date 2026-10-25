@@ -59,7 +59,7 @@ require BASE_PATH . '/app/Views/partials/flash.php'; // messages and errors from
                 <label>Admin email <input name="admin_email" type="email" required></label>
                 <label>Password (8+ characters) <input name="admin_password" type="password" autocomplete="new-password" required minlength="8"></label>
                 <label>Confirm password <input name="admin_password_confirm" type="password" autocomplete="new-password" required minlength="8"></label>
-                <label>Flat shipping fee (MYR) <input name="shipping_flat" inputmode="decimal" value="8.00"></label>
+                <p class="muted">Postage is set later under Shipping rates in the admin area, by weight and zone.</p>
                 <label>Default affiliate commission (% of sales after shipping) <input name="commission_rate" inputmode="decimal" value="10"></label>
             </div>
             <label class="check"><input type="checkbox" name="guest_checkout" value="1" checked> Allow guest checkout</label>

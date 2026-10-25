@@ -13,7 +13,6 @@ $shots = array_map(fn($i) => url($i['path']), $images);
 // Variations grouped under their option name (Size, Color…), in the order they were entered.
 $groups = [];
 foreach ($variants as $v) { $groups[$v['option'] !== '' ? $v['option'] : 'Option'][] = $v; }
-$ship = \App\Models\Setting::shippingCents();
 $methods = array_values(array_map(fn($m) => $m->label(), Payments::checkoutMethods()));
 $wishInit = $wish === true;
 ?>
@@ -121,7 +120,7 @@ $wishInit = $wish === true;
         <?php endif; ?>
 
         <ul class="pdp-trust">
-            <li><?= icon('truck') ?> <span><?= $ship > 0 ? 'Flat-rate shipping ' . e(money($ship / 100)) : 'Delivered to your door' ?></span></li>
+            <li><?= icon('truck') ?> <span>Shipping by weight and zone, worked out at checkout</span></li>
             <li><?= icon('shield') ?> <span>Secure checkout<?= $methods !== [] ? ': ' . e(implode(', ', $methods)) : '' ?></span></li>
             <li><?= icon('pin') ?> <span>Track your order any time</span></li>
         </ul>
@@ -142,7 +141,7 @@ $wishInit = $wish === true;
                 </dl>
             </div>
             <div class="tab-panel" data-panel="shipping" hidden>
-                <p><?= $ship > 0 ? 'Orders ship for a flat ' . e(money($ship / 100)) . ', whatever you buy.' : 'Shipping is calculated at checkout.' ?> We deliver within Malaysia.</p>
+                <p>Shipping is worked out at checkout from the weight of your items and your state. Sabah, Sarawak and Labuan have their own rates. We deliver within Malaysia.</p>
                 <?php if ($methods !== []): ?><p>You can pay by <?= e(implode(', ', $methods)) ?>.</p><?php endif; ?>
                 <p>After you order, use <a href="<?= e(url('/track')) ?>">Track order</a> with your order number and email to see where it is.</p>
             </div>

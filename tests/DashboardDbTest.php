@@ -14,8 +14,8 @@ if (!str_ends_with((string) env('DB_NAME', ''), '_test')) {
 reset_test_db();
 $admin = User::create('admin', 'Admin', 'a@dash.test', 'Passw0rd!x');
 $m1 = User::create('member', 'Mem One', 'm1@dash.test', 'Passw0rd!x');
-$p1 = Product::insert(['name' => 'Widget <b>', 'slug' => 'w', 'sku' => 'W1', 'base_price' => '50', 'company_base_price' => '70', 'retail_price' => '100', 'stock' => 20, 'status' => 'active']);
-$p2 = Product::insert(['name' => 'Gizmo', 'slug' => 'g', 'sku' => 'G1', 'base_price' => '5', 'company_base_price' => '7', 'retail_price' => '10', 'stock' => 3, 'status' => 'active']);
+$p1 = Product::insert(['weight_kg' => '1.000', 'width_cm' => '10', 'length_cm' => '10', 'height_cm' => '10', 'name' => 'Widget <b>', 'slug' => 'w', 'sku' => 'W1', 'base_price' => '50', 'company_base_price' => '70', 'retail_price' => '100', 'stock' => 20, 'status' => 'active']);
+$p2 = Product::insert(['weight_kg' => '1.000', 'width_cm' => '10', 'length_cm' => '10', 'height_cm' => '10', 'name' => 'Gizmo', 'slug' => 'g', 'sku' => 'G1', 'base_price' => '5', 'company_base_price' => '7', 'retail_price' => '10', 'stock' => 3, 'status' => 'active']);
 
 $day = fn(int $ago) => date('Y-m-d 12:00:00', strtotime("-{$ago} days"));
 $mk = function (int $ago, int $qty, string $status, string $method = 'cod', string $pay = 'unpaid', ?int $uid = null) use ($p1) {

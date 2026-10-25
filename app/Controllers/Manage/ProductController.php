@@ -285,6 +285,20 @@ final class ProductController extends ManageController
             }
         }
 
+        // Weight and size are mandatory: shipping is worked out from them.
+        $ship = [
+            'weight_kg' => trim($request->str('weight_kg')),
+            'width_cm' => trim($request->str('width_cm')),
+            'length_cm' => trim($request->str('length_cm')),
+            'height_cm' => trim($request->str('height_cm')),
+        ];
+        foreach ([['weight_kg', 'Weight (kg)', 100, 3], ['width_cm', 'Width (cm)', 300, 2], ['length_cm', 'Length (cm)', 300, 2], ['height_cm', 'Height (cm)', 300, 2]] as [$field, $label, $max, $decimals]) {
+            $v = $ship[$field];
+            if ($v === '' || preg_match('/^\d{1,4}(\.\d{1,' . $decimals . '})?$/', $v) !== 1 || (float) $v <= 0 || (float) $v > $max) {
+                $errors[$field] = "{$label} is required: enter a number above 0, up to {$max}.";
+            }
+        }
+
         $status = $request->input('status') === 'active' ? 'active' : 'draft';
         $rawSlug = trim($request->str('slug'));
 
@@ -302,6 +316,10 @@ final class ProductController extends ManageController
             'discount_start' => $start,
             'discount_end' => $end,
             'commission_rate' => $rate,
+            'weight_kg' => $ship['weight_kg'],
+            'width_cm' => $ship['width_cm'],
+            'length_cm' => $ship['length_cm'],
+            'height_cm' => $ship['height_cm'],
             'status' => $status,
         ], $errors];
     }

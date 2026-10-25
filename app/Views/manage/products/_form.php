@@ -16,6 +16,15 @@ $vrows = ($variantRows ?? []) !== [] ? $variantRows : [['id' => 0, 'sku' => '', 
     <div class="grid2">
         <label data-single-only>SKU <input name="sku" value="<?= old('sku', (string) $product['sku']) ?>"><?= field_error('sku') ?></label>
         <label>URL slug (auto if blank) <input name="slug" value="<?= old('slug', $product['slug']) ?>"><?= field_error('slug') ?></label>
+        <fieldset class="ship-size" style="grid-column:1/-1">
+            <legend>Shipping size <small class="muted">(required: postage is worked out from it)</small></legend>
+            <div class="grid2" style="grid-template-columns:repeat(4,minmax(0,1fr))">
+                <label>Weight (kg) <input name="weight_kg" inputmode="decimal" required value="<?= old('weight_kg', (string) ($product['weight_kg'] ?? '')) ?>" placeholder="0.5"><?= field_error('weight_kg') ?></label>
+                <label>Width (cm) <input name="width_cm" inputmode="decimal" required value="<?= old('width_cm', (string) ($product['width_cm'] ?? '')) ?>" placeholder="20"><?= field_error('width_cm') ?></label>
+                <label>Length (cm) <input name="length_cm" inputmode="decimal" required value="<?= old('length_cm', (string) ($product['length_cm'] ?? '')) ?>" placeholder="30"><?= field_error('length_cm') ?></label>
+                <label>Height (cm) <input name="height_cm" inputmode="decimal" required value="<?= old('height_cm', (string) ($product['height_cm'] ?? '')) ?>" placeholder="10"><?= field_error('height_cm') ?></label>
+            </div>
+        </fieldset>
     </div>
     <div class="grid2">
         <label>Category

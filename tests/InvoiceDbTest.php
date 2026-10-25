@@ -16,7 +16,7 @@ reset_test_db();
 DB::query("DELETE FROM settings WHERE `key` LIKE 'invoice.%' OR `key` LIKE 'bank_%' OR `key` = 'site.logo'");
 DB::query("INSERT INTO users (role, name, email, password_hash, status) VALUES ('admin', 'Inv Admin', 'inv@example.test', 'x', 'active')");
 $actor = (int) DB::connection()->lastInsertId();
-$mug = Product::insert(['name' => 'Ceramic Mug', 'slug' => 'inv-mug', 'sku' => 'INV-MUG', 'category_id' => null, 'base_price' => '5', 'company_base_price' => '10', 'retail_price' => '29', 'stock' => 100, 'status' => 'active']);
+$mug = Product::insert(['weight_kg' => '1.000', 'width_cm' => '10', 'length_cm' => '10', 'height_cm' => '10', 'name' => 'Ceramic Mug', 'slug' => 'inv-mug', 'sku' => 'INV-MUG', 'category_id' => null, 'base_price' => '5', 'company_base_price' => '10', 'retail_price' => '29', 'stock' => 100, 'status' => 'active']);
 $cart = function (array $lines): int {
     DB::query('INSERT INTO carts (session_hash) VALUES (?)', [hash('sha256', random_bytes(8))]);
     $id = (int) DB::connection()->lastInsertId();
@@ -54,7 +54,7 @@ check('a bank transfer invoice shows the bank details and the payment reference'
 // A long order runs onto a second page, and the table header is repeated there.
 $lines = [];
 for ($i = 1; $i <= 14; $i++) {
-    $lines[] = [Product::insert(['name' => "Long item {$i}", 'slug' => "long-{$i}", 'sku' => "LNG-{$i}", 'category_id' => null, 'base_price' => '5', 'company_base_price' => '10', 'retail_price' => '10', 'stock' => 100, 'status' => 'active']), 1];
+    $lines[] = [Product::insert(['weight_kg' => '1.000', 'width_cm' => '10', 'length_cm' => '10', 'height_cm' => '10', 'name' => "Long item {$i}", 'slug' => "long-{$i}", 'sku' => "LNG-{$i}", 'category_id' => null, 'base_price' => '5', 'company_base_price' => '10', 'retail_price' => '10', 'stock' => 100, 'status' => 'active']), 1];
 }
 $long = CheckoutService::place($cart($lines), $contact, 'cod', null);
 $longPdf = Invoice::pdf(OrderService::find((int) $long['order_id']));

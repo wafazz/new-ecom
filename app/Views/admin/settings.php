@@ -11,8 +11,7 @@
         <form method="post" action="<?= e(url('/admin/settings')) ?>" class="card-form" novalidate data-busy-form>
             <?= csrf_field() ?>
             <label class="check"><input type="checkbox" name="guest_checkout_enabled" value="1" <?= $guest ? 'checked' : '' ?>> Allow guest checkout (no account needed)</label>
-            <label>Flat shipping fee (<?= e(config('app.currency')) ?>)
-                <input name="shipping_flat" inputmode="decimal" value="<?= old('shipping_flat', $shipping) ?>"><?= field_error('shipping_flat') ?></label>
+            <p class="muted">Postage is no longer a flat fee. It is worked out from weight and zone; set the rates under <a href="<?= e(url('/admin/shipping-rates')) ?>">Shipping rates</a>.</p>
             <label>Default affiliate commission (% of sales after shipping)
                 <input name="commission_rate" inputmode="decimal" value="<?= old('commission_rate', $rate) ?>"><?= field_error('commission_rate') ?>
                 <small class="muted">Commission = (line sales − its share of shipping) × this %. A product can override this on its edit page.</small></label>

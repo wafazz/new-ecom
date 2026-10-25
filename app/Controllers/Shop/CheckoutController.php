@@ -7,6 +7,7 @@ use App\Core\Auth;
 use App\Core\Controller;
 use App\Core\Database;
 use App\Core\Request;
+use App\Core\Response;
 use App\Core\Session;
 use App\Core\Validator;
 use App\Models\Setting;
@@ -19,6 +20,7 @@ use App\Services\Payment\BillplzGateway;
 use App\Services\Payment\Payments;
 use App\Services\RateLimiter;
 use App\Services\ReceiptService;
+use App\Services\ShippingRates;
 use App\Services\VoucherService;
 use App\Services\PaymentSettings;
 
@@ -74,12 +76,16 @@ final class CheckoutController extends Controller
             }
         }
 
+        // Postage for the state already known, with Cash-on-delivery not yet picked; the page updates it as the shopper chooses.
+        $ship = $this->shippingFor($cart, (string) ($defaults['state'] ?? ''), '', $discount);
+
         $this->view('shop/checkout', [
             'title' => 'Checkout',
             'cart' => $cart,
             'voucher' => $voucher,
             'discount_cents' => $discount,
             'voucher_note' => $voucherNote,
+            'shipping_error' => $ship['error'],
             'member' => $member,
             'defaults' => $defaults,
             'saved' => $saved,
@@ -87,9 +93,9 @@ final class CheckoutController extends Controller
             'canSave' => $member !== null && count($saved) < AddressService::MAX,
             'states' => config('states'),
             'methods' => Payments::checkoutMethods(),
-            'shipping_cents' => Setting::shippingCents(),
+            'shipping_cents' => $ship['fee'],
             'bank' => PaymentSettings::bank(),
-            'scripts' => ['receipt-form.js'],
+            'scripts' => ['receipt-form.js', 'checkout-shipping.js'],
             'vendor' => ['select2'],
         ]);
     }
@@ -224,6 +230,51 @@ final class CheckoutController extends Controller
     {
         Session::forget('voucher');
         $this->success('/checkout', 'Code removed.');
+    }
+
+    /**
+     * The postage the checkout page shows, from the cart's own data: never a figure sent by the browser.
+     * @return array{ok:bool, error:?string, fee:int, cod:int, zone:?string, kg:?int, actual_kg:?string}
+     */
+    private function shippingFor(array $cart, string $state, string $method, int $discount): array
+    {
+        $lines = array_map(fn($i) => ['weight_kg' => $i['weight_kg'], 'qty' => (int) $i['qty']], $cart['items']);
+        try {
+            $q = ShippingRates::quote($lines, (int) $cart['subtotal_cents'] - $discount, $state, $method);
+            return ['ok' => true, 'error' => null, 'fee' => $q['fee'], 'cod' => $q['cod'], 'zone' => $q['zone'], 'kg' => $q['kg'], 'actual_kg' => $q['actual_kg']];
+        } catch (CheckoutException $e) {
+            return ['ok' => false, 'error' => $e->getMessage(), 'fee' => 0, 'cod' => 0, 'zone' => null, 'kg' => null, 'actual_kg' => null];
+        }
+    }
+
+    /** The voucher discount in this checkout, re-checked against the cart. */
+    private function discountFor(array $cart): int
+    {
+        $code = Session::get('voucher');
+        if (!is_string($code)) {
+            return 0;
+        }
+        $q = VoucherService::quote($code, (int) $cart['subtotal_cents']);
+        return $q['ok'] ? (int) $q['discount'] : 0;
+    }
+
+    /** Postage for the state and payment method the shopper has picked, so the page can show it as they choose. */
+    public function shippingQuote(Request $request): void
+    {
+        header('Cache-Control: no-store');
+        $cart = CartService::summary();
+        if ($cart['items'] === []) {
+            Response::json(['ok' => false, 'error' => 'Your cart is empty.', 'shipping' => money(0), 'total' => money(0)]);
+        }
+        $discount = $this->discountFor($cart);
+        $ship = $this->shippingFor($cart, $request->str('state'), $request->str('payment_method'), $discount);
+        $total = (int) $cart['subtotal_cents'] - $discount + $ship['fee'];
+        Response::json([
+            'ok' => $ship['ok'],
+            'error' => $ship['error'],
+            'shipping' => money($ship['fee'] / 100),
+            'total' => money($total / 100),
+        ]);
     }
 
     private function readyCart(): array

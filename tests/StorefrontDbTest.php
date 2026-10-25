@@ -21,7 +21,7 @@ $cand = Category::insert(['name' => 'Candles', 'slug' => 'candles', 'parent_id' 
 $bags = Category::insert(['name' => 'Bags', 'slug' => 'bags', 'parent_id' => null]);
 $empty = Category::insert(['name' => 'Empty', 'slug' => 'empty', 'parent_id' => null]);
 $acme = Brand::insert(['name' => 'Acme', 'slug' => 'acme']);
-$mk = fn(string $name, string $retail, int $stock, ?int $cat = null, ?int $brand = null, ?string $disc = null, string $status = 'active') => Product::insert([
+$mk = fn(string $name, string $retail, int $stock, ?int $cat = null, ?int $brand = null, ?string $disc = null, string $status = 'active') => Product::insert(['weight_kg' => '1.000', 'width_cm' => '10', 'length_cm' => '10', 'height_cm' => '10', 
     'name' => $name, 'slug' => strtolower(str_replace(' ', '-', $name)), 'sku' => strtoupper(substr($name, 0, 3)) . $stock, 'category_id' => $cat, 'brand_id' => $brand,
     'base_price' => '1', 'company_base_price' => '2', 'retail_price' => $retail, 'discount_price' => $disc, 'stock' => $stock, 'status' => $status,
 ]);

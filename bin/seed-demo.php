@@ -174,7 +174,7 @@ foreach ($cat as $n => [$name, $sku, $catId, $brandId, $price, $stock, $status, 
     }
     [$base, $company, $retail, $disc] = $price;
     $fmt = fn($v) => $v === null ? null : number_format((float) $v, 2, '.', '');
-    $pid = Product::insert([
+    $pid = Product::insert(['weight_kg' => '0.800', 'width_cm' => '20', 'length_cm' => '30', 'height_cm' => '5', 
         'category_id' => $catId, 'brand_id' => $brandId, 'name' => $name, 'slug' => $slug, 'sku' => $sku,
         'description' => RichText::clean($html), 'base_price' => $fmt($base), 'company_base_price' => $fmt($company),
         'retail_price' => $fmt($retail), 'discount_price' => $fmt($disc), 'stock' => $stock, 'status' => $status,

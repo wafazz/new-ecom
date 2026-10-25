@@ -36,6 +36,7 @@ return function (Router $r): void {
         // Checkout (members and guests) + guest order access
         $r->get('/checkout', 'Shop/CheckoutController@show');
         $r->post('/checkout', 'Shop/CheckoutController@place');
+        $r->get('/checkout/shipping', 'Shop/CheckoutController@shippingQuote');
         $r->post('/checkout/voucher', 'Shop/CheckoutController@applyVoucher');
         $r->post('/checkout/voucher/remove', 'Shop/CheckoutController@removeVoucher');
         $r->get('/track', 'Shop/OrderTrackController@form');
@@ -169,6 +170,8 @@ return function (Router $r): void {
             $r->post('/vouchers/{id}/active', 'Admin/VoucherController@toggle');
             $r->post('/vouchers/{id}/delete', 'Admin/VoucherController@delete');
             $r->post('/vouchers/{id}/email', 'Admin/VoucherController@email');
+            $r->get('/shipping-rates', 'Admin/ShippingRatesController@edit');
+            $r->post('/shipping-rates', 'Admin/ShippingRatesController@update');
             $r->get('/invoice', 'Admin/InvoiceSettingsController@edit');
             $r->post('/invoice', 'Admin/InvoiceSettingsController@update');
             $r->get('/backup', 'Admin/BackupController@index');

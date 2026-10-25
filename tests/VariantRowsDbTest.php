@@ -9,8 +9,8 @@ if (!str_ends_with((string) env('DB_NAME', ''), '_test')) {
     return;
 }
 reset_test_db();
-$pid = Product::insert(['name' => 'Tee', 'slug' => 'tee', 'sku' => null, 'base_price' => '5', 'company_base_price' => '10', 'retail_price' => '30', 'status' => 'active', 'stock' => 0]);
-$other = Product::insert(['name' => 'Cap', 'slug' => 'cap', 'sku' => 'CAP-1', 'base_price' => '5', 'company_base_price' => '10', 'retail_price' => '30', 'status' => 'active', 'stock' => 1]);
+$pid = Product::insert(['weight_kg' => '1.000', 'width_cm' => '10', 'length_cm' => '10', 'height_cm' => '10', 'name' => 'Tee', 'slug' => 'tee', 'sku' => null, 'base_price' => '5', 'company_base_price' => '10', 'retail_price' => '30', 'status' => 'active', 'stock' => 0]);
+$other = Product::insert(['weight_kg' => '1.000', 'width_cm' => '10', 'length_cm' => '10', 'height_cm' => '10', 'name' => 'Cap', 'slug' => 'cap', 'sku' => 'CAP-1', 'base_price' => '5', 'company_base_price' => '10', 'retail_price' => '30', 'status' => 'active', 'stock' => 1]);
 $prices = ['base_price' => '5.00', 'company_base_price' => '10.00', 'retail_price' => '30.00', 'discount_price' => null];
 $row = fn(array $o = []) => $o + ['id' => 0, 'sku' => '', 'option' => 'Size', 'value' => 'S', 'price' => '', 'stock' => '3'];
 $err = fn($r) => V::validateRows($r, $prices, $pid)['errors'];

@@ -12,7 +12,7 @@ if (!str_ends_with((string) env('DB_NAME', ''), '_test')) {
 reset_test_db();
 DB::query("INSERT INTO users (role, name, email, password_hash, status) VALUES ('admin', 'Del Admin', 'del@example.test', 'x', 'active')");
 $actor = (int) DB::connection()->lastInsertId();
-$p = Product::insert(['name' => 'Lure', 'slug' => 'lure', 'sku' => 'LURE-1', 'category_id' => null, 'base_price' => '5', 'company_base_price' => '10', 'retail_price' => '30', 'stock' => 10, 'status' => 'active']);
+$p = Product::insert(['weight_kg' => '1.000', 'width_cm' => '10', 'length_cm' => '10', 'height_cm' => '10', 'name' => 'Lure', 'slug' => 'lure', 'sku' => 'LURE-1', 'category_id' => null, 'base_price' => '5', 'company_base_price' => '10', 'retail_price' => '30', 'stock' => 10, 'status' => 'active']);
 $stock = fn() => (int) Product::find($p)['stock'];
 
 // An order that has taken 3 of the 10 in stock (as checkout does), with a status and optional courier booking.
