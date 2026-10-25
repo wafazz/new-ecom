@@ -88,48 +88,63 @@ final class ShippingRates
     }
 
     /**
-     * Save the rates for both zones. Blank input keeps the stored value. Returns the field names that changed.
-     * @param array<string,array<string,string>> $in zone => field => value
+     * Save one zone's rates, on its own: the other zone is not checked or changed. Blank input keeps the stored value,
+     * but a zone that has never been complete must be filled in first. Returns the errors (empty when saved).
+     * @param array<string,string> $in field => value
      * @return string[] errors
      */
-    public static function save(array $in, int $actorId): array
+    public static function saveZone(string $zone, array $in, int $actorId): array
     {
+        if (!isset(self::ZONES[$zone])) {
+            return ['Unknown shipping zone.'];
+        }
         $errors = [];
-        foreach (array_keys(self::ZONES) as $zone) {
-            foreach (self::FIELDS as $k => $label) {
-                $v = trim((string) ($in[$zone][$k] ?? ''));
-                if ($v === '') {
-                    if (self::rates($zone) === null) {
-                        $errors[] = self::ZONES[$zone] . ': ' . $label . ' is required.';
-                    }
-                    continue;
+        foreach (self::FIELDS as $k => $label) {
+            $v = trim((string) ($in[$k] ?? ''));
+            if ($v === '') {
+                if (self::rates($zone) === null) {
+                    $errors[] = $label . ' is required.';
                 }
-                $isPercent = str_starts_with($k, 'cod_');
-                $ok = $isPercent
-                    ? preg_match('/^\d{1,3}(\.\d{1,2})?$/', $v) === 1 && (float) $v <= 100
-                    : PricingService::isMoney($v);
-                if (!$ok) {
-                    $errors[] = self::ZONES[$zone] . ': ' . $label . ' is not a valid ' . ($isPercent ? 'percent (0 to 100).' : 'amount.');
-                }
+                continue;
+            }
+            $isPercent = str_starts_with($k, 'cod_');
+            $ok = $isPercent
+                ? preg_match('/^\d{1,3}(\.\d{1,2})?$/', $v) === 1 && (float) $v <= 100
+                : PricingService::isMoney($v);
+            if (!$ok) {
+                $errors[] = $label . ' is not a valid ' . ($isPercent ? 'percent (0 to 100).' : 'amount.');
             }
         }
         if ($errors !== []) {
             return $errors;
         }
         $changed = [];
-        foreach (array_keys(self::ZONES) as $zone) {
-            foreach (array_keys(self::FIELDS) as $k) {
-                $v = trim((string) ($in[$zone][$k] ?? ''));
-                if ($v !== '' && $v !== (string) Setting::get("shipping.{$zone}.{$k}", '')) {
-                    Setting::set("shipping.{$zone}.{$k}", $v);
-                    $changed[] = "{$zone}.{$k}";
-                }
+        foreach (array_keys(self::FIELDS) as $k) {
+            $v = trim((string) ($in[$k] ?? ''));
+            if ($v !== '' && $v !== (string) Setting::get("shipping.{$zone}.{$k}", '')) {
+                Setting::set("shipping.{$zone}.{$k}", $v);
+                $changed[] = $k;
             }
         }
         if ($changed !== []) {
-            AuditService::log($actorId, 'shipping.rates', 'Changed: ' . implode(', ', $changed));
+            AuditService::log($actorId, 'shipping.rates', self::ZONES[$zone] . ' changed: ' . implode(', ', $changed));
         }
         return [];
+    }
+
+    /**
+     * Save both zones at once (each one separately checked). @param array<string,array<string,string>> $in zone => field => value
+     * @return string[] errors, prefixed with the zone's name
+     */
+    public static function save(array $in, int $actorId): array
+    {
+        $errors = [];
+        foreach (array_keys(self::ZONES) as $zone) {
+            foreach (self::saveZone($zone, is_array($in[$zone] ?? null) ? $in[$zone] : [], $actorId) as $e) {
+                $errors[] = self::ZONES[$zone] . ': ' . $e;
+            }
+        }
+        return $errors;
     }
 
     /** What the settings page shows: the stored value for each zone and field, as typed. */

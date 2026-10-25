@@ -24,6 +24,7 @@
         <h2><?= e($label) ?></h2>
         <form method="post" action="<?= e(url('/admin/shipping-rates')) ?>" class="card-form" novalidate data-busy-form>
             <?= csrf_field() ?>
+            <input type="hidden" name="zone" value="<?= e($zone) ?>">
             <div class="grid2">
                 <?php foreach ($fields as $k => $fieldLabel): ?>
                     <label><?= e($fieldLabel) ?>

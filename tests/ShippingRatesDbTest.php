@@ -60,6 +60,13 @@ check('zone 2 COD above its own benchmark uses its own percent', (function () us
     return $q['zone'] === 'zone2' && $q['cod'] === 800 && $q['fee'] === 2300;
 })());
 
+// Each zone saves on its own: zone 1 can be saved while zone 2 is still empty, and zone 2 then reports what is missing.
+DB::query("DELETE FROM settings WHERE `key` LIKE 'shipping.zone2.%'");
+check('zone 1 saves on its own while zone 2 is still empty', S::saveZone('zone1', ['first' => '9.00', 'next' => '2.00', 'benchmark' => '100.00', 'cod_at_or_below' => '5', 'cod_above' => '3'], (int) $shipAdmin) === []);
+check('zone 1 kept the new first kilo rate', S::rates('zone1')['first'] === 900);
+check('zone 2 reports what is missing when saved empty', count(S::saveZone('zone2', [], (int) $shipAdmin)) === 5 && S::rates('zone2') === null);
+check('zone 2 saves once it is complete', S::saveZone('zone2', ['first' => '15.00', 'next' => '5.00', 'benchmark' => '150.00', 'cod_at_or_below' => '6', 'cod_above' => '4'], (int) $shipAdmin) === []);
+
 // Refusals.
 check('an item with no weight stops the quote', $shipRefuses(fn() => S::quote([$shipLine(0)], 5000, 'Selangor', 'bank_transfer')));
 check('an item with no weight stored (null) stops the quote', $shipRefuses(fn() => S::quote([['weight_kg' => null, 'qty' => 1]], 5000, 'Selangor', 'bank_transfer')));

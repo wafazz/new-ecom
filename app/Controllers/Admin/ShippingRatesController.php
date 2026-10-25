@@ -24,14 +24,16 @@ final class ShippingRatesController extends Controller
 
     public function update(Request $request): void
     {
-        $in = [];
-        foreach (array_keys(ShippingRates::ZONES) as $zone) {
-            $in[$zone] = is_array($request->body[$zone] ?? null) ? $request->body[$zone] : [];
+        // Each zone's form posts its own zone, so saving one never touches or checks the other.
+        $zone = $request->str('zone');
+        if (!isset(ShippingRates::ZONES[$zone])) {
+            $this->backWithErrors('/admin/shipping-rates', ['form' => 'Unknown shipping zone.']);
         }
-        $errors = ShippingRates::save($in, (int) Auth::user()['id']);
+        $fields = is_array($request->body[$zone] ?? null) ? $request->body[$zone] : [];
+        $errors = ShippingRates::saveZone($zone, $fields, (int) Auth::user()['id']);
         if ($errors !== []) {
-            $this->backWithErrors('/admin/shipping-rates', ['form' => implode(' ', $errors)]);
+            $this->backWithErrors('/admin/shipping-rates', ['form' => ShippingRates::ZONES[$zone] . ': ' . implode(' ', $errors)]);
         }
-        $this->success('/admin/shipping-rates', 'Shipping rates saved. New orders use them straight away.');
+        $this->success('/admin/shipping-rates', ShippingRates::ZONES[$zone] . ' rates saved. New orders use them straight away.');
     }
 }
