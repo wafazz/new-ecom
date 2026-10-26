@@ -3,8 +3,11 @@
 $dt = fn(?string $v) => $v ? date('Y-m-d\TH:i', strtotime($v)) : '';
 $type = old('product_type', $productType ?? 'single') === 'variable' ? 'variable' : 'single';
 $vrows = ($variantRows ?? []) !== [] ? $variantRows : [['id' => 0, 'sku' => '', 'option' => '', 'value' => '', 'price' => '', 'stock' => 0]];
+$kind = old('product_kind', ($product['product_type'] ?? 'physical') === 'digital' ? 'digital' : 'physical');
+$delivery = old('digital_delivery', (string) ($product['digital_delivery'] ?? 'file'));
+$productId = (int) ($product['id'] ?? 0);
 ?>
-<form method="post" action="<?= e(url($formAction)) ?>" class="card-form wide" id="product-form" data-product-form novalidate>
+<form method="post" action="<?= e(url($formAction)) ?>" class="card-form wide" id="product-form" data-product-form novalidate enctype="multipart/form-data">
     <?= csrf_field() ?>
     <label>Name <input name="name" value="<?= old('name', $product['name']) ?>" required><?= field_error('name') ?></label>
     <fieldset class="ptype" data-product-type>
@@ -13,10 +16,38 @@ $vrows = ($variantRows ?? []) !== [] ? $variantRows : [['id' => 0, 'sku' => '', 
         <label class="radio"><input type="radio" name="product_type" value="variable" <?= $type === 'variable' ? 'checked' : '' ?>> With variations</label>
         <small class="muted" data-drop-note hidden>Saving as a single product removes this product's existing variations.</small>
     </fieldset>
+    <fieldset class="ptype" data-product-kind>
+        <legend>Product kind</legend>
+        <label class="radio"><input type="radio" name="product_kind" value="physical" <?= $kind === 'physical' ? 'checked' : '' ?>> Physical (shipped, postage by weight and zone)</label>
+        <label class="radio"><input type="radio" name="product_kind" value="digital" <?= $kind === 'digital' ? 'checked' : '' ?>> Digital (no postage, delivered after payment)</label>
+    </fieldset>
+    <fieldset class="ptype" data-digital-only style="grid-column:1/-1">
+        <legend>Digital delivery</legend>
+        <?php foreach (\App\Services\DigitalService::DELIVERIES as $key => $label): ?>
+            <label class="radio"><input type="radio" name="digital_delivery" value="<?= $key ?>" <?= $delivery === $key ? 'checked' : '' ?>> <?= e($label) ?></label>
+        <?php endforeach; ?>
+        <div class="grid2" style="margin-top:.75rem">
+            <label data-delivery="file">Uploaded file (up to 100 MB)
+                <input type="file" name="digital_file">
+                <?php if (!empty($product['digital_file_name'] ?? '')): ?><small class="muted">Current file: <?= e($product['digital_file_name']) ?> (a new upload replaces it for new sales)</small><?php endif; ?>
+                <?= field_error('digital_file') ?>
+            </label>
+            <label data-delivery="link">Download link (https://…)
+                <input type="url" name="digital_link" maxlength="500" value="<?= old('digital_link', (string) ($product['digital_link'] ?? '')) ?>"><?= field_error('digital_link') ?>
+            </label>
+            <label data-delivery="keys">Add license keys (one per line)
+                <textarea name="license_keys" rows="4" autocomplete="off" spellcheck="false"></textarea>
+                <small class="muted">Free keys now: <?= $productId > 0 ? \App\Services\DigitalService::freeKeys($productId) : 0 ?>. Keys are stored encrypted and are never shown here again.</small>
+            </label>
+            <label>Download stays open (days) <input type="number" name="digital_expiry_days" min="1" max="365" inputmode="numeric" value="<?= old('digital_expiry_days', (string) ($product['digital_expiry_days'] ?? \App\Services\DigitalService::DEFAULT_EXPIRY_DAYS)) ?>"><?= field_error('digital_expiry_days') ?></label>
+            <label>Downloads allowed <input type="number" name="digital_max_downloads" min="1" max="100" inputmode="numeric" value="<?= old('digital_max_downloads', (string) ($product['digital_max_downloads'] ?? \App\Services\DigitalService::DEFAULT_MAX_DOWNLOADS)) ?>"><?= field_error('digital_max_downloads') ?></label>
+        </div>
+        <small class="muted">The days start when the order is paid. Changing these only affects new sales.</small>
+    </fieldset>
     <div class="grid2">
         <label data-single-only>SKU <input name="sku" value="<?= old('sku', (string) $product['sku']) ?>"><?= field_error('sku') ?></label>
         <label>URL slug (auto if blank) <input name="slug" value="<?= old('slug', $product['slug']) ?>"><?= field_error('slug') ?></label>
-        <fieldset class="ship-size" style="grid-column:1/-1">
+        <fieldset class="ship-size" data-physical-only style="grid-column:1/-1">
             <legend>Shipping size <small class="muted">(required: postage is worked out from it)</small></legend>
             <div class="grid2" style="grid-template-columns:repeat(4,minmax(0,1fr))">
                 <label>Weight (kg) <input name="weight_kg" inputmode="decimal" required value="<?= old('weight_kg', (string) ($product['weight_kg'] ?? '')) ?>" placeholder="0.5"><?= field_error('weight_kg') ?></label>

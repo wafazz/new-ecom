@@ -50,11 +50,16 @@ final class ShippingRates
      * @param array<int,array{weight_kg:string|float|null, qty:int}> $lines
      * @param int    $subtotalCents items after discount, before shipping
      * @param string $method        payment method code; 'cod' adds the COD surcharge
-     * @return array{zone:string, kg:int, actual_kg:string, normal:int, cod:int, fee:int} cents
+     * Lines marked digital are skipped; an order with no physical item has no postage (zone and kg are null).
+     * @return array{zone:?string, kg:?int, actual_kg:string, normal:int, cod:int, fee:int} cents
      * @throws CheckoutException when a product has no weight, or the zone's rates are not set
      */
     public static function quote(array $lines, int $subtotalCents, string $state, string $method): array
     {
+        $physical = array_filter($lines, fn($l) => empty($l['digital']));
+        if ($physical === []) {
+            return ['zone' => null, 'kg' => null, 'actual_kg' => '0.000', 'normal' => 0, 'cod' => 0, 'fee' => 0]; // nothing ships
+        }
         $zone = self::zoneFor($state);
         $r = self::rates($zone);
         if ($r === null) {
@@ -63,6 +68,9 @@ final class ShippingRates
 
         $grams = 0;
         foreach ($lines as $l) {
+            if (!empty($l['digital'])) {
+                continue; // delivered by download: no postage
+            }
             $w = (float) ($l['weight_kg'] ?? 0);
             if ($w <= 0) {
                 throw new CheckoutException('An item in your cart has no weight set, so shipping cannot be worked out. Please remove it or try again later.');

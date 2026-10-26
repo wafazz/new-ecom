@@ -40,6 +40,8 @@ $section = function (string $title, string $href, ?string $sub = null): string {
     <div><?= icon('heart', 'i i-lg') ?><div><strong>Save your favourites</strong><span>Create a free account</span></div></div>
 </section>
 
+<?php foreach ($flashSales as $fs): $flashSale = $fs; require BASE_PATH . '/app/Views/shop/_flash_block.php'; endforeach; ?>
+
 <?php if ($products === []): ?>
     <div class="s-wrap"><div class="empty-state"><?= icon('box', 'i i-xl') ?><h2>The shelves are being stocked</h2><p class="muted">No products yet: check back soon.</p></div></div>
 <?php else: ?>

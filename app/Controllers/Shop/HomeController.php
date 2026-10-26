@@ -24,8 +24,9 @@ final class HomeController extends Controller
             'sale' => Product::onSale(8),
             'popular' => Product::popular(4),
             'brands' => Product::publicBrands(),
+            'flashSales' => \App\Services\FlashSaleService::live(),
             'bleed' => true,
-            'scripts' => [],
+            'scripts' => ['flash-sales.js'],
         ]);
     }
 

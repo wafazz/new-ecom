@@ -12,6 +12,7 @@ use App\Models\Brand;
 use App\Models\Category;
 use App\Models\Product;
 use App\Services\AffiliateService;
+use App\Services\DigitalService;
 use App\Core\Response;
 use App\Services\PricingService;
 use App\Services\ProductAdminService;
@@ -47,7 +48,7 @@ final class ProductController extends ManageController
             'brands' => Brand::options(),
             'counts' => Product::counts(),
             'sorts' => Product::ADMIN_SORTS,
-            'scripts' => ['products.js', 'variations.js', 'product-images.js', 'rich-text.js'],
+            'scripts' => ['products.js', 'variations.js', 'product-images.js', 'digital-product.js', 'rich-text.js'],
             'vendor' => ['quill'],
         ];
         if ($request->str('partial') === '1') {
@@ -69,7 +70,7 @@ final class ProductController extends ManageController
             'productType' => 'single',
             'variantRows' => [],
             'images' => [],
-            'scripts' => ['variations.js', 'product-images.js', 'rich-text.js'],
+            'scripts' => ['variations.js', 'product-images.js', 'digital-product.js', 'rich-text.js'],
             'vendor' => ['quill'],
             'product' => ['name' => '', 'slug' => '', 'sku' => '', 'description' => '', 'category_id' => '', 'status' => 'draft', 'stock' => 0,
                 'base_price' => '', 'company_base_price' => '', 'retail_price' => '', 'discount_price' => '', 'discount_start' => null, 'discount_end' => null, 'commission_rate' => null],
@@ -88,7 +89,7 @@ final class ProductController extends ManageController
         $data['slug'] = Str::uniqueSlug('products', 'slug', $data['slug'] ?: Str::slug($data['name']));
         $data['stock'] = 0; // stock is set on the Stock Control page, never from this form
         try {
-            $id = $this->persist(null, $data, $type, $rows, $images);
+            $id = $this->persist(null, $data, $type, $rows, $images, $this->digitalInput($request));
         } catch (\RuntimeException $e) {
             $this->storageFailed($e, $this->base() . '/products/create', $request);
         }
@@ -111,7 +112,7 @@ final class ProductController extends ManageController
             'productType' => $variants === [] ? 'single' : 'variable',
             'stockTotal' => $variants === [] ? (int) $product['stock'] : (int) array_sum(array_column($variants, 'stock')),
             'variantRows' => VariantService::rows((int) $product['id']),
-            'scripts' => ['variations.js', 'product-images.js', 'rich-text.js'],
+            'scripts' => ['variations.js', 'product-images.js', 'digital-product.js', 'rich-text.js'],
             'vendor' => ['quill'],
         ], $request->str('modal') === '1' ? null : 'portal');
     }
@@ -130,7 +131,7 @@ final class ProductController extends ManageController
 
         $data['slug'] = Str::uniqueSlug('products', 'slug', $data['slug'] ?: Str::slug($data['name']), (int) $product['id']);
         try {
-            $this->persist((int) $product['id'], $data, $type, $rows, $images);
+            $this->persist((int) $product['id'], $data, $type, $rows, $images, $this->digitalInput($request));
         } catch (\RuntimeException $e) {
             $this->storageFailed($e, $back, $request);
         }
@@ -145,8 +146,8 @@ final class ProductController extends ManageController
      */
     private function variations(Request $request, array &$data, array $errors, ?int $productId): array
     {
-        if ($request->str('product_type') !== 'variable') {
-            return ['single', [], $errors];
+        if ($request->str('product_type') !== 'variable' || $request->str('product_kind') === 'digital') {
+            return ['single', [], $errors]; // digital products have no variations
         }
         unset($errors['sku']);
         $data['sku'] = null;
@@ -156,6 +157,29 @@ final class ProductController extends ManageController
         return ['variable', $v['rows'], $errors + $v['errors']];
     }
 
+    /** The digital file and the license keys from the form (only the ones the chosen delivery uses). */
+    private function digitalInput(Request $request): array
+    {
+        $digital = $request->str('product_kind') === 'digital';
+        return [
+            'upload' => $digital && $request->str('digital_delivery') === 'file' ? $this->digitalUpload() : null,
+            'keys' => $digital && $request->str('digital_delivery') === 'keys' ? DigitalService::parseKeys($request->str('license_keys')) : [],
+        ];
+    }
+
+    /** The file picked for "Uploaded file", or null when none was picked. Size and upload errors are reported on the form. */
+    private function digitalUpload(): ?array
+    {
+        $file = $_FILES['digital_file'] ?? null;
+        return is_array($file) && (int) ($file['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_NO_FILE ? $file : null;
+    }
+
+    /** A whole number in range, or null. */
+    private static function whole(string $raw, int $min, int $max): ?int
+    {
+        return preg_match('/^\d{1,5}$/', $raw) === 1 && (int) $raw >= $min && (int) $raw <= $max ? (int) $raw : null;
+    }
+
     /** Save the product, its variations and its images together, or none of them. */
     /** The photos could not be written to disk, usually because the uploads folder is not writable. Log the reason, and tell the admin in plain words. */
     private function storageFailed(\RuntimeException $e, string $back, Request $request): never
@@ -163,20 +187,29 @@ final class ProductController extends ManageController
         if ($e instanceof \PDOException) {
             throw $e; // a database problem is not a storage problem: let it show as an error
         }
-        @file_put_contents(BASE_PATH . '/storage/logs/app.log', '[' . date('c') . '] product photos: ' . $e->getMessage() . ' (check that public/uploads can be written to by the web server user)' . "\n", FILE_APPEND | LOCK_EX);
-        $this->backWithErrors($back, ['images' => 'The photos could not be saved on the server. The shop developer needs to check that the uploads folder can be written to.'], $request->body);
+        @file_put_contents(BASE_PATH . '/storage/logs/app.log', '[' . date('c') . '] product files: ' . $e->getMessage() . ' (check that public/uploads and storage/digital can be written to by the web server user)' . "\n", FILE_APPEND | LOCK_EX);
+        $this->backWithErrors($back, ['images' => 'The files could not be saved on the server. The shop developer needs to check that the uploads and storage folders can be written to.'], $request->body);
     }
 
-    private function persist(?int $id, array $data, string $type, array $rows, ?array $images): int
+    private function persist(?int $id, array $data, string $type, array $rows, ?array $images, array $digital = ['upload' => null, 'keys' => []]): int
     {
         $pdo = Database::connection();
         $pdo->beginTransaction();
         $written = ['unlink' => [], 'stored' => []];
+        $storedFile = null;
         try {
+            if ($digital['upload'] !== null) {
+                $storedFile = DigitalService::storeFile($digital['upload']);
+                $data['digital_file_path'] = $storedFile['path'];
+                $data['digital_file_name'] = $storedFile['name'];
+            }
             if ($id === null) {
                 $id = Product::insert($data);
             } else {
                 Product::update($id, $data);
+            }
+            if ($digital['keys'] !== []) {
+                DigitalService::addKeys($id, $digital['keys']);
             }
             $type === 'variable' ? VariantService::saveRows($id, $rows) : VariantService::clear($id);
             if ($images !== null) {
@@ -187,6 +220,9 @@ final class ProductController extends ManageController
             $pdo->rollBack();
             foreach ($written['stored'] as $path) {
                 \App\Services\UploadService::delete($path); // files written for a save that did not happen
+            }
+            if ($storedFile !== null) {
+                DigitalService::deleteFile($storedFile['path']);
             }
             throw $e;
         }
@@ -285,14 +321,45 @@ final class ProductController extends ManageController
             }
         }
 
-        // Weight and size are mandatory: shipping is worked out from them.
+        // Digital products are not shipped: no weight, no size, and they are delivered by download or license key.
+        $digital = $request->str('product_kind') === 'digital';
+        $delivery = null;
+        $link = null;
+        $expiry = null;
+        $maxDownloads = null;
+        if ($digital) {
+            $delivery = $request->str('digital_delivery');
+            if (!isset(DigitalService::DELIVERIES[$delivery])) {
+                $errors['digital_delivery'] = 'Choose how the buyer gets the product.';
+                $delivery = null;
+            }
+            if ($delivery === 'file' && $this->digitalUpload() === null && ($existing['digital_file_path'] ?? null) === null) {
+                $errors['digital_file'] = 'Upload the file the buyer will download.';
+            }
+            if ($delivery === 'link') {
+                $link = trim($request->str('digital_link'));
+                if (!DigitalService::validLink($link)) {
+                    $errors['digital_link'] = 'Enter a full web address that starts with https:// or http://.';
+                }
+            }
+            $expiry = self::whole(trim($request->str('digital_expiry_days')), 1, 365);
+            if ($expiry === null) {
+                $errors['digital_expiry_days'] = 'Enter how many days the download stays open (1 to 365).';
+            }
+            $maxDownloads = self::whole(trim($request->str('digital_max_downloads')), 1, 100);
+            if ($maxDownloads === null) {
+                $errors['digital_max_downloads'] = 'Enter how many times the buyer can download (1 to 100).';
+            }
+        }
+
+        // Weight and size are mandatory for physical products: shipping is worked out from them.
         $ship = [
             'weight_kg' => trim($request->str('weight_kg')),
             'width_cm' => trim($request->str('width_cm')),
             'length_cm' => trim($request->str('length_cm')),
             'height_cm' => trim($request->str('height_cm')),
         ];
-        foreach ([['weight_kg', 'Weight (kg)', 100, 3], ['width_cm', 'Width (cm)', 300, 2], ['length_cm', 'Length (cm)', 300, 2], ['height_cm', 'Height (cm)', 300, 2]] as [$field, $label, $max, $decimals]) {
+        foreach ($digital ? [] : [['weight_kg', 'Weight (kg)', 100, 3], ['width_cm', 'Width (cm)', 300, 2], ['length_cm', 'Length (cm)', 300, 2], ['height_cm', 'Height (cm)', 300, 2]] as [$field, $label, $max, $decimals]) {
             $v = $ship[$field];
             if ($v === '' || preg_match('/^\d{1,4}(\.\d{1,' . $decimals . '})?$/', $v) !== 1 || (float) $v <= 0 || (float) $v > $max) {
                 $errors[$field] = "{$label} is required: enter a number above 0, up to {$max}.";
@@ -316,11 +383,18 @@ final class ProductController extends ManageController
             'discount_start' => $start,
             'discount_end' => $end,
             'commission_rate' => $rate,
-            'weight_kg' => $ship['weight_kg'],
-            'width_cm' => $ship['width_cm'],
-            'length_cm' => $ship['length_cm'],
-            'height_cm' => $ship['height_cm'],
+            'weight_kg' => $digital ? null : $ship['weight_kg'],
+            'width_cm' => $digital ? null : $ship['width_cm'],
+            'length_cm' => $digital ? null : $ship['length_cm'],
+            'height_cm' => $digital ? null : $ship['height_cm'],
             'status' => $status,
+            'product_type' => $digital ? 'digital' : 'physical',
+            'digital_delivery' => $digital ? $delivery : null,
+            'digital_link' => $delivery === 'link' ? $link : null,
+            'digital_expiry_days' => $digital ? $expiry : null,
+            'digital_max_downloads' => $digital ? $maxDownloads : null,
+            // A physical product drops its digital file; buyers who bought earlier keep their copy (digital_grants has its own).
+            ...($digital ? [] : ['digital_file_path' => null, 'digital_file_name' => null]),
         ], $errors];
     }
 }

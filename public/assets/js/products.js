@@ -159,7 +159,7 @@
     if (!modal.open) { loading(); modal.showModal(); document.body.classList.add('modal-open'); }
     return fetch(url, { credentials: 'same-origin' })
       .then(function (r) { if (!r.ok) throw new Error('bad'); return r.text(); })
-      .then(function (html) { modal.innerHTML = html; if (window.Variations) window.Variations.init(modal); if (window.ProductImages) window.ProductImages.init(modal); if (window.RichText) window.RichText.init(modal); setup(tab); })
+      .then(function (html) { modal.innerHTML = html; if (window.Variations) window.Variations.init(modal); if (window.DigitalProduct) window.DigitalProduct.init(modal); if (window.ProductImages) window.ProductImages.init(modal); if (window.RichText) window.RichText.init(modal); setup(tab); })
       .catch(function () { closeModal(true); toast('Could not open the product.', 'error'); });
   }
   function closeModal(force) {

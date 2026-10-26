@@ -821,3 +821,12 @@ a.vis-card:hover{transform:translateY(-3px);box-shadow:0 14px 28px -12px rgba(47
 .msg-tabs a.is-on{background:var(--surface);color:var(--text);box-shadow:0 1px 3px rgba(15,23,42,.12)}
 .msg-pill.bad{background:#fef2f2;color:#b91c1c;border-color:#fecaca}
 .msg-pill.info{background:#eff6ff;color:#1d4ed8;border-color:#bfdbfe}
+
+/* Flash sales editor: form and products on the left, live storefront preview on the right */
+.flash-editor{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:1.25rem;align-items:start;margin-top:1rem}
+.flash-editor-preview{position:sticky;top:1rem}
+.flash-preview-frame{display:block;width:100%;height:min(68vh,640px);margin-top:.5rem;border:1px solid var(--border);border-radius:var(--radius-sm);background:#fff}
+.flash-editor .error{display:block;color:#b91c1c;font-size:.8rem;margin-top:.25rem}
+.flash-editor .flash-kicker{color:#c2410c}
+.flash-editor .flash-timer{display:inline-flex;gap:.4rem;align-items:center}
+@media (max-width:900px){.flash-editor{grid-template-columns:minmax(0,1fr)}.flash-editor-preview{position:static}}

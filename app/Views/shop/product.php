@@ -6,7 +6,7 @@ use App\Services\Payment\Payments;
 $pid = (int) $product['id'];
 $hasVariants = $variants !== [];
 $discount = ($base['on_sale'] && (float) $base['retail'] > 0) ? (int) round((1 - (float) $base['price'] / (float) $base['retail']) * 100) : 0;
-$totalStock = $hasVariants ? (int) array_sum(array_column($variants, 'stock')) : (int) $product['stock'];
+$totalStock = $hasVariants ? (int) array_sum(array_column($variants, 'stock')) : (\App\Services\DigitalService::isDigital($product) ? \App\Services\DigitalService::stock($product) : (int) $product['stock']);
 $LOW = \App\Models\Product::LOW_STOCK;
 $desc = RichText::clean($product['description']);
 $shots = array_map(fn($i) => url($i['path']), $images);
@@ -64,6 +64,12 @@ $wishInit = $wish === true;
             <s id="price-was" <?= $base['on_sale'] ? '' : 'hidden' ?>><?= e(money($base['retail'])) ?></s>
             <span class="save-badge" id="price-save" <?= $discount > 0 ? '' : 'hidden' ?>>Save <?= $discount ?>%</span>
         </p>
+        <?php if (!empty($base['flash'])): ?>
+            <div class="flash-pdp" data-flash-pdp>
+                <span class="flash-kicker"><?= icon('tag', 'i i-sm') ?> Flash sale: <?= e($base['flash']['name']) ?></span>
+                <?php $ends = $base['flash']['ends_at']; require BASE_PATH . '/app/Views/partials/flash_timer.php'; ?>
+            </div>
+        <?php endif; ?>
         <?php if ($hasVariants): ?><p class="pdp-from muted" id="price-hint">Price shown for the cheapest option: choose one to see its price.</p><?php endif; ?>
 
         <p class="pdp-stock" id="stock-note" data-state="<?= !$inStock ? 'out' : (!$hasVariants && $totalStock <= $LOW ? 'low' : 'ok') ?>">

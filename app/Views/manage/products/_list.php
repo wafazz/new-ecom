@@ -48,7 +48,8 @@ $filtered = $f['q'] !== '' || $f['category'] || $f['brand'] || $f['status'] !== 
     <?php foreach ($products as $p):
         $eff = P::effective($p); $id = (int) $p['id'];
         $hasVar = (int) $p['variant_count'] > 0;
-        $stock = (int) ($hasVar ? $p['variant_stock'] : $p['stock']);
+        $digital = \App\Services\DigitalService::isDigital($p);
+        $stock = $digital ? \App\Services\DigitalService::stock($p) : (int) ($hasVar ? $p['variant_stock'] : $p['stock']);
         $level = $stock <= 0 ? 'out' : ($stock <= \App\Models\Product::LOW_STOCK ? 'low' : 'ok');
         $cost = (float) $p['base_price'];
         $margin = (float) $eff['price'] - $cost;
@@ -63,7 +64,7 @@ $filtered = $f['q'] !== '' || $f['category'] || $f['brand'] || $f['status'] !== 
             <td class="num"><?= e(money($eff['price'])) ?><?= $eff['on_sale'] ? ' <span class="badge sale">sale</span><br><small class="muted"><s>' . e(money($eff['retail'])) . '</s></small>' : '' ?></td>
             <?php if ($isAdmin): ?><td class="num <?= $margin < 0 ? 'neg' : '' ?>"><?= e(money($margin)) ?><br><small class="muted"><?= (float) $eff['price'] > 0 ? e(number_format($margin / (float) $eff['price'] * 100, 0)) . '%' : '' ?></small></td><?php endif; ?>
             <td>
-                <span class="stock-fixed" data-level="<?= $level ?>" title="<?= $hasVar ? 'Total of the variations' : 'In stock' ?>"><?= number_format($stock) ?></span>
+                <span class="stock-fixed" data-level="<?= $level ?>" title="<?= $digital ? 'Digital product' : ($hasVar ? 'Total of the variations' : 'In stock') ?>"><?= $digital && $stock >= \App\Services\DigitalService::UNLIMITED ? 'Digital' : number_format($stock) ?></span>
                 <?php if (\App\Core\Auth::can('stock.manage')): ?><a class="stock-link" href="<?= e(url($base . '/stock?product=' . $id)) ?>">Manage</a><?php endif; ?>
             </td>
             <td><button type="button" class="sw" role="switch" aria-checked="<?= $p['status'] === 'active' ? 'true' : 'false' ?>" aria-label="Visible in shop: <?= e($p['name']) ?>"><i></i></button>

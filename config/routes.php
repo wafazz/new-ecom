@@ -46,6 +46,7 @@ return function (Router $r): void {
         $r->post('/order/{orderNo}/{token}/receipt', 'Shop/OrderTrackController@receipt');
         $r->get('/order/{orderNo}/{token}/receipt/{id}', 'Shop/OrderTrackController@receiptFile');
         $r->get('/order/{orderNo}/{token}/invoice', 'Shop/InvoiceController@guest');
+        $r->get('/download/{token}', 'Shop/DigitalController@download'); // digital products: the link is the secret, guests and members alike
 
         // Guest-only pages (logged-in users are bounced to their dashboard)
         $r->group('', ['guest'], function (Router $r): void {
@@ -83,6 +84,15 @@ return function (Router $r): void {
             $r->post('/brands', 'Manage/BrandController@store');
             $r->post('/brands/{id}', 'Manage/BrandController@update');
             $r->post('/brands/{id}/delete', 'Manage/BrandController@destroy');
+            // Flash sales. The router takes the first match, so "preview" stays above the {id} routes.
+            $r->get('/flash-sales', 'Manage/FlashSaleController@index');
+            $r->get('/flash-sales/create', 'Manage/FlashSaleController@create');
+            $r->post('/flash-sales', 'Manage/FlashSaleController@store');
+            $r->post('/flash-sales/preview', 'Manage/FlashSaleController@preview');
+            $r->get('/flash-sales/{id}/edit', 'Manage/FlashSaleController@edit');
+            $r->post('/flash-sales/{id}', 'Manage/FlashSaleController@update');
+            $r->post('/flash-sales/{id}/active', 'Manage/FlashSaleController@toggle');
+            $r->post('/flash-sales/{id}/delete', 'Manage/FlashSaleController@destroy');
         };
         $r->group('/admin', ['auth:admin'], $manage);
         $r->group('/staff', ['auth:staff', 'permission:products.manage'], $manage);

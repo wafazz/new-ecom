@@ -112,11 +112,26 @@ final class PricingService
             && ($product['discount_start'] === null || new \DateTimeImmutable($product['discount_start']) <= $now)
             && ($product['discount_end'] === null || new \DateTimeImmutable($product['discount_end']) >= $now)
             && self::cents((string) $discount) < self::cents((string) $retail);
+        $price = $active ? (string) $discount : (string) $retail;
+
+        // A running flash sale takes its percentage off the normal price (see FlashSaleService::attach).
+        $flash = null;
+        if (($product['flash_percent'] ?? null) !== null && (float) $product['flash_percent'] > 0
+            && ($product['flash_ends_at'] ?? null) !== null && new \DateTimeImmutable($product['flash_ends_at']) > $now) {
+            $bps = (int) round((float) $product['flash_percent'] * 100); // basis points: 25.00% = 2500
+            $flashCents = intdiv(self::cents($price) * (10000 - $bps) + 5000, 10000);
+            if ($flashCents < self::cents((string) $retail)) {
+                $price = self::format($flashCents);
+                $active = true;
+                $flash = ['percent' => (string) $product['flash_percent'], 'ends_at' => (string) $product['flash_ends_at'], 'name' => (string) ($product['flash_name'] ?? '')];
+            }
+        }
 
         return [
-            'price' => $active ? (string) $discount : (string) $retail,
+            'price' => $price,
             'retail' => (string) $retail,
             'on_sale' => $active,
+            'flash' => $flash,
         ];
     }
 

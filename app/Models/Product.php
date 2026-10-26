@@ -5,6 +5,7 @@ namespace App\Models;
 
 use App\Core\Database;
 use App\Core\Model;
+use App\Services\DigitalService;
 
 final class Product extends Model
 {
@@ -18,8 +19,13 @@ final class Product extends Model
     public const LOW_STOCK = 5;
     public const ADMIN_SORTS = ['newest' => 'Newest', 'name' => 'Name A-Z', 'price_desc' => 'Price: high to low', 'price_asc' => 'Price: low to high', 'stock_asc' => 'Stock: lowest first'];
 
-    /** Sellable stock: the variants' total when the product has variants, else its own stock. */
-    private const STOCK = "(CASE WHEN EXISTS (SELECT 1 FROM product_variants v WHERE v.product_id = p.id AND v.deleted_at IS NULL)
+    /**
+     * Sellable stock: the variants' total when the product has variants, else its own stock.
+     * Digital products: free license keys for "keys", and unlimited (DigitalService::UNLIMITED) for files and links.
+     */
+    private const STOCK = "(CASE WHEN p.product_type = 'digital' THEN
+        (CASE WHEN p.digital_delivery = 'keys' THEN (SELECT COUNT(*) FROM product_license_keys k WHERE k.product_id = p.id AND k.order_item_id IS NULL) ELSE " . DigitalService::UNLIMITED . " END)
+        WHEN EXISTS (SELECT 1 FROM product_variants v WHERE v.product_id = p.id AND v.deleted_at IS NULL)
         THEN (SELECT COALESCE(SUM(v.stock), 0) FROM product_variants v WHERE v.product_id = p.id AND v.deleted_at IS NULL) ELSE p.stock END)";
 
     /**
@@ -140,8 +146,10 @@ final class Product extends Model
             }
         }
         if (!empty($opts['sale'])) {
-            $where[] = 'p.discount_price IS NOT NULL AND p.discount_price < p.retail_price AND (p.discount_start IS NULL OR p.discount_start <= ?) AND (p.discount_end IS NULL OR p.discount_end >= ?)';
-            array_push($args, $now, $now);
+            [$flashSql, $flashArgs] = \App\Services\FlashSaleService::liveProductSql();
+            $where[] = '((p.discount_price IS NOT NULL AND p.discount_price < p.retail_price AND (p.discount_start IS NULL OR p.discount_start <= ?) AND (p.discount_end IS NULL OR p.discount_end >= ?))
+                OR p.id IN (' . $flashSql . '))';
+            array_push($args, $now, $now, ...$flashArgs);
         }
         if (!empty($opts['instock'])) {
             $where[] = self::STOCK . ' > 0';
@@ -178,15 +186,18 @@ final class Product extends Model
     }
 
     /** What a product card needs: customer-safe columns, two images (the second shows on hover), counts for stock. */
-    private const CARD_COLUMNS = "p.id, p.name, p.slug, p.stock, p.retail_price, p.discount_price, p.discount_start, p.discount_end, p.created_at,
+    private const CARD_COLUMNS = "p.id, p.name, p.slug, p.stock, p.product_type, p.digital_delivery, p.retail_price, p.discount_price, p.discount_start, p.discount_end, p.created_at,
                     c.name AS category_name, b.name AS brand_name,
                     (SELECT COUNT(*) FROM product_variants v WHERE v.product_id = p.id AND v.deleted_at IS NULL) AS variant_count,
                     (SELECT COALESCE(SUM(v.stock), 0) FROM product_variants v WHERE v.product_id = p.id AND v.deleted_at IS NULL) AS variant_stock,
                     (SELECT i.path FROM product_images i WHERE i.product_id = p.id ORDER BY i.is_primary DESC, i.position, i.id LIMIT 1) AS image,
                     (SELECT i.path FROM product_images i WHERE i.product_id = p.id ORDER BY i.is_primary DESC, i.position, i.id LIMIT 1 OFFSET 1) AS image2";
 
-    /** Storefront rows for specific products (active, not deleted), in the order of $ids. */
-    public static function publicByIds(array $ids): array
+    /**
+     * Storefront rows for specific products (active, not deleted), in the order of $ids.
+     * $offers replaces the live flash offers (used by the admin preview); see FlashSaleService::attach().
+     */
+    public static function publicByIds(array $ids, ?array $offers = null): array
     {
         $ids = array_values(array_unique(array_map('intval', $ids)));
         if ($ids === []) {
@@ -200,7 +211,7 @@ final class Product extends Model
         )->fetchAll();
         $pos = array_flip($ids);
         usort($rows, fn($a, $b) => $pos[(int) $a['id']] <=> $pos[(int) $b['id']]);
-        return self::withDisplayPrices($rows);
+        return self::withDisplayPrices($rows, $offers);
     }
 
     /** Products with a discount running right now (home page "On sale"). */
@@ -248,8 +259,9 @@ final class Product extends Model
     }
 
     /** Adds price / retail / on_sale / from (bool: variants differ) / sold_out to each row. */
-    private static function withDisplayPrices(array $rows): array
+    private static function withDisplayPrices(array $rows, ?array $offers = null): array
     {
+        $rows = \App\Services\FlashSaleService::attach($rows, 'id', $offers);
         $variants = [];
         if ($rows !== []) {
             $ids = array_map('intval', array_column($rows, 'id'));
@@ -274,7 +286,9 @@ final class Product extends Model
             $r['retail'] = $low['retail'];
             $r['on_sale'] = $low['on_sale'];
             $r['from'] = \App\Services\PricingService::cents($low['price']) !== \App\Services\PricingService::cents($high['price']);
-            $r['sold_out'] = ($r['variant_count'] > 0 ? (int) $r['variant_stock'] : (int) $r['stock']) <= 0;
+            $r['sold_out'] = DigitalService::isDigital($r)
+                ? DigitalService::stock($r) <= 0
+                : ($r['variant_count'] > 0 ? (int) $r['variant_stock'] : (int) $r['stock']) <= 0;
         }
         return $rows;
     }
@@ -282,7 +296,7 @@ final class Product extends Model
     public static function publicBySlug(string $slug): ?array
     {
         $row = Database::query(
-            "SELECT p.id, p.name, p.slug, p.sku, p.category_id, p.description, p.stock, p.retail_price, p.discount_price, p.discount_start, p.discount_end, c.name AS category_name, c.slug AS category_slug, pc.name AS parent_name, pc.slug AS parent_slug, b.name AS brand_name, b.slug AS brand_slug, b.logo AS brand_logo
+            "SELECT p.id, p.name, p.slug, p.sku, p.category_id, p.description, p.stock, p.product_type, p.digital_delivery, p.digital_expiry_days, p.digital_max_downloads, p.retail_price, p.discount_price, p.discount_start, p.discount_end, c.name AS category_name, c.slug AS category_slug, pc.name AS parent_name, pc.slug AS parent_slug, b.name AS brand_name, b.slug AS brand_slug, b.logo AS brand_logo
              FROM products p LEFT JOIN categories c ON c.id = p.category_id LEFT JOIN categories pc ON pc.id = c.parent_id LEFT JOIN brands b ON b.id = p.brand_id
              WHERE p.slug = ? AND p.status = 'active' AND p.deleted_at IS NULL",
             [$slug]

@@ -260,6 +260,9 @@ final class OrderService
             if ($it['product_id'] === null) {
                 continue; // the product was deleted for good: nothing to put back
             }
+            if ($it['digital_delivery'] !== null) {
+                continue; // digital items never took stock (license keys are released with the order, see DigitalService)
+            }
             try {
                 StockService::delta((int) $it['product_id'], $it['variant_id'] !== null ? (int) $it['variant_id'] : null, (int) $it['qty'], $reason, $orderId, $actorId);
             } catch (\DomainException) {
@@ -319,6 +322,9 @@ final class OrderService
                 [$orderId, $late ? 'paid_after_cancel' : 'paid', $late ? $note . ' - the order was already cancelled: REFUND NEEDED' : $note]
             );
             $pdo->commit();
+            if (!$late) {
+                DigitalService::grantForOrder($orderId); // download links and license keys, once the money is in
+            }
             return $late ? 'late' : 'paid';
         } catch (\Throwable $e) {
             $pdo->rollBack();
@@ -346,6 +352,7 @@ final class OrderService
         }
         Database::query("UPDATE orders SET payment_status = 'paid' WHERE id = ?", [$orderId]);
         Database::query('INSERT INTO order_events (order_id, event, note, actor_id) VALUES (?, ?, ?, ?)', [$orderId, 'paid', 'Marked as paid', $actorId]);
+        DigitalService::grantForOrder($orderId);
         return null;
     }
 }

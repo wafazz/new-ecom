@@ -33,8 +33,9 @@ final class CheckoutService
             }
 
             $items = [];
-            $shipLines = []; // weight and quantity per line, for postage
+            $shipLines = []; // weight and quantity per line, for postage (digital lines are marked and skipped there)
             $subtotal = 0;
+            $hasDigital = false;
             foreach ($lines as $l) {
                 $p = Database::query('SELECT * FROM products WHERE id = ? FOR UPDATE', [$l['product_id']])->fetch();
                 if (!$p || $p['deleted_at'] !== null || $p['status'] !== 'active') {
@@ -50,16 +51,19 @@ final class CheckoutService
                     throw new CheckoutException("\"{$p['name']}\" now needs an option chosen. Please review your cart.");
                 }
 
-                $stock = (int) ($v['stock'] ?? $p['stock']);
+                $digital = DigitalService::isDigital($p);
+                $stock = $digital ? DigitalService::stock($p) : (int) ($v['stock'] ?? $p['stock']);
                 if ($l['qty'] > $stock) {
                     throw new CheckoutException($stock < 1 ? "\"{$p['name']}\" just sold out." : "Only {$stock} left of \"{$p['name']}\". Please lower the quantity in your cart.");
                 }
 
+                $p = FlashSaleService::attach([$p])[0]; // the charged price includes any running flash sale
                 $eff = PricingService::effective($p, $v);
                 $cost = PricingService::resolveVariant($p, $v ?? []);
                 $unit = PricingService::cents($eff['price']);
                 $subtotal += $unit * (int) $l['qty'];
-                $shipLines[] = ['weight_kg' => $p['weight_kg'], 'qty' => (int) $l['qty']];
+                $shipLines[] = ['weight_kg' => $p['weight_kg'], 'qty' => (int) $l['qty'], 'digital' => $digital];
+                $hasDigital = $hasDigital || $digital;
                 $items[] = [
                     'product_id' => (int) $p['id'],
                     'variant_id' => $v ? (int) $v['id'] : null,
@@ -72,7 +76,12 @@ final class CheckoutService
                     'company' => PricingService::cents((string) $cost['company_base_price']),
                     'qty' => (int) $l['qty'],
                     'rate' => AffiliateService::rateFor($p['commission_rate'] !== null ? (string) $p['commission_rate'] : null),
+                    'delivery' => $digital ? $p['digital_delivery'] : null,
                 ];
+            }
+
+            if ($hasDigital && $paymentMethod === 'cod') {
+                throw new CheckoutException('Cash on delivery is not available for digital products. Please choose another payment method.');
             }
 
             if ($newAccount !== null) {
@@ -130,13 +139,15 @@ final class CheckoutService
 
             foreach ($items as $it) {
                 Database::query(
-                    'INSERT INTO order_items (order_id, product_id, variant_id, product_name, variant_label, sku, unit_price, retail_price, base_price, company_base_price, qty, line_total, commission_rate)
-                     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)',
+                    'INSERT INTO order_items (order_id, product_id, variant_id, product_name, variant_label, sku, unit_price, retail_price, base_price, company_base_price, qty, line_total, commission_rate, digital_delivery)
+                     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)',
                     [$orderId, $it['product_id'], $it['variant_id'], $it['name'], $it['label'], $it['sku'],
                      PricingService::format($it['unit']), PricingService::format($it['retail']), PricingService::format($it['base']), PricingService::format($it['company']),
-                     $it['qty'], PricingService::format($it['unit'] * $it['qty']), $affiliateId !== null ? $it['rate'] : null]
+                     $it['qty'], PricingService::format($it['unit'] * $it['qty']), $affiliateId !== null ? $it['rate'] : null, $it['delivery']]
                 );
-                StockService::delta($it['product_id'], $it['variant_id'], -$it['qty'], 'order', $orderId, $userId); // locks the row, logs the movement
+                if ($it['delivery'] === null) {
+                    StockService::delta($it['product_id'], $it['variant_id'], -$it['qty'], 'order', $orderId, $userId); // locks the row, logs the movement
+                } // digital items have no stock to take; license keys are assigned when the order is paid
             }
 
             Database::query('INSERT INTO order_events (order_id, event, note, actor_id) VALUES (?, ?, ?, ?)', [$orderId, 'placed', 'Order placed', $userId]);

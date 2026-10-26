@@ -6,6 +6,7 @@ namespace App\Services;
 use App\Core\Auth;
 use App\Core\Database;
 use App\Models\Product;
+use App\Services\DigitalService;
 
 /**
  * Cart owner = logged-in member (user_id) or an anonymous browser (cookie token, stored hashed).
@@ -97,7 +98,7 @@ final class CartService
             if ($variantId !== null) {
                 return 'That option is not available.';
             }
-            $stock = (int) $product['stock'];
+            $stock = DigitalService::isDigital($product) ? DigitalService::stock($product) : (int) $product['stock'];
         }
         if ($stock < 1) {
             return 'Sorry, that item is sold out.';
@@ -141,6 +142,7 @@ final class CartService
             $rows = Database::query(
                 'SELECT ci.id AS item_id, ci.qty AS requested, ci.product_id, ci.variant_id,
                         p.name, p.slug, p.status, p.deleted_at, p.stock AS p_stock, p.retail_price, p.discount_price, p.discount_start, p.discount_end, p.weight_kg,
+                        p.product_type, p.digital_delivery,
                         v.id AS v_id, v.stock AS v_stock, v.retail_price AS v_retail, v.discount_price AS v_discount, v.deleted_at AS v_deleted,
                         (SELECT i.path FROM product_images i WHERE i.product_id = p.id ORDER BY i.is_primary DESC, i.id LIMIT 1) AS image
                  FROM cart_items ci
@@ -150,10 +152,15 @@ final class CartService
                 [$cartId]
             )->fetchAll();
 
+            $rows = FlashSaleService::attach($rows, 'product_id');
             foreach ($rows as $r) {
                 $variant = $r['variant_id'] !== null ? ['retail_price' => $r['v_retail'], 'discount_price' => $r['v_discount']] : null;
                 $price = PricingService::effective($r, $variant);
+                $digital = DigitalService::isDigital($r);
                 $stock = (int) ($r['variant_id'] !== null ? ($r['v_stock'] ?? 0) : $r['p_stock']);
+                if ($digital) {
+                    $stock = DigitalService::stock(['id' => $r['product_id'], 'digital_delivery' => $r['digital_delivery']]);
+                }
                 $gone = $r['deleted_at'] !== null || $r['status'] !== 'active' || ($r['variant_id'] !== null && ($r['v_id'] === null || $r['v_deleted'] !== null));
                 $available = !$gone && $stock > 0;
                 $qty = $available ? min((int) $r['requested'], $stock) : 0;
@@ -174,6 +181,7 @@ final class CartService
                     'requested' => (int) $r['requested'],
                     'qty' => $qty,
                     'weight_kg' => $r['weight_kg'],
+                    'digital' => $digital,
                     'stock' => $stock,
                     'available' => $available,
                     'adjusted' => $available && $qty < (int) $r['requested'],

@@ -92,7 +92,7 @@ final class CheckoutController extends Controller
             'pickedId' => $picked !== null ? (int) $picked['id'] : null,
             'canSave' => $member !== null && count($saved) < AddressService::MAX,
             'states' => config('states'),
-            'methods' => Payments::checkoutMethods(),
+            'methods' => $this->methodsFor($cart),
             'shipping_cents' => $ship['fee'],
             'bank' => PaymentSettings::bank(),
             'scripts' => ['receipt-form.js', 'checkout-shipping.js'],
@@ -238,13 +238,24 @@ final class CheckoutController extends Controller
      */
     private function shippingFor(array $cart, string $state, string $method, int $discount): array
     {
-        $lines = array_map(fn($i) => ['weight_kg' => $i['weight_kg'], 'qty' => (int) $i['qty']], $cart['items']);
+        $lines = array_map(fn($i) => ['weight_kg' => $i['weight_kg'], 'qty' => (int) $i['qty'], 'digital' => $i['digital']], $cart['items']);
         try {
             $q = ShippingRates::quote($lines, (int) $cart['subtotal_cents'] - $discount, $state, $method);
             return ['ok' => true, 'error' => null, 'fee' => $q['fee'], 'cod' => $q['cod'], 'zone' => $q['zone'], 'kg' => $q['kg'], 'actual_kg' => $q['actual_kg']];
         } catch (CheckoutException $e) {
             return ['ok' => false, 'error' => $e->getMessage(), 'fee' => 0, 'cod' => 0, 'zone' => null, 'kg' => null, 'actual_kg' => null];
         }
+    }
+
+    /** Cash on delivery needs a courier to collect cash, so it is not offered for a cart with a digital product. */
+    private function methodsFor(array $cart): array
+    {
+        $methods = Payments::checkoutMethods();
+        $hasDigital = array_filter($cart['items'], fn($i) => $i['digital']) !== [];
+        if ($hasDigital) {
+            unset($methods['cod']);
+        }
+        return $methods;
     }
 
     /** The voucher discount in this checkout, re-checked against the cart. */

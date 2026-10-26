@@ -686,3 +686,52 @@ body.shop .select2-container--default .select2-results>.select2-results__options
   .cl-remove{grid-area:rm;width:34px;height:34px;align-self:start}
   .cl-name{font-size:.95rem}
 }
+
+/* Flash sales: storefront block, countdown and the product page note */
+.tag-flash{background:linear-gradient(135deg,#f97316,#e11d48)}
+.flash-sec{padding-top:1.5rem}
+.flash-head{align-items:flex-end;flex-wrap:wrap;gap:.75rem 1rem}
+.flash-kicker{display:inline-flex;align-items:center;gap:.35rem;font-size:.78rem;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--sale)}
+.flash-timer{display:inline-flex;align-items:center;gap:.5rem;padding:.45rem .85rem;border-radius:999px;background:var(--accent-soft);border:1px solid var(--border-strong);font-size:.9rem}
+.flash-timer-label{color:var(--muted)}
+.flash-clock{font-variant-numeric:tabular-nums;color:var(--sale);font-size:1rem}
+.flash-pdp{display:flex;flex-wrap:wrap;align-items:center;gap:.5rem .75rem;margin:.25rem 0 .9rem}
+.flash-pdp .flash-timer{font-size:.85rem}
+.flash-preview-empty{margin:0;color:var(--muted);font-size:.9rem}
+
+/* Flash sale block: a colour-splashing background that keeps changing colour (the cards keep their white) */
+.flash-sec{position:relative;isolation:isolate;padding:1.25rem;border-radius:var(--radius);overflow:hidden;color:#fff}
+.flash-sec::before{content:"";position:absolute;inset:0;z-index:-1;border-radius:inherit;
+  background:linear-gradient(120deg,#ff3d7f,#ff9f1c,#ffe066,#2ee6a6,#00c2ff,#7c4dff,#ff3d7f);background-size:300% 300%;
+  animation:flash-splash 6s ease infinite,flash-hue 14s linear infinite}
+@keyframes flash-splash{0%{background-position:0% 50%}50%{background-position:100% 50%}100%{background-position:0% 50%}}
+@keyframes flash-hue{from{filter:hue-rotate(0deg) saturate(1.3)}to{filter:hue-rotate(360deg) saturate(1.3)}}
+.flash-sec h2,.flash-sec .flash-kicker,.flash-sec .flash-clock,.flash-sec .flash-timer-label{color:#fff;text-shadow:0 1px 6px rgba(0,0,0,.25)}
+.flash-sec .flash-timer{background:rgba(255,255,255,.22);border-color:rgba(255,255,255,.6)}
+@media (prefers-reduced-motion: reduce){.flash-sec::before{animation:none}}
+
+/* Flash sale carousel. Desktop: one row of 4 cards, scrolled sideways. Mobile: 2 columns x 2 rows = 4 cards per screen. */
+.flash-carousel{position:relative}
+.flash-track{display:grid;grid-auto-flow:column;grid-template-rows:repeat(2,auto);gap:1rem;overflow-x:auto;scroll-snap-type:x mandatory;scroll-behavior:smooth;scrollbar-width:none;padding:.25rem .1rem .6rem}
+.flash-track::-webkit-scrollbar{display:none}
+.flash-track>*{min-width:0;scroll-snap-align:none}
+.flash-track>:nth-child(4n+1){scroll-snap-align:start}
+/* mobile (default): each column holds 2 cards (2 rows), 2 columns visible = 4 cards per screen */
+.flash-track{grid-auto-columns:calc((100% - 1rem) / 2)}
+/* desktop: one row, 4 cards visible */
+@media (min-width:768px){
+  .flash-track{grid-template-rows:auto;grid-auto-columns:calc((100% - 3rem) / 4)}
+  .flash-track>*{scroll-snap-align:start}
+}
+.flash-nav{position:absolute;top:42%;transform:translateY(-50%);z-index:3;width:38px;height:38px;border-radius:50%;border:0;background:#fff;color:#151a27;box-shadow:0 4px 14px rgba(0,0,0,.25);display:grid;place-items:center;cursor:pointer}
+.flash-nav .i{width:18px;height:18px}
+.flash-nav.prev{left:4px}
+.flash-nav.next{right:4px}
+.flash-nav:disabled{opacity:.35;cursor:default}
+.flash-carousel.no-overflow .flash-nav{display:none}
+
+/* Phones: the carousel is swiped (scroll-snap), so the arrows are hidden to keep them off the product text */
+@media (max-width:767px){ .flash-nav{display:none} }
+
+/* Space above the flash sale card, so it does not sit tight against the feature cards above it */
+.flash-sec{margin-top:2.25rem}

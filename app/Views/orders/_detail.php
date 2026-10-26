@@ -38,6 +38,52 @@ $cost = 0;
         <?php endif; ?>
     </tfoot>
 </table>
+<?php
+$digitalItems = array_values(array_filter($items, fn($it) => $it['digital_delivery'] !== null));
+if ($digitalItems !== [] && !$showCost): // the buyer's view: downloads and keys (the admin view only sees the order)
+    $grants = \App\Services\DigitalService::forOrder((int) $order['id']);
+    $paid = $order['payment_status'] === 'paid' && !in_array($order['status'], ['cancelled', 'returned'], true);
+?>
+<section class="digital-delivery">
+    <h3>Your digital products</h3>
+    <?php if (!$paid): ?>
+        <p class="muted">Downloads and license keys appear here once the payment is confirmed.</p>
+    <?php else: ?>
+        <ul>
+        <?php foreach ($digitalItems as $it): ?>
+            <li>
+                <strong><?= e($it['product_name']) ?></strong>
+                <?php if ($it['digital_delivery'] === 'keys'): ?>
+                    <?php $keys = \App\Services\DigitalService::keysFor((int) $it['id']); ?>
+                    <?php if ($keys === []): ?>
+                        <br><small class="muted">The license key is being prepared. Refresh this page shortly, or contact the shop.</small>
+                    <?php else: ?>
+                        <ul class="license-keys">
+                            <?php foreach ($keys as $k): ?><li><code><?= e($k) ?></code></li><?php endforeach; ?>
+                        </ul>
+                    <?php endif; ?>
+                <?php else: ?>
+                    <?php foreach ($grants as $g): if ((int) $g['order_item_id'] !== (int) $it['id']) continue; ?>
+                        <br>
+                        <?php $left = (int) $g['max_downloads'] - (int) $g['downloads']; $open = strtotime($g['expires_at']) > time(); ?>
+                        <?php if ($g['url'] !== null && $left > 0 && $open): ?>
+                            <a class="btn btn-small" href="<?= e($g['url']) ?>"><?= $g['delivery'] === 'link' ? 'Open link' : 'Download' ?></a>
+                            <small class="muted"><?= $g['delivery'] === 'file' ? e($g['file_name']) . ' · ' : '' ?><?= $left ?> download(s) left · open until <?= e(date('j M Y', strtotime($g['expires_at']))) ?></small>
+                        <?php elseif (!$open): ?>
+                            <small class="muted">This download has expired. Contact the shop if you need it again.</small>
+                        <?php elseif ($left <= 0): ?>
+                            <small class="muted">You have used all the downloads for this product. Contact the shop if you need more.</small>
+                        <?php else: ?>
+                            <small class="muted">This link cannot be shown right now. Contact the shop.</small>
+                        <?php endif; ?>
+                    <?php endforeach; ?>
+                <?php endif; ?>
+            </li>
+        <?php endforeach; ?>
+        </ul>
+    <?php endif; ?>
+</section>
+<?php endif; ?>
 
 <div class="grid2 info">
     <div>

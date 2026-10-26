@@ -17,7 +17,7 @@ check('float-trap 0.1+0.2 style', P::cents('0.30') === 30 && P::cents('19.99') =
 
 $prod = ['retail_price' => '20.00', 'discount_price' => '15.00', 'discount_start' => null, 'discount_end' => null];
 $now = new DateTimeImmutable('2026-06-15 12:00:00');
-check('discount active, no window', P::effective($prod, null, $now) === ['price' => '15.00', 'retail' => '20.00', 'on_sale' => true]);
+check('discount active, no window', P::effective($prod, null, $now) === ['price' => '15.00', 'retail' => '20.00', 'on_sale' => true, 'flash' => null]);
 check('before window', P::effective([...$prod, 'discount_start' => '2026-07-01 00:00:00'], null, $now)['on_sale'] === false);
 check('after window', P::effective([...$prod, 'discount_end' => '2026-06-01 00:00:00'], null, $now)['price'] === '20.00');
 check('inside window', P::effective([...$prod, 'discount_start' => '2026-06-01 00:00:00', 'discount_end' => '2026-06-30 00:00:00'], null, $now)['on_sale'] === true);

@@ -23,6 +23,7 @@ $isWished = isset($wished[$pid]);
         <div class="pcard-badges">
             <?php if ($p['sold_out']): ?><span class="tagpill tag-out">Sold out</span>
             <?php else: ?>
+                <?php if (!empty($p['flash_percent'])): ?><span class="tagpill tag-flash">Flash</span><?php endif; ?>
                 <?php if ($discount > 0): ?><span class="tagpill tag-sale">−<?= $discount ?>%</span><?php elseif ($p['on_sale']): ?><span class="tagpill tag-sale">Sale</span><?php endif; ?>
                 <?php if ($isNew): ?><span class="tagpill tag-new">New</span><?php endif; ?>
             <?php endif; ?>

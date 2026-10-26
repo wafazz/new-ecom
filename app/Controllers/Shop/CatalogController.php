@@ -83,6 +83,7 @@ final class CatalogController extends Controller
     public function show(Request $request, string $slug): void
     {
         $product = Product::publicBySlug($slug) ?? Response::abort(404);
+        $product = \App\Services\FlashSaleService::attach([$product])[0];
         $pid = (int) $product['id'];
         $variants = VariantService::publicVariants($pid);
 
@@ -105,7 +106,7 @@ final class CatalogController extends Controller
             'images' => $images,
             'variants' => $variants,
             'base' => PricingService::effective($product),
-            'inStock' => $variants === [] ? (int) $product['stock'] > 0 : array_sum(array_column($variants, 'stock')) > 0,
+            'inStock' => $variants === [] ? $this->singleStock($product) > 0 : array_sum(array_column($variants, 'stock')) > 0,
             'related' => Product::related($pid, $product['category_id'] !== null ? (int) $product['category_id'] : null, 4),
             'metaDescription' => mb_substr(trim(preg_replace('/\s+/', ' ', strip_tags(\App\Services\RichText::clean($product['description'])))), 0, 155),
             'metaImage' => ($images[0]['path'] ?? null),
@@ -113,7 +114,13 @@ final class CatalogController extends Controller
             'affiliateLink' => $me !== null && $me['role'] === 'member'
                 ? \App\Services\AffiliateService::productLink(\App\Services\AffiliateService::ensureCode((int) $me['id']), (string) $product['slug'])
                 : null,
-            'scripts' => ['product-page.js', 'copy-link.js'],
+            'scripts' => ['product-page.js', 'copy-link.js', 'flash-sales.js'],
         ]);
+    }
+
+    /** Sellable stock of a product with no variations: digital products use their own rule (keys, or unlimited). */
+    private function singleStock(array $product): int
+    {
+        return \App\Services\DigitalService::isDigital($product) ? \App\Services\DigitalService::stock($product) : (int) $product['stock'];
     }
 }

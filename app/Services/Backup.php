@@ -7,7 +7,7 @@ use App\Core\Database;
 
 /**
  * Database backups (a compressed SQL dump written with PHP, so no mysqldump is needed) and, when the server has
- * ZipArchive, a zip of the uploaded images and receipts. Backups live in storage/backups (never public).
+ * ZipArchive, a zip of the uploaded images, receipts and digital product files. Backups live in storage/backups (never public).
  */
 final class Backup
 {
@@ -193,7 +193,7 @@ final class Backup
         if ($zip->open($file, \ZipArchive::CREATE | \ZipArchive::OVERWRITE) !== true) {
             throw new \RuntimeException('The files backup cannot be written.');
         }
-        foreach (['public/uploads', 'storage/receipts'] as $folder) {
+        foreach (['public/uploads', 'storage/receipts', 'storage/digital'] as $folder) { // digital files are sold goods: back them up too
             $root = BASE_PATH . '/' . $folder;
             if (!is_dir($root)) {
                 continue;

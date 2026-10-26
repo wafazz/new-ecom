@@ -149,7 +149,7 @@ final class StockService
         SELECT p.id AS product_id, NULL AS variant_id, p.name, NULL AS variation, p.sku, p.stock, p.status, p.category_id, p.brand_id,
                c.name AS category_name, b.name AS brand_name
           FROM products p LEFT JOIN categories c ON c.id = p.category_id LEFT JOIN brands b ON b.id = p.brand_id
-         WHERE p.deleted_at IS NULL AND NOT EXISTS (SELECT 1 FROM product_variants x WHERE x.product_id = p.id AND x.deleted_at IS NULL)
+         WHERE p.deleted_at IS NULL AND p.product_type = 'physical' AND NOT EXISTS (SELECT 1 FROM product_variants x WHERE x.product_id = p.id AND x.deleted_at IS NULL)
         UNION ALL
         SELECT p.id, v.id, p.name,
                (SELECT GROUP_CONCAT(ov.value ORDER BY o.position, o.id SEPARATOR ' / ') FROM variant_option_values vov
