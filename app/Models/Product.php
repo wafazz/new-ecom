@@ -191,7 +191,9 @@ final class Product extends Model
                     (SELECT COUNT(*) FROM product_variants v WHERE v.product_id = p.id AND v.deleted_at IS NULL) AS variant_count,
                     (SELECT COALESCE(SUM(v.stock), 0) FROM product_variants v WHERE v.product_id = p.id AND v.deleted_at IS NULL) AS variant_stock,
                     (SELECT i.path FROM product_images i WHERE i.product_id = p.id ORDER BY i.is_primary DESC, i.position, i.id LIMIT 1) AS image,
-                    (SELECT i.path FROM product_images i WHERE i.product_id = p.id ORDER BY i.is_primary DESC, i.position, i.id LIMIT 1 OFFSET 1) AS image2";
+                    (SELECT i.path FROM product_images i WHERE i.product_id = p.id ORDER BY i.is_primary DESC, i.position, i.id LIMIT 1 OFFSET 1) AS image2,
+                    (SELECT ROUND(AVG(r.rating), 1) FROM product_reviews r WHERE r.product_id = p.id AND r.status = 'approved') AS rating_avg,
+                    (SELECT COUNT(*) FROM product_reviews r WHERE r.product_id = p.id AND r.status = 'approved') AS rating_count";
 
     /**
      * Storefront rows for specific products (active, not deleted), in the order of $ids.

@@ -58,6 +58,9 @@ $wishInit = $wish === true;
             </a>
         <?php endif; ?>
         <h1 class="pdp-title"><?= e($product['name']) ?></h1>
+        <?php if ($reviewSummary['count'] > 0): ?>
+            <a class="pdp-rating" href="#reviews"><span class="rv-stars" aria-hidden="true"><?= e(str_repeat('★', (int) round((float) $reviewSummary['avg'])) . str_repeat('☆', 5 - (int) round((float) $reviewSummary['avg']))) ?></span> <?= e(number_format((float) $reviewSummary['avg'], 1)) ?> (<?= (int) $reviewSummary['count'] ?> review<?= $reviewSummary['count'] === 1 ? '' : 's' ?>)</a>
+        <?php endif; ?>
 
         <p class="pdp-price" id="price" aria-live="polite">
             <span class="now<?= $base['on_sale'] ? ' sale' : '' ?>" id="price-now"><?= e(money($base['price'])) ?></span>
@@ -155,6 +158,10 @@ $wishInit = $wish === true;
     </div>
 </div>
 
+<div class="s-wrap">
+    <?php require BASE_PATH . '/app/Views/partials/product_reviews.php'; ?>
+</div>
+
 <?php if ($related !== []): ?>
 <section class="sec">
     <div class="sec-head"><div><h2>You may also like</h2></div><a class="sec-link" href="<?= e(url('/products' . ($product['category_slug'] ? '?category=' . $product['category_slug'] : ''))) ?>">More like this <?= icon('arrow', 'i i-sm') ?></a></div>
@@ -180,6 +187,7 @@ $wishInit = $wish === true;
     '@context' => 'https://schema.org', '@type' => 'Product', 'name' => $product['name'],
     'image' => $shots ?: null, 'description' => $desc !== '' ? mb_substr(trim(strip_tags($desc)), 0, 300) : null,
     'sku' => $product['sku'] ?: null,
+    'aggregateRating' => $reviewSummary['count'] > 0 ? ['@type' => 'AggregateRating', 'ratingValue' => (string) $reviewSummary['avg'], 'reviewCount' => (string) $reviewSummary['count'], 'bestRating' => '5', 'worstRating' => '1'] : null,
     'brand' => !empty($product['brand_name']) ? ['@type' => 'Brand', 'name' => $product['brand_name']] : null,
     'offers' => ['@type' => 'Offer', 'url' => url('/products/' . $product['slug']), 'priceCurrency' => (string) config('app.currency'), 'price' => (string) $base['price'],
         'availability' => 'https://schema.org/' . ($inStock ? 'InStock' : 'OutOfStock')],

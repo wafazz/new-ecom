@@ -24,7 +24,7 @@ $pendingCommissions = $role === 'admin' ? (int) Database::query("SELECT COUNT(*)
 $groups = match ($role) {
     'admin' => [
         'Overview' => [['/admin', 'Dashboard', 'home', 0]],
-        'Catalog' => [['/admin/products', 'Products', 'box', 0], ['/admin/categories', 'Categories', 'tag', 0], ['/admin/brands', 'Brands', 'tag', 0], ['/admin/flash-sales', 'Flash sales', 'coin', 0]],
+        'Catalog' => [['/admin/products', 'Products', 'box', 0], ['/admin/categories', 'Categories', 'tag', 0], ['/admin/brands', 'Brands', 'tag', 0], ['/admin/flash-sales', 'Flash sales', 'coin', 0], ['/admin/reviews', 'Reviews', 'heart', 0]],
         'Inventory' => [['/admin/stock', 'Stock Control', 'stack', 0], ['/admin/stock/movements', 'Stock Movement', 'swap', 0]],
         'Sales' => [['/admin/orders', 'Orders', 'cart', $pendingOrders, $orderSub('/admin')], ['/admin/affiliates', 'Affiliates', 'link', 0], ['/admin/commissions', 'Commissions', 'coin', $pendingCommissions], ['/admin/withdrawals', 'Withdrawals', 'coin', 0], ['/admin/vouchers', 'Vouchers', 'coin', 0]],
         'Administration' => [['/admin/staff', 'Staff', 'users', 0], ['/admin/visitors', 'Visitors', 'pin', 0], ['/admin/shipping-rates', 'Shipping rates', 'truck', 0], ['/admin/invoice', 'Invoice details', 'stack', 0], ['/admin/backup', 'Backup', 'lock', 0], ['/admin/email/announce', 'Announcements', 'heart', 0], ['/admin/payments', 'Payments', 'card', 0], ['/admin/api', 'API Management', 'link', 0, [['/admin/whatsapp', 'WhatsApp', '', 0], ['/admin/email', 'Email', '', 0], ['/admin/payments/billplz', 'Billplz', '', 0], ['/admin/shipping/ninjavan', 'NinjaVan', '', 0]]], ['/admin/settings', 'Settings', 'gear', 0]],
@@ -32,7 +32,7 @@ $groups = match ($role) {
     ],
     'staff' => array_filter([
         'Overview' => [['/staff', 'Dashboard', 'home', 0]],
-        'Catalog' => Auth::can('products.manage') ? [['/staff/products', 'Products', 'box', 0], ['/staff/categories', 'Categories', 'tag', 0], ['/staff/brands', 'Brands', 'tag', 0], ['/staff/flash-sales', 'Flash sales', 'coin', 0]] : [],
+        'Catalog' => Auth::can('products.manage') ? [['/staff/products', 'Products', 'box', 0], ['/staff/categories', 'Categories', 'tag', 0], ['/staff/brands', 'Brands', 'tag', 0], ['/staff/flash-sales', 'Flash sales', 'coin', 0], ['/staff/reviews', 'Reviews', 'heart', 0]] : [],
         'Inventory' => Auth::can('stock.manage') ? [['/staff/stock', 'Stock Control', 'stack', 0], ['/staff/stock/movements', 'Stock Movement', 'swap', 0]] : [],
         'Sales' => Auth::can('orders.view') ? [['/staff/orders', 'Orders', 'cart', $pendingOrders, $orderSub('/staff')]] : [],
         'Administration' => array_merge(

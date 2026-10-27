@@ -735,3 +735,26 @@ body.shop .select2-container--default .select2-results>.select2-results__options
 
 /* Space above the flash sale card, so it does not sit tight against the feature cards above it */
 .flash-sec{margin-top:2.25rem}
+
+/* Product reviews and ratings */
+.rv-stars{color:#f5a623;letter-spacing:.08em;white-space:nowrap}
+.pcard-stars{margin:.1rem 0 0;font-size:.85rem;display:flex;gap:.4rem;align-items:center}
+.pdp-rating{display:inline-flex;gap:.4rem;align-items:center;font-size:.92rem;color:var(--text);margin:.1rem 0 .4rem}
+.pdp-reviews{margin:2.5rem 0 1rem}
+.pdp-reviews .rv-summary{margin:.2rem 0 0}
+.rv-form{display:grid;gap:.9rem;max-width:620px;margin:1rem 0 1.5rem;padding:1.1rem;border:1px solid var(--border);border-radius:var(--radius);background:var(--surface)}
+.rv-form label{display:grid;gap:.35rem;font-weight:600;font-size:.92rem}
+.rv-form input[name=title],.rv-form textarea{font:inherit;padding:.6rem .7rem;border:1px solid var(--border-strong);border-radius:var(--radius-sm);background:var(--bg);color:var(--text)}
+.rv-form .error{color:var(--bad);font-size:.82rem;font-weight:500}
+.rv-rating{border:0;padding:0;margin:0}
+.rv-rating legend{font-weight:600;font-size:.92rem;margin-bottom:.3rem}
+.rv-stars-input{display:inline-flex;flex-direction:row-reverse;justify-content:flex-end}
+.rv-stars-input input{position:absolute;opacity:0;width:1px;height:1px}
+.rv-stars-input label{font-size:1.9rem;line-height:1;color:var(--border-strong);cursor:pointer;padding:0 .08rem}
+.rv-stars-input input:checked ~ label,.rv-stars-input label:hover,.rv-stars-input label:hover ~ label{color:#f5a623}
+.rv-stars-input input:focus-visible + label{outline:2px solid var(--accent);border-radius:4px}
+.rv{padding:1rem 0;border-top:1px solid var(--border)}
+.rv-head{display:flex;gap:.6rem;align-items:center;flex-wrap:wrap}
+.rv-body{margin:.4rem 0;white-space:normal}
+.rv-meta{font-size:.82rem;margin:0}
+.rv-verified{color:var(--ok);font-weight:600}

@@ -46,6 +46,12 @@ $isWished = isset($wished[$pid]);
     <div class="pcard-body">
         <?php if (!empty($p['brand_name'])): ?><span class="pcard-brand"><?= e($p['brand_name']) ?></span><?php endif; ?>
         <h3 class="pcard-name"><a href="<?= e($href) ?>"><?= e($p['name']) ?></a></h3>
+        <?php if ((int) ($p['rating_count'] ?? 0) > 0): ?>
+            <p class="pcard-stars" aria-label="Rated <?= e((string) $p['rating_avg']) ?> out of 5 from <?= (int) $p['rating_count'] ?> review<?= (int) $p['rating_count'] === 1 ? '' : 's' ?>">
+                <span class="rv-stars" aria-hidden="true"><?= e(str_repeat('★', (int) round((float) $p['rating_avg'])) . str_repeat('☆', 5 - (int) round((float) $p['rating_avg']))) ?></span>
+                <small class="muted"><?= (int) $p['rating_count'] ?></small>
+            </p>
+        <?php endif; ?>
         <p class="pcard-price">
             <span class="now<?= $p['on_sale'] ? ' sale' : '' ?>"><?= $p['from'] ? '<small>From</small> ' : '' ?><?= e(money($p['price'])) ?></span>
             <?php if ($p['on_sale']): ?><s><?= e(money($p['retail'])) ?></s><?php endif; ?>

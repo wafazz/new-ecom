@@ -101,6 +101,9 @@ final class CatalogController extends Controller
         $images = Product::images($pid);
         $this->view('shop/product', [
             'wish' => $me !== null && $me['role'] === 'member' ? WishlistService::has((int) $me['id'], $pid) : null, // null = not a member
+            'reviews' => \App\Services\ReviewService::list($pid),
+            'reviewSummary' => \App\Services\ReviewService::summary($pid),
+            'reviewState' => $me !== null && $me['role'] === 'member' ? \App\Services\ReviewService::stateFor((int) $me['id'], $pid) : null, // reviewed | eligible | not_buyer
             'title' => $product['name'],
             'product' => $product,
             'images' => $images,

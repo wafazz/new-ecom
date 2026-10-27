@@ -22,6 +22,7 @@ return function (Router $r): void {
         $r->post('/install/finish', 'InstallController@finish');
         $r->get('/products', 'Shop/CatalogController@index');
         $r->get('/products/{slug}', 'Shop/CatalogController@show');
+        $r->post('/products/{slug}/reviews', 'Shop/ReviewController@store', ['auth:member']);
         $r->post('/wishlist/toggle', 'Shop/WishlistController@toggle', ['auth:member']);
         $r->get('/payments/billplz/return', 'Shop/BillplzController@back');
         $r->post('/order/{orderNo}/{token}/pay', 'Shop/OrderTrackController@pay');
@@ -93,6 +94,10 @@ return function (Router $r): void {
             $r->post('/flash-sales/{id}', 'Manage/FlashSaleController@update');
             $r->post('/flash-sales/{id}/active', 'Manage/FlashSaleController@toggle');
             $r->post('/flash-sales/{id}/delete', 'Manage/FlashSaleController@destroy');
+            // Product reviews moderation (same permission as products).
+            $r->get('/reviews', 'Manage/ReviewController@index');
+            $r->post('/reviews/{id}/status', 'Manage/ReviewController@status');
+            $r->post('/reviews/{id}/delete', 'Manage/ReviewController@destroy');
         };
         $r->group('/admin', ['auth:admin'], $manage);
         $r->group('/staff', ['auth:staff', 'permission:products.manage'], $manage);
