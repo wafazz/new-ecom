@@ -5,6 +5,8 @@ return function (Router $r): void {
     // Billplz webhook: server-to-server, authenticated by its X-Signature (so deliberately outside the CSRF group).
     $r->post('/payments/billplz/callback', 'Shop/BillplzController@callback');
     $r->post('/shipping/ninjavan/webhook', 'Shop/NinjaVanWebhookController@receive');
+    // Read-only sales totals for CodexLure: bearer token, no session or CSRF, so outside the CSRF group.
+    $r->get('/api/v1/sales-summary', 'Api/SalesSummaryController@index');
     // Announcement unsubscribe: the token is signed, and mail clients post here without a CSRF token (one-click).
     $r->get('/unsubscribe/{token}', 'Shop/UnsubscribeController@show');
     $r->post('/unsubscribe/{token}', 'Shop/UnsubscribeController@unsubscribe');
@@ -104,6 +106,13 @@ return function (Router $r): void {
 
         // Command-palette search (results are filtered by permission inside the controller).
         $r->group('/admin', ['auth:admin'], fn(Router $r) => $r->get('/search', 'Manage/SearchController@index'));
+
+        // Sales API tokens for CodexLure: admin only, deliberately not linked from the menu.
+        $r->group('/admin', ['auth:admin'], function (Router $r): void {
+            $r->get('/sales-api-tokens', 'Manage/SalesApiTokenController@index');
+            $r->post('/sales-api-tokens', 'Manage/SalesApiTokenController@create');
+            $r->post('/sales-api-tokens/{id}/revoke', 'Manage/SalesApiTokenController@revoke');
+        });
         $r->group('/staff', ['auth:staff'], fn(Router $r) => $r->get('/search', 'Manage/SearchController@index'));
 
         // Order management: admin passes every permission check, staff need orders.view / orders.update.

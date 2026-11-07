@@ -1,6 +1,10 @@
 Options -Indexes
 RewriteEngine On
 
+# Pass the Bearer token through to PHP (some hosts strip the Authorization header).
+RewriteCond %{HTTP:Authorization} .
+RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
+
 # Never allow a .php extension in a public URL (index.php stays internal only).
 RewriteCond %{THE_REQUEST} \.php([?/\s]|$) [NC]
 RewriteRule ^ - [R=404,L]
