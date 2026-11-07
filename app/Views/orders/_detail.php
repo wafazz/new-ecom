@@ -106,7 +106,7 @@ if ($digitalItems !== [] && !$showCost): // the buyer's view: downloads and keys
 
 <?php $__ship = \App\Services\ShipmentService::active((int) $order['id']); if ($__ship && $order['status'] !== 'cancelled'): ?>
 <h3>Shipment</h3>
-<p>NinjaVan tracking number <strong><?= e($__ship['tracking_number']) ?></strong> · <?= e($__ship['status']) ?></p>
+<p><?= ($__ship['carrier'] ?? '') === 'jnt' ? 'J&amp;T Express' : 'NinjaVan' ?> tracking number <strong><?= e($__ship['tracking_number']) ?></strong> · <?= e($__ship['status']) ?></p>
 <?php endif; ?>
 
 <h3>History</h3>

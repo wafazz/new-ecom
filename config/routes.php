@@ -122,6 +122,7 @@ return function (Router $r): void {
             $r->post('/orders/{id}/proofs/{proofId}/reject', 'Manage/OrderController@rejectProof', ['permission:orders.update']);
             $r->post('/orders/{id}/shipment', 'Manage/ShipmentController@create', ['permission:orders.update']);
             $r->post('/orders/{id}/shipment/cancel', 'Manage/ShipmentController@cancel', ['permission:orders.update']);
+            $r->post('/orders/{id}/jnt/push', 'Manage/ShipmentController@pushJnt', ['permission:orders.update']);
             $r->get('/orders/{id}/shipment/waybill', 'Manage/ShipmentController@waybill', ['permission:orders.view']);
             $r->get('/orders/{id}/shipment/awb', 'Manage/ShipmentController@awb', ['permission:orders.view']);
             $r->post('/orders/{id}/shipment/awb/printed', 'Manage/ShipmentController@awbPrinted', ['permission:orders.view']);
@@ -153,6 +154,8 @@ return function (Router $r): void {
             $r->get('/shipping/ninjavan', 'Manage/NinjaVanController@show', ['permission:shipping.manage']);
             $r->post('/shipping/ninjavan', 'Manage/NinjaVanController@update', ['permission:shipping.manage']);
             $r->post('/shipping/ninjavan/test', 'Manage/NinjaVanController@test', ['permission:shipping.manage']);
+            $r->get('/shipping/jnt-express', 'Manage/JntExpressController@show', ['permission:shipping.manage']);
+            $r->post('/shipping/jnt-express', 'Manage/JntExpressController@update', ['permission:shipping.manage']);
         };
         $r->group('/admin', ['auth:admin'], $shipping);
         $r->group('/staff', ['auth:staff'], $shipping);

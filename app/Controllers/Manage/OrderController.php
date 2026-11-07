@@ -7,6 +7,7 @@ use App\Core\Auth;
 use App\Core\Database;
 use App\Core\Request;
 use App\Services\AddressService;
+use App\Services\JntExpressSettings;
 use App\Services\OrderService;
 use App\Services\ReceiptService;
 use App\Services\Shipping\NinjaVanGateway;
@@ -64,6 +65,7 @@ final class OrderController extends ManageController
             'booked' => ShipmentService::bookedAmong(array_column($rows, 'id')),
             'shipments' => ShipmentService::activeAmong(array_column($rows, 'id')),
             'canUpdate' => Auth::can('orders.update'),
+            'jntOn' => JntExpressSettings::enabled(),
             'scripts' => ['order-proofs.js', 'order-edit.js', 'order-details.js', 'order-bulk.js'],
             'receiptCount' => ReceiptService::pendingCount(),
             'statuses' => array_keys(OrderService::FLOW),
