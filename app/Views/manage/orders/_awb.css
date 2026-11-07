@@ -24,6 +24,10 @@ html, body { margin: 0; background: #e9ebef; font-family: Arial, Helvetica, sans
 .dest .state { font-size: 6pt; font-weight: 700; line-height: 1.2; }
 .dest .postcode { font-size: 28pt; font-weight: 700; line-height: 1.05; margin: .8mm 0; }
 .dest .kind { font-size: 6pt; font-weight: 700; }
+.dest.jnt .code { font-size: 15pt; font-weight: 700; line-height: 1.1; margin-top: .6mm; }
+.dest.jnt .code2 { font-size: 13pt; font-weight: 700; line-height: 1.1; }
+.dest.jnt .postcode { font-size: 13pt; margin: 1mm 0; }
+.brand.jnt { font-size: 11pt; font-weight: 900; color: #d71920; letter-spacing: .2pt; }
 .qr { align-items: center; justify-content: center; padding: 1mm; }
 .qr svg { width: 25mm; height: 25mm; display: block; }
 .bc { padding: .7mm 1mm; text-align: center; }

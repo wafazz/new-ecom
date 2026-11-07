@@ -6,7 +6,13 @@ $f = fn(string $k, string $d = '') => old($k, $d);
 ?>
 <section id="shipping">
     <h2>Shipping · NinjaVan</h2>
-    <?php if ($shipment): ?>
+    <?php if ($shipment && ($shipment['carrier'] ?? '') === 'jnt'): ?>
+        <p><strong><?= e($shipment['tracking_number']) ?></strong>
+            <span class="badge st-processing"><?= e($shipment['status']) ?></span>
+            <small class="muted"> · J&amp;T Express · <?= e($shipment['weight_kg']) ?> kg
+                <?= $shipment['cod_amount'] !== null ? ' · collect ' . e(money($shipment['cod_amount'])) . ' (COD)' : '' ?></small></p>
+        <p><small class="muted">Print the AWB from the order list. Tracking and cancellation for J&amp;T are in the J&amp;T portal for now.</small></p>
+    <?php elseif ($shipment): ?>
         <p><strong><?= e($shipment['tracking_number']) ?></strong>
             <span class="badge st-processing"><?= e($shipment['status']) ?></span>
             <small class="muted"> · <?= e($shipment['service_level']) ?> · <?= e($shipment['weight_kg']) ?> kg

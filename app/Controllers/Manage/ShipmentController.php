@@ -8,6 +8,7 @@ use App\Core\Request;
 use App\Core\Response;
 use App\Services\NinjaVanSettings;
 use App\Services\OrderService;
+use App\Services\Shipping\JntExpressGateway;
 use App\Services\Shipping\NinjaVanGateway;
 use App\Services\ShipmentService;
 
@@ -27,10 +28,22 @@ final class ShipmentController extends ManageController
         $this->success($this->base() . '/orders?status=processing', "Shipment created. Tracking number {$r['tracking']}.");
     }
 
+    /** Push a Processing order to J&T Express (from the order list). Needs orders.update. */
+    public function pushJnt(Request $request, string $id): void
+    {
+        $order = OrderService::find((int) $id) ?? Response::abort(404);
+        $back = $this->base() . '/orders?status=processing';
+        $r = JntExpressGateway::create((int) $order['id'], (int) Auth::user()['id']);
+        $r['ok'] ? $this->success($back, "Pushed {$order['order_no']} to J&T Express. Tracking number {$r['tracking']}.") : $this->backWithErrors($back, ['form' => $r['error']]);
+    }
+
     public function cancel(Request $request, string $id): void
     {
         $order = OrderService::find((int) $id) ?? Response::abort(404);
         $back = $this->base() . "/orders/{$order['id']}#shipping";
+        if ((ShipmentService::active((int) $order['id'])['carrier'] ?? '') === 'jnt') {
+            $this->backWithErrors($back, ['form' => 'J&T Express shipments are cancelled in the J&T portal for now.']);
+        }
         $r = NinjaVanGateway::cancel((int) $order['id'], (int) Auth::user()['id']);
         $r['ok'] ? $this->success($back, 'Shipment cancelled.') : $this->backWithErrors($back, ['form' => $r['error']]);
     }
@@ -102,6 +115,9 @@ final class ShipmentController extends ManageController
     {
         $order = OrderService::find((int) $id) ?? Response::abort(404);
         $s = ShipmentService::active((int) $order['id']) ?? Response::abort(404);
+        if ($s['carrier'] === 'jnt') {
+            $this->backWithErrors($this->base() . "/orders/{$order['id']}#shipping", ['form' => 'Use Print AWB for J&T Express shipments.']);
+        }
         $r = NinjaVanGateway::waybill($s);
         if (!$r['ok']) {
             $this->backWithErrors($this->base() . "/orders/{$order['id']}#shipping", ['form' => $r['error']]);

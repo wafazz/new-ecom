@@ -161,6 +161,10 @@ $checkIcon = '<svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M
                 <?php if ($o['status'] === 'processing' && $canUpdate && !isset($shipments[$__id])): ?>
                     <a class="ot-view ot-push" href="<?= e(url($__viewUrl . '#shipping')) ?>" data-order-details="<?= e(url($__viewUrl . '?popup=1')) ?>" data-order-no="<?= e($o['order_no']) ?>" data-scroll-to="#shipping">Push to NinjaVan</a>
                 <?php endif; ?>
+                <?php if ($o['status'] === 'processing' && $canUpdate && !isset($shipments[$__id]) && !empty($jntOn)): ?>
+                    <form method="post" action="<?= e(url($base . '/orders/' . $__id . '/jnt/push')) ?>" class="inline" data-swal-confirm="Push order <?= e($o['order_no']) ?> to J&amp;T Express?" data-swal-text="J&amp;T will create the waybill for this order." data-swal-button="Yes, push it">
+                        <?= csrf_field() ?><button class="ot-view ot-push">Push to J&amp;T Express</button></form>
+                <?php endif; ?>
                 <?php if ($o['status'] === 'processing' && isset($shipments[$__id])): ?>
                     <a class="ot-view ot-print" href="<?= e(url($__viewUrl . '/shipment/awb?print=1')) ?>" target="_blank" rel="noopener">Print AWB</a>
                 <?php endif; ?>

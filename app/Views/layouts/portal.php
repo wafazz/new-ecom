@@ -27,7 +27,7 @@ $groups = match ($role) {
         'Catalog' => [['/admin/products', 'Products', 'box', 0], ['/admin/categories', 'Categories', 'tag', 0], ['/admin/brands', 'Brands', 'tag', 0], ['/admin/flash-sales', 'Flash sales', 'coin', 0], ['/admin/reviews', 'Reviews', 'heart', 0]],
         'Inventory' => [['/admin/stock', 'Stock Control', 'stack', 0], ['/admin/stock/movements', 'Stock Movement', 'swap', 0]],
         'Sales' => [['/admin/orders', 'Orders', 'cart', $pendingOrders, $orderSub('/admin')], ['/admin/affiliates', 'Affiliates', 'link', 0], ['/admin/commissions', 'Commissions', 'coin', $pendingCommissions], ['/admin/withdrawals', 'Withdrawals', 'coin', 0], ['/admin/vouchers', 'Vouchers', 'coin', 0]],
-        'Administration' => [['/admin/staff', 'Staff', 'users', 0], ['/admin/visitors', 'Visitors', 'pin', 0], ['/admin/shipping-rates', 'Shipping rates', 'truck', 0], ['/admin/invoice', 'Invoice details', 'stack', 0], ['/admin/backup', 'Backup', 'lock', 0], ['/admin/email/announce', 'Announcements', 'heart', 0], ['/admin/payments', 'Payments', 'card', 0], ['/admin/api', 'API Management', 'link', 0, [['/admin/whatsapp', 'WhatsApp', '', 0], ['/admin/email', 'Email', '', 0], ['/admin/payments/billplz', 'Billplz', '', 0], ['/admin/shipping/ninjavan', 'NinjaVan', '', 0]]], ['/admin/settings', 'Settings', 'gear', 0]],
+        'Administration' => [['/admin/staff', 'Staff', 'users', 0], ['/admin/visitors', 'Visitors', 'pin', 0], ['/admin/shipping-rates', 'Shipping rates', 'truck', 0], ['/admin/invoice', 'Invoice details', 'stack', 0], ['/admin/backup', 'Backup', 'lock', 0], ['/admin/email/announce', 'Announcements', 'heart', 0], ['/admin/payments', 'Payments', 'card', 0], ['/admin/api', 'API Management', 'link', 0, [['/admin/whatsapp', 'WhatsApp', '', 0], ['/admin/email', 'Email', '', 0], ['/admin/payments/billplz', 'Billplz', '', 0], ['/admin/shipping/ninjavan', 'NinjaVan', '', 0], ['/admin/shipping/jnt-express', 'J&T Express', '', 0]]], ['/admin/settings', 'Settings', 'gear', 0]],
         'Account' => [['/admin/profile', 'Profile', 'user', 0], ['/admin/password', 'Password', 'lock', 0]],
     ],
     'staff' => array_filter([
@@ -39,7 +39,7 @@ $groups = match ($role) {
             Auth::can('payments.manage') ? [['/staff/payments', 'Payments', 'card', 0]] : [],
             (Auth::can('payments.manage') || Auth::can('shipping.manage')) ? [['/staff/api', 'API Management', 'link', 0, array_merge(
                 Auth::can('payments.manage') ? [['/staff/payments/billplz', 'Billplz', '', 0]] : [],
-                Auth::can('shipping.manage') ? [['/staff/shipping/ninjavan', 'NinjaVan', '', 0]] : []
+                Auth::can('shipping.manage') ? [['/staff/shipping/ninjavan', 'NinjaVan', '', 0], ['/staff/shipping/jnt-express', 'J&T Express', '', 0]] : []
             )]] : []
         ),
         'Account' => [['/staff/profile', 'Profile', 'user', 0], ['/staff/password', 'Password', 'lock', 0]],
