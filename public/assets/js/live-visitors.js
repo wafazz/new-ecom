@@ -37,7 +37,9 @@
   var saved = null;
   try { saved = localStorage.getItem(KEY); } catch (e) { /* ignore */ }
   setHidden(saved === '1', false);
-  toggle.addEventListener('click', function () { setHidden(!box.classList.contains('is-hidden'), true); });
+  // On mobile the badge is always the compact pill, so the toggle does nothing there.
+  var compact = window.matchMedia('(max-width: 640px)');
+  toggle.addEventListener('click', function () { if (compact.matches) return; setHidden(!box.classList.contains('is-hidden'), true); });
   setInterval(refresh, 20000);
   document.addEventListener('visibilitychange', function () { if (!document.hidden) refresh(); });
 })();
