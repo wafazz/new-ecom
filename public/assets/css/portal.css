@@ -830,3 +830,5 @@ a.vis-card:hover{transform:translateY(-3px);box-shadow:0 14px 28px -12px rgba(47
 .flash-editor .flash-kicker{color:#c2410c}
 .flash-editor .flash-timer{display:inline-flex;gap:.4rem;align-items:center}
 @media (max-width:900px){.flash-editor{grid-template-columns:minmax(0,1fr)}.flash-editor-preview{position:static}}
+/* Confirm prompt opened from inside the product dialog: stay inside it so it shows above the form (top layer) */
+#product-modal .swal2-container{position:absolute !important;inset:0;background-color:rgba(15,23,42,.35) !important;z-index:1}

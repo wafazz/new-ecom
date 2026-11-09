@@ -15,7 +15,9 @@
     return Alert.fire({
       icon: opts.danger ? 'warning' : 'question', title: opts.title, text: opts.text || undefined,
       confirmButtonText: opts.button || 'Yes', cancelButtonText: opts.cancel || 'Cancel',
-      confirmButtonColor: opts.danger ? '#b00020' : undefined, focusCancel: !!opts.danger
+      confirmButtonColor: opts.danger ? '#b00020' : undefined, focusCancel: !!opts.danger,
+      // Optional: render inside an open <dialog> (top layer), so the prompt is not hidden behind it
+      target: opts.target || undefined
     }).then(function (r) { return r.isConfirmed; });
   }
   window.Confirm = { ask: ask, alert: Alert };
