@@ -649,14 +649,6 @@ body.shop .select2-container--default .select2-results>.select2-results__options
 /* Mobile, hidden: swap the "Online" text for an eye icon */
 .live-eye{display:none;flex:none;width:16px;height:16px;fill:none;stroke:var(--accent,#2f5bea);stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
 @media (max-width:640px){.live-float.is-hidden [data-live-label]{display:none}.live-float.is-hidden .live-eye{display:inline-block}}
-/* Mobile: compact pill only (dot, eye, count) at the bottom-left; the stats panel is not shown */
-@media (max-width:640px){
-  .live-float{top:auto;bottom:calc(env(safe-area-inset-bottom,0px) + 16px);left:12px;width:auto;min-width:112px}
-  .live-float .live-float-body{display:none}
-  .live-float [data-live-label]{display:none}
-  .live-float .live-eye{display:inline-block}
-  .live-float .live-head-num{display:inline-block}
-}
 .live-float-num{font-size:1.5rem;line-height:1;font-variant-numeric:tabular-nums;color:var(--text)}
 .live-float-body small{color:var(--muted)}
 .live-dot{flex:none;width:9px;height:9px;border-radius:50%;background:#16a34a;box-shadow:0 0 0 0 rgba(22,163,74,.6);animation:live-pulse 2s infinite}
@@ -768,3 +760,11 @@ body.shop .select2-container--default .select2-results>.select2-results__options
 .rv-body{margin:.4rem 0;white-space:normal}
 .rv-meta{font-size:.82rem;margin:0}
 .rv-verified{color:var(--ok);font-weight:600}
+/* Mobile: compact pill only (dot, eye, count) fixed at the bottom-left; the stats panel is not shown. Kept last so it overrides the older mobile top-left rule. */
+@media (max-width:640px){
+  .live-float{top:auto;bottom:calc(env(safe-area-inset-bottom,0px) + 16px);left:12px;width:auto;min-width:112px;height:auto}
+  .live-float .live-float-body{display:none}
+  .live-float [data-live-label]{display:none}
+  .live-float .live-eye{display:inline-block}
+  .live-float .live-head-num{display:inline-block}
+}
