@@ -224,6 +224,7 @@ $path = rtrim((string) parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH), 
 <aside class="live-float" data-live-visitors data-live-url="<?= e(url('/live/visitors')) ?>" aria-label="Shoppers online now">
     <button type="button" class="live-float-toggle" data-live-toggle aria-expanded="true">
         <span class="live-dot" aria-hidden="true"></span><span data-live-label>Online</span>
+        <strong class="live-head-num" data-live="online"><?= (int) $__live['online'] ?></strong>
         <svg class="live-chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
     </button>
     <div class="live-float-body">
