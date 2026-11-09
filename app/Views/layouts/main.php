@@ -223,7 +223,7 @@ $path = rtrim((string) parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH), 
 <?php $__live = \App\Services\VisitorService::live(); ?>
 <aside class="live-float" data-live-visitors data-live-url="<?= e(url('/live/visitors')) ?>" aria-label="Shoppers online now">
     <button type="button" class="live-float-toggle" data-live-toggle aria-expanded="true">
-        <span class="live-dot" aria-hidden="true"></span><span data-live-label>Online</span>
+        <span class="live-dot" aria-hidden="true"></span><span data-live-label>Online</span><svg class="live-eye" viewBox="0 0 24 24" aria-hidden="true"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
         <strong class="live-head-num" data-live="online"><?= (int) $__live['online'] ?></strong>
         <svg class="live-chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
     </button>
