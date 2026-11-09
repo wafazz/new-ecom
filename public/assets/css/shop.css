@@ -646,6 +646,9 @@ body.shop .select2-container--default .select2-results>.select2-results__options
 .live-head-num{display:none;margin-left:auto;font-size:1.15rem;font-weight:800;line-height:1;color:#16a34a;font-variant-numeric:tabular-nums}
 .live-float.is-hidden .live-head-num{display:inline-block}
 .live-float.is-hidden .live-chev{margin-left:.15rem}
+/* Mobile, hidden: swap the "Online" text for an eye icon */
+.live-eye{display:none;flex:none;width:16px;height:16px;fill:none;stroke:var(--accent,#2f5bea);stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+@media (max-width:640px){.live-float.is-hidden [data-live-label]{display:none}.live-float.is-hidden .live-eye{display:inline-block}}
 .live-float-num{font-size:1.5rem;line-height:1;font-variant-numeric:tabular-nums;color:var(--text)}
 .live-float-body small{color:var(--muted)}
 .live-dot{flex:none;width:9px;height:9px;border-radius:50%;background:#16a34a;box-shadow:0 0 0 0 rgba(22,163,74,.6);animation:live-pulse 2s infinite}
