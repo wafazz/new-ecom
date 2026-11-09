@@ -640,17 +640,18 @@ body.shop .select2-container--default .select2-results>.select2-results__options
 .live-row{display:flex;align-items:baseline;justify-content:space-between;gap:.5rem}
 .live-row strong{font-size:.95rem;font-variant-numeric:tabular-nums;color:var(--text)}
 .live-row small{color:var(--muted);font-size:.74rem}
-/* Hidden: the whole badge slides out to the left; only the chevron handle stays on the edge */
-.live-float.is-hidden{transform:translateX(calc(-100% + 34px));background:transparent;border-color:transparent;box-shadow:none}
-.live-float.is-hidden .live-float-body{opacity:0}
-.live-float.is-hidden .live-dot,.live-float.is-hidden [data-live-label]{display:none}
-.live-float.is-hidden .live-chev{order:-1}
+/* Hidden: the card stays put as a compact header — dot, "Online", and only the online count */
+.live-float.is-hidden{width:auto;min-width:112px}
+.live-float.is-hidden .live-float-body{display:none}
+.live-head-num{display:none;margin-left:auto;font-size:1.15rem;font-weight:800;line-height:1;color:#16a34a;font-variant-numeric:tabular-nums}
+.live-float.is-hidden .live-head-num{display:inline-block}
+.live-float.is-hidden .live-chev{margin-left:.15rem}
 .live-float-num{font-size:1.5rem;line-height:1;font-variant-numeric:tabular-nums;color:var(--text)}
 .live-float-body small{color:var(--muted)}
 .live-dot{flex:none;width:9px;height:9px;border-radius:50%;background:#16a34a;box-shadow:0 0 0 0 rgba(22,163,74,.6);animation:live-pulse 2s infinite}
 @keyframes live-pulse{0%{box-shadow:0 0 0 0 rgba(22,163,74,.55)}70%{box-shadow:0 0 0 8px rgba(22,163,74,0)}100%{box-shadow:0 0 0 0 rgba(22,163,74,0)}}
 @media (prefers-reduced-motion:reduce){.live-dot{animation:none}}
-@media (max-width:640px){.live-float{top:calc(var(--head-h) + 3.6rem);left:8px;width:112px}.live-float-num{font-size:1.25rem}.live-float.is-hidden{transform:translateX(calc(-100% + 34px))}}
+@media (max-width:640px){.live-float{top:calc(var(--head-h) + 3.6rem);left:8px;width:112px}.live-float-num{font-size:1.25rem}}
 /* Floating bubble look: soft glass panel, glow, gentle bob (margin, so the hide slide keeps working) */
 .live-float{border-radius:24px;border:1px solid rgba(255,255,255,.75);background:linear-gradient(160deg,rgba(255,255,255,.94),rgba(233,239,255,.86));-webkit-backdrop-filter:blur(14px) saturate(1.3);backdrop-filter:blur(14px) saturate(1.3);box-shadow:0 22px 44px -14px rgba(47,91,234,.42),0 6px 16px rgba(15,23,42,.12),inset 0 1px 0 rgba(255,255,255,.9);animation:live-bob 6s ease-in-out infinite}
 .live-float.is-hidden{animation:none}
@@ -664,14 +665,12 @@ body.shop .select2-container--default .select2-results>.select2-results__options
 .live-row:first-child small{font-weight:600;color:#15803d}
 .live-chev{color:var(--accent,#2f5bea)}
 .live-dot{width:10px;height:10px;box-shadow:0 0 0 0 rgba(22,163,74,.6),0 0 10px rgba(22,163,74,.55)}
-.live-float.is-hidden{box-shadow:none}
 @media (prefers-reduced-motion:reduce){.live-float{animation:none}}
 @media (max-width:640px){.live-float-num{font-size:1.5rem}}
 .live-row .live-float-num{font-size:1.9rem;color:#16a34a;font-weight:800;line-height:1}
 @media (max-width:640px){.live-row .live-float-num{font-size:1.5rem}}
 /* Clear layered shadow so the bubble lifts off the page */
 .live-float{box-shadow:0 1px 2px rgba(2,6,23,.25),0 8px 18px rgba(2,6,23,.28),0 28px 52px -14px rgba(47,91,234,.6),inset 0 1px 0 rgba(255,255,255,.95)}
-.live-float.is-hidden{box-shadow:none}
 /* A number that just changed flashes so live updates are easy to see */
 @keyframes live-bump-anim{0%{transform:scale(1.22);color:#16a34a}100%{transform:scale(1);color:inherit}}
 .live-bump{display:inline-block;animation:live-bump-anim .55s ease-out}
