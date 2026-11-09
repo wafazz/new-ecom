@@ -164,7 +164,7 @@
   }
   function closeModal(force) {
     if (!force && isDirty()) {
-      ask({ title: 'Discard unsaved changes?', text: 'What you typed will be lost.', button: 'Yes, discard', danger: true }).then(function (ok) { if (ok) closeModal(true); });
+      ask({ title: 'Discard unsaved changes?', text: 'What you typed will be lost.', button: 'Yes, discard', danger: true, target: modal }).then(function (ok) { if (ok) closeModal(true); });
       return;
     }
     if (modal.open) modal.close();
