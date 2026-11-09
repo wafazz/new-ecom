@@ -10,7 +10,6 @@
   function setHidden(hidden, save) {
     box.classList.toggle('is-hidden', hidden);
     toggle.setAttribute('aria-expanded', hidden ? 'false' : 'true');
-    label.textContent = hidden ? 'Show' : 'Online';
     if (save) { try { localStorage.setItem(KEY, hidden ? '1' : '0'); } catch (e) { /* private mode: just not remembered */ } }
   }
 
