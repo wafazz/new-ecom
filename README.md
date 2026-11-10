@@ -90,6 +90,46 @@ Admin-editable (Settings page): guest checkout on/off, flat shipping fee, defaul
 12. Confirm: `/.env`, `/app/...`, `/storage/logs/app.log` return 403/404; `/health` returns OK.
 13. Shipping: set both zones' rates at `/admin/shipping-rates` before taking orders. Checkout stays closed until every rate is filled in. Every product needs its weight and size (the product form requires them).
 
+## VPS commands
+Run these on the server, from the project folder (`/var/www/sample-ecom` on the current VPS).
+
+**Deploy a new version**
+```bash
+cd /var/www/sample-ecom
+php bin/backup.php                       # back up the database first
+git fetch origin
+git checkout <branch>                    # e.g. main
+git pull origin <branch>
+php bin/migrate.php                      # applies only new migrations
+```
+
+**Cron jobs** (install under the web user, so files it creates stay writable by PHP):
+```bash
+sudo crontab -u www-data -e
+```
+Paste these lines and save:
+```
+* * * * *  cd /var/www/sample-ecom && php bin/worker.php >> storage/logs/worker.log 2>&1
+0 * * * *  cd /var/www/sample-ecom && php bin/expire-unpaid.php >> storage/logs/expire.log 2>&1
+0 3 * * *  cd /var/www/sample-ecom && php bin/prune-carts.php >> storage/logs/prune.log 2>&1
+15 3 * * * cd /var/www/sample-ecom && php bin/retention.php >> storage/logs/retention.log 2>&1
+30 2 * * * cd /var/www/sample-ecom && php bin/backup.php >> storage/logs/backup.log 2>&1
+```
+
+**Check the setup**
+```bash
+sudo crontab -u www-data -l                                   # the five lines are saved
+sudo -u www-data php /var/www/sample-ecom/bin/prune-carts.php # run one job by hand
+tail -n 5 /var/www/sample-ecom/storage/logs/worker.log        # the worker is running
+which php                                                     # if cron jobs fail, use this full path in the lines above
+```
+
+**Fix permissions** (if the manual run reports a permission error)
+```bash
+sudo chown -R www-data:www-data public/uploads storage
+sudo chmod -R 775 public/uploads storage
+```
+
 ## Backups
 Admins can make a backup at `/admin/backup`, with or without the uploads and receipts zip. For a scheduled backup, add this to the server's crontab (daily at 02:30):
 
