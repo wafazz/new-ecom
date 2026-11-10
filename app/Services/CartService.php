@@ -6,6 +6,7 @@ namespace App\Services;
 use App\Core\Auth;
 use App\Core\Database;
 use App\Models\Product;
+use App\Models\Setting;
 use App\Services\DigitalService;
 
 /**
@@ -17,6 +18,45 @@ final class CartService
     public const MAX_QTY = 99;
     private const COOKIE = 'cart_token';
     private const GUEST_DAYS = 7;
+    public const HOLD_MIN = 1;
+    public const HOLD_MAX = 120;
+    public const HOLD_DEFAULT = 15;
+    public const EXPIRED_MESSAGE = 'Some items in your cart were held too long and have expired. Please review your cart.';
+
+    /** Minutes a cart line keeps its stock after it is added or changed (admin setting cart_hold_minutes). */
+    public static function holdMinutes(): int
+    {
+        $m = (int) Setting::get('cart_hold_minutes', (string) self::HOLD_DEFAULT);
+        return max(self::HOLD_MIN, min(self::HOLD_MAX, $m));
+    }
+
+    /** SQL expression for "now + hold", used when a line is added or changed. */
+    private static function holdUntilSql(): string
+    {
+        return 'NOW() + INTERVAL ' . self::holdMinutes() . ' MINUTE';
+    }
+
+    /** Units of a product/variant that other carts are holding right now. */
+    public static function heldByOthers(int $productId, int $variantKey, ?int $cartId): int
+    {
+        return (int) Database::query(
+            'SELECT COALESCE(SUM(qty), 0) FROM cart_items
+             WHERE product_id = ? AND variant_key = ? AND cart_id <> ? AND reserved_until > NOW()',
+            [$productId, $variantKey, $cartId ?? 0]
+        )->fetchColumn();
+    }
+
+    /** Drops lines whose hold has lapsed. Silent: the customer just no longer sees them. */
+    public static function dropExpired(int $cartId): void
+    {
+        Database::query('DELETE FROM cart_items WHERE cart_id = ? AND (reserved_until IS NULL OR reserved_until <= NOW())', [$cartId]);
+    }
+
+    /** Housekeeping for bin/prune-carts.php: removes lapsed holds from every cart. */
+    public static function pruneExpiredHolds(): int
+    {
+        return Database::query('DELETE FROM cart_items WHERE reserved_until IS NULL OR reserved_until <= NOW()')->rowCount();
+    }
 
     private static function memberId(): ?int
     {
@@ -105,22 +145,38 @@ final class CartService
         }
 
         $cartId = self::id(true);
-        $have = (int) Database::query(
-            'SELECT qty FROM cart_items WHERE cart_id = ? AND product_id = ? AND variant_key = ?',
-            [$cartId, $productId, $variantId ?? 0]
-        )->fetchColumn();
-        if ($have + $qty > $stock) {
-            return $have > 0
-                ? "Only {$stock} in stock and you already have {$have} in your cart."
-                : "Only {$stock} in stock.";
-        }
+        $pdo = Database::connection();
+        $pdo->beginTransaction();
+        try {
+            // Lock the product so two carts can't both take the last unit.
+            Database::query('SELECT id FROM products WHERE id = ? FOR UPDATE', [$productId]);
+            self::dropExpired($cartId); // an expired line must not add its old qty to the new one
+            $free = max(0, $stock - self::heldByOthers($productId, $variantId ?? 0, $cartId));
+            $have = (int) Database::query(
+                'SELECT qty FROM cart_items WHERE cart_id = ? AND product_id = ? AND variant_key = ? AND reserved_until > NOW()',
+                [$cartId, $productId, $variantId ?? 0]
+            )->fetchColumn();
+            if ($have + $qty > $free) {
+                $pdo->rollBack();
+                if ($free < 1) {
+                    return 'Sorry, that item is sold out.';
+                }
+                return $have > 0
+                    ? "Only {$free} available and you already have {$have} in your cart."
+                    : "Only {$free} available.";
+            }
 
-        Database::query(
-            'INSERT INTO cart_items (cart_id, product_id, variant_id, qty) VALUES (?, ?, ?, ?)
-             ON DUPLICATE KEY UPDATE qty = VALUES(qty) + qty',
-            [$cartId, $productId, $variantId, $qty]
-        );
-        Database::query('UPDATE carts SET updated_at = NOW() WHERE id = ?', [$cartId]);
+            Database::query(
+                'INSERT INTO cart_items (cart_id, product_id, variant_id, qty, reserved_until) VALUES (?, ?, ?, ?, ' . self::holdUntilSql() . ')
+                 ON DUPLICATE KEY UPDATE qty = VALUES(qty) + qty, reserved_until = VALUES(reserved_until)',
+                [$cartId, $productId, $variantId, $qty]
+            );
+            Database::query('UPDATE carts SET updated_at = NOW() WHERE id = ?', [$cartId]);
+            $pdo->commit();
+        } catch (\Throwable $e) {
+            $pdo->rollBack();
+            throw $e;
+        }
         return null;
     }
 
@@ -139,6 +195,7 @@ final class CartService
         $problem = false;
 
         if ($cartId !== null) {
+            self::dropExpired($cartId);
             $rows = Database::query(
                 'SELECT ci.id AS item_id, ci.qty AS requested, ci.product_id, ci.variant_id,
                         p.name, p.slug, p.status, p.deleted_at, p.stock AS p_stock, p.retail_price, p.discount_price, p.discount_start, p.discount_end, p.weight_kg,
@@ -161,6 +218,8 @@ final class CartService
                 if ($digital) {
                     $stock = DigitalService::stock(['id' => $r['product_id'], 'digital_delivery' => $r['digital_delivery']]);
                 }
+                // Units other carts are holding are not free for this one.
+                $stock = max(0, $stock - self::heldByOthers((int) $r['product_id'], (int) ($r['variant_id'] ?? 0), $cartId));
                 $gone = $r['deleted_at'] !== null || $r['status'] !== 'active' || ($r['variant_id'] !== null && ($r['v_id'] === null || $r['v_deleted'] !== null));
                 $available = !$gone && $stock > 0;
                 $qty = $available ? min((int) $r['requested'], $stock) : 0;
@@ -237,7 +296,10 @@ final class CartService
                 $want = $max;
                 $capped = true;
             }
-            Database::query('UPDATE cart_items SET qty = ? WHERE id = ? AND cart_id = ?', [$want, $line['item_id'], $cartId]);
+            // Only a line whose quantity really changed gets a fresh hold; the page sends every line on each change.
+            if ($want !== $line['requested']) {
+                Database::query('UPDATE cart_items SET qty = ?, reserved_until = ' . self::holdUntilSql() . ' WHERE id = ? AND cart_id = ?', [$want, $line['item_id'], $cartId]);
+            }
         }
         Database::query('UPDATE carts SET updated_at = NOW() WHERE id = ?', [$cartId]);
         return $capped ? 'Some quantities were lowered to what is in stock.' : null;
@@ -271,12 +333,13 @@ final class CartService
             if ($mine === false) {
                 Database::query('UPDATE carts SET user_id = ?, session_hash = NULL WHERE id = ?', [$userId, $guestId]);
             } else {
-                $lines = Database::query('SELECT product_id, variant_id, qty FROM cart_items WHERE cart_id = ?', [$guestId])->fetchAll();
+                self::dropExpired((int) $mine);
+                $lines = Database::query('SELECT product_id, variant_id, qty, reserved_until FROM cart_items WHERE cart_id = ? AND reserved_until > NOW()', [$guestId])->fetchAll();
                 foreach ($lines as $l) {
                     Database::query(
-                        'INSERT INTO cart_items (cart_id, product_id, variant_id, qty) VALUES (?, ?, ?, ?)
-                         ON DUPLICATE KEY UPDATE qty = LEAST(' . self::MAX_QTY . ', qty + ?)',
-                        [$mine, $l['product_id'], $l['variant_id'], $l['qty'], $l['qty']]
+                        'INSERT INTO cart_items (cart_id, product_id, variant_id, qty, reserved_until) VALUES (?, ?, ?, ?, ?)
+                         ON DUPLICATE KEY UPDATE qty = LEAST(' . self::MAX_QTY . ', qty + ?), reserved_until = GREATEST(reserved_until, VALUES(reserved_until))',
+                        [$mine, $l['product_id'], $l['variant_id'], $l['qty'], $l['reserved_until'], $l['qty']]
                     );
                 }
                 Database::query('DELETE FROM carts WHERE id = ?', [$guestId]); // cascades its items

@@ -67,7 +67,7 @@ check('empty sales do not hide a real running sale', in_array('Now', array_map(f
 // Checkout charges the flash price, and the order keeps it.
 DB::query('INSERT INTO carts (session_hash) VALUES (?)', [hash('sha256', random_bytes(8))]);
 $cartId = (int) DB::connection()->lastInsertId();
-DB::query('INSERT INTO cart_items (cart_id, product_id, variant_id, qty) VALUES (?,?,?,?)', [$cartId, $mug, null, 2]);
+DB::query('INSERT INTO cart_items (cart_id, product_id, variant_id, qty, reserved_until) VALUES (?,?,?,?, NOW() + INTERVAL 15 MINUTE)', [$cartId, $mug, null, 2]);
 $contact = ['name' => 'Flash Buyer', 'email' => 'flash@example.test', 'phone' => '0123456789', 'line1' => '1 Jalan Mawar', 'line2' => '', 'city' => 'Shah Alam', 'state' => 'Selangor', 'postcode' => '40150', 'notes' => ''];
 $o = CheckoutService::place($cartId, $contact, 'cod', null);
 $line = DB::query('SELECT unit_price, retail_price FROM order_items WHERE order_id = ?', [(int) $o['order_id']])->fetch();

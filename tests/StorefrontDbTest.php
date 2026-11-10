@@ -59,7 +59,7 @@ check('a product with variations: "from" flag, not sold out while one variation 
 check('onSale() lists discounted products', array_column(Product::onSale(8), 'name') === ['Pillar Candle']);
 check('popular() is empty until something sold', Product::popular(4) === []);
 DB::query('INSERT INTO carts (session_hash) VALUES (?)', [hash('sha256', 'a')]); $c1 = (int) DB::connection()->lastInsertId();
-DB::query('INSERT INTO cart_items (cart_id, product_id, variant_id, qty) VALUES (?,?,NULL,2)', [$c1, $pillar]);
+DB::query('INSERT INTO cart_items (cart_id, product_id, variant_id, qty, reserved_until) VALUES (?,?,NULL,2, NOW() + INTERVAL 15 MINUTE)', [$c1, $pillar]);
 $contact = ['name' => 'B', 'email' => 'b@example.test', 'phone' => '012', 'line1' => '1', 'line2' => '', 'city' => 'KL', 'state' => 'Kuala Lumpur', 'postcode' => '50000', 'notes' => ''];
 $o = CheckoutService::place($c1, $contact, 'cod', null);
 check('popular() ranks by units sold in non-cancelled orders', array_column(Product::popular(4), 'name') === ['Pillar Candle']);

@@ -21,7 +21,7 @@ $cart = function (array $lines): int {
     DB::query('INSERT INTO carts (session_hash) VALUES (?)', [hash('sha256', random_bytes(8))]);
     $id = (int) DB::connection()->lastInsertId();
     foreach ($lines as [$product, $qty]) {
-        DB::query('INSERT INTO cart_items (cart_id, product_id, variant_id, qty) VALUES (?,?,?,?)', [$id, $product, null, $qty]);
+        DB::query('INSERT INTO cart_items (cart_id, product_id, variant_id, qty, reserved_until) VALUES (?,?,?,?, NOW() + INTERVAL 15 MINUTE)', [$id, $product, null, $qty]);
     }
     return $id;
 };

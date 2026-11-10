@@ -22,7 +22,7 @@ $member = function (string $name, string $email): int {
 $buy = function (int $userId, string $status) use ($pid): void {
     DB::query('INSERT INTO carts (session_hash) VALUES (?)', [hash('sha256', random_bytes(8))]);
     $cart = (int) DB::connection()->lastInsertId();
-    DB::query('INSERT INTO cart_items (cart_id, product_id, variant_id, qty) VALUES (?,?,?,?)', [$cart, $pid, null, 1]);
+    DB::query('INSERT INTO cart_items (cart_id, product_id, variant_id, qty, reserved_until) VALUES (?,?,?,?, NOW() + INTERVAL 15 MINUTE)', [$cart, $pid, null, 1]);
     $contact = ['name' => 'Buyer', 'email' => "buyer{$userId}@example.test", 'phone' => '0123456789', 'line1' => '1 Jalan Mawar', 'line2' => '', 'city' => 'Shah Alam', 'state' => 'Selangor', 'postcode' => '40150', 'notes' => ''];
     $o = CheckoutService::place($cart, $contact, 'cod', $userId);
     DB::query('UPDATE orders SET status = ? WHERE id = ?', [$status, (int) $o['order_id']]);

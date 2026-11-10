@@ -113,7 +113,7 @@ check('actors list = people who changed stock', array_column(S::actors(), 'name'
 $cart = function (array $lines) {
     DB::query('INSERT INTO carts (session_hash) VALUES (?)', [hash('sha256', random_bytes(8))]);
     $id = (int) DB::connection()->lastInsertId();
-    foreach ($lines as [$p, $v, $q]) { DB::query('INSERT INTO cart_items (cart_id, product_id, variant_id, qty) VALUES (?,?,?,?)', [$id, $p, $v, $q]); }
+    foreach ($lines as [$p, $v, $q]) { DB::query('INSERT INTO cart_items (cart_id, product_id, variant_id, qty, reserved_until) VALUES (?,?,?,?, NOW() + INTERVAL 15 MINUTE)', [$id, $p, $v, $q]); }
     return $id;
 };
 $contact = ['name' => 'Buyer', 'email' => 'b@example.test', 'phone' => '0123', 'line1' => '1 Rd', 'line2' => '', 'city' => 'KL', 'state' => 'Kuala Lumpur', 'postcode' => '50000', 'notes' => ''];

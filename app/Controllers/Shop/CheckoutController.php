@@ -169,7 +169,8 @@ final class CheckoutController extends Controller
         try {
             $result = CheckoutService::place((int) CartService::id(), $in, $method, $memberId, $newAccount, is_string($_COOKIE['ref'] ?? null) ? $_COOKIE['ref'] : null, is_string($voucherCode) ? $voucherCode : null);
         } catch (CheckoutException $e) {
-            $this->backWithErrors($e->getMessage() === 'Your cart is empty.' ? '/cart' : '/checkout', ['form' => $e->getMessage()], $request->body);
+            $toCart = in_array($e->getMessage(), ['Your cart is empty.', \App\Services\CartService::EXPIRED_MESSAGE], true);
+            $this->backWithErrors($toCart ? '/cart' : '/checkout', ['form' => $e->getMessage()], $request->body);
         }
         Session::forget('voucher');
 

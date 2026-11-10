@@ -8,6 +8,7 @@ use App\Core\Request;
 use App\Core\Response;
 use App\Core\Session;
 use App\Services\CartService;
+use App\Services\RateLimiter;
 
 final class CartController extends Controller
 {
@@ -33,6 +34,12 @@ final class CartController extends Controller
         $variant = $request->str('variant_id');
         $variantId = $variant === '' ? null : (int) $variant;
         $qty = (int) $request->input('qty', 1);
+
+        // Each add holds stock for the cart hold time, so a flood of adds could keep a product out of stock.
+        if (RateLimiter::tooMany('cart_add', $request->ip(), 30, 10)) {
+            $this->backWithErrors('/cart', ['form' => 'Too many items added from your network. Please wait a few minutes and try again.']);
+        }
+        RateLimiter::hit('cart_add', $request->ip());
 
         $error = CartService::add($productId, $variantId, $qty);
         if ($error !== null) {

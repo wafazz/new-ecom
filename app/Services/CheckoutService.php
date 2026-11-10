@@ -27,6 +27,11 @@ final class CheckoutService
         $pdo->beginTransaction();
         try {
             Database::query('SELECT id FROM carts WHERE id = ? FOR UPDATE', [$cartId]);
+            // Strict hold: a line whose hold has lapsed by the time the order is placed is refused, not sold.
+            $lapsed = (int) Database::query('SELECT COUNT(*) FROM cart_items WHERE cart_id = ? AND (reserved_until IS NULL OR reserved_until <= NOW())', [$cartId])->fetchColumn();
+            if ($lapsed > 0) {
+                throw new CheckoutException(CartService::EXPIRED_MESSAGE);
+            }
             $lines = Database::query('SELECT product_id, variant_id, qty FROM cart_items WHERE cart_id = ? ORDER BY product_id, variant_id', [$cartId])->fetchAll();
             if ($lines === []) {
                 throw new CheckoutException('Your cart is empty.');
@@ -53,6 +58,8 @@ final class CheckoutService
 
                 $digital = DigitalService::isDigital($p);
                 $stock = $digital ? DigitalService::stock($p) : (int) ($v['stock'] ?? $p['stock']);
+                // Units held by other carts are not free for this order.
+                $stock = max(0, $stock - CartService::heldByOthers((int) $p['id'], (int) ($l['variant_id'] ?? 0), $cartId));
                 if ($l['qty'] > $stock) {
                     throw new CheckoutException($stock < 1 ? "\"{$p['name']}\" just sold out." : "Only {$stock} left of \"{$p['name']}\". Please lower the quantity in your cart.");
                 }
