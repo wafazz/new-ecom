@@ -7,6 +7,7 @@ define('BASE_PATH', dirname(__DIR__));
 require BASE_PATH . '/app/bootstrap.php';
 
 echo 'Pruned ' . App\Services\CartService::pruneGuestCarts() . " guest cart(s).\n";
+echo 'Released ' . App\Services\CartService::pruneExpiredHolds() . " lapsed cart hold(s).\n";
 
 use App\Core\Database;
 foreach ([

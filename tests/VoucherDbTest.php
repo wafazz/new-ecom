@@ -25,7 +25,7 @@ $mug = Product::insert(['weight_kg' => '1.000', 'width_cm' => '10', 'length_cm' 
 $cart = function (int $qty) use ($mug): int {
     DB::query('INSERT INTO carts (session_hash) VALUES (?)', [hash('sha256', random_bytes(8))]);
     $id = (int) DB::connection()->lastInsertId();
-    DB::query('INSERT INTO cart_items (cart_id, product_id, variant_id, qty) VALUES (?,?,?,?)', [$id, $mug, null, $qty]);
+    DB::query('INSERT INTO cart_items (cart_id, product_id, variant_id, qty, reserved_until) VALUES (?,?,?,?, NOW() + INTERVAL 15 MINUTE)', [$id, $mug, null, $qty]);
     return $id;
 };
 $contact = ['name' => 'Buyer', 'email' => 'buyer@example.test', 'phone' => '0123', 'line1' => '1 Rd', 'line2' => '', 'city' => 'KL', 'state' => 'Kuala Lumpur', 'postcode' => '50000', 'notes' => ''];

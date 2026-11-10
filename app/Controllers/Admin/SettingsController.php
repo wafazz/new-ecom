@@ -19,6 +19,7 @@ final class SettingsController extends Controller
         $this->view('admin/settings', [
             'title' => 'Settings',
             'guest' => Setting::guestCheckoutEnabled(),
+            'hold' => \App\Services\CartService::holdMinutes(),
             'rate' => AffiliateService::globalRate(),
             'logo' => SiteLogo::url(),
             'scripts' => ['logo-upload.js'],
@@ -52,8 +53,13 @@ final class SettingsController extends Controller
         if (!AffiliateService::isRate($rate)) {
             $this->backWithErrors('/admin/settings', ['commission_rate' => 'Commission rate must be 0-100, e.g. 10 or 7.5.'], $request->body);
         }
+        $hold = trim($request->str('cart_hold_minutes'));
+        if (!preg_match('/^\d{1,3}$/', $hold) || (int) $hold < \App\Services\CartService::HOLD_MIN || (int) $hold > \App\Services\CartService::HOLD_MAX) {
+            $this->backWithErrors('/admin/settings', ['cart_hold_minutes' => 'Cart hold must be a whole number of minutes, ' . \App\Services\CartService::HOLD_MIN . '-' . \App\Services\CartService::HOLD_MAX . '.'], $request->body);
+        }
         Setting::set('commission_rate', PricingService::format(PricingService::cents($rate)));
         Setting::set('guest_checkout_enabled', $request->str('guest_checkout_enabled') === '1' ? '1' : '0');
+        Setting::set('cart_hold_minutes', $hold);
         $this->success('/admin/settings', 'Settings saved.');
     }
 }

@@ -11,6 +11,9 @@
         <form method="post" action="<?= e(url('/admin/settings')) ?>" class="card-form" novalidate data-busy-form>
             <?= csrf_field() ?>
             <label class="check"><input type="checkbox" name="guest_checkout_enabled" value="1" <?= $guest ? 'checked' : '' ?>> Allow guest checkout (no account needed)</label>
+            <label>Cart hold (minutes)
+                <input name="cart_hold_minutes" inputmode="numeric" value="<?= old('cart_hold_minutes', (string) $hold) ?>"><?= field_error('cart_hold_minutes') ?>
+                <small class="muted">How long an item stays reserved in a cart after it is added or changed (1-120). When the time runs out the item is removed from the cart and its stock is released. A customer whose time runs out during checkout is asked to review the cart.</small></label>
             <p class="muted">Postage is no longer a flat fee. It is worked out from weight and zone; set the rates under <a href="<?= e(url('/admin/shipping-rates')) ?>">Shipping rates</a>.</p>
             <label>Default affiliate commission (% of sales after shipping)
                 <input name="commission_rate" inputmode="decimal" value="<?= old('commission_rate', $rate) ?>"><?= field_error('commission_rate') ?>

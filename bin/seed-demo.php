@@ -266,7 +266,7 @@ for ($i = $have; $i < $opts['orders']; $i++) {
     DB::query('INSERT INTO carts (session_hash) VALUES (?)', [hash('sha256', 'demo-seed-' . bin2hex(random_bytes(8)))]);
     $cartId = (int) $pdo->lastInsertId();
     foreach ($lines as [$pid, $vid, $qty]) {
-        DB::query('INSERT INTO cart_items (cart_id, product_id, variant_id, qty) VALUES (?, ?, ?, ?)', [$cartId, $pid, $vid, $qty]);
+        DB::query('INSERT INTO cart_items (cart_id, product_id, variant_id, qty, reserved_until) VALUES (?, ?, ?, ?, NOW() + INTERVAL 15 MINUTE)', [$cartId, $pid, $vid, $qty]);
     }
     try {
         $res = CheckoutService::place($cartId, [

@@ -22,7 +22,7 @@ $contact = fn(string $email) => ['name' => 'Buyer', 'email' => $email, 'phone' =
 $cart = function (int $qty) use ($pid): int {
     DB::query('INSERT INTO carts (session_hash) VALUES (?)', [bin2hex(random_bytes(32))]);
     $id = (int) DB::connection()->lastInsertId();
-    DB::query('INSERT INTO cart_items (cart_id, product_id, qty) VALUES (?,?,?)', [$id, $pid, $qty]);
+    DB::query('INSERT INTO cart_items (cart_id, product_id, qty, reserved_until) VALUES (?,?,?, NOW() + INTERVAL 15 MINUTE)', [$id, $pid, $qty]);
     return $id;
 };
 $stock = fn() => (int) DB::query('SELECT stock FROM products WHERE id = ?', [$pid])->fetchColumn();
