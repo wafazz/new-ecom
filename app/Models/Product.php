@@ -6,6 +6,7 @@ namespace App\Models;
 use App\Core\Database;
 use App\Core\Model;
 use App\Services\DigitalService;
+use App\Services\Modules;
 
 final class Product extends Model
 {
@@ -118,6 +119,12 @@ final class Product extends Model
      *
      * @return array{rows: array, total: int}
      */
+    /** SQL that hides digital products from the shop while the digital_products module is off (empty when on). */
+    private static function digitalHidden(string $alias = 'p'): string
+    {
+        return Modules::enabled('digital_products') ? '' : " AND {$alias}.product_type <> 'digital'";
+    }
+
     public static function publicList(string $q, ?string $categorySlug, string $sort, int $page, int $perPage, ?string $brandSlug = null, array $opts = []): array
     {
         $now = date('Y-m-d H:i:s');
@@ -125,6 +132,9 @@ final class Product extends Model
                         AND (p.discount_start IS NULL OR p.discount_start <= ?) AND (p.discount_end IS NULL OR p.discount_end >= ?)
                        THEN p.discount_price ELSE p.retail_price END";
         $where = ["p.deleted_at IS NULL", "p.status = 'active'"];
+        if (!Modules::enabled('digital_products')) {
+            $where[] = "p.product_type <> 'digital'";
+        }
         $args = [];
         if ($q !== '') {
             $where[] = '(p.name LIKE ? OR b.name LIKE ? OR c.name LIKE ?)';
@@ -206,9 +216,10 @@ final class Product extends Model
             return [];
         }
         $in = implode(',', array_fill(0, count($ids), '?'));
+        $hide = self::digitalHidden();
         $rows = Database::query(
             'SELECT ' . self::CARD_COLUMNS . " FROM products p LEFT JOIN categories c ON c.id = p.category_id LEFT JOIN brands b ON b.id = p.brand_id
-             WHERE p.deleted_at IS NULL AND p.status = 'active' AND p.id IN ({$in})",
+             WHERE p.deleted_at IS NULL AND p.status = 'active'{$hide} AND p.id IN ({$in})",
             $ids
         )->fetchAll();
         $pos = array_flip($ids);
@@ -250,11 +261,12 @@ final class Product extends Model
     public static function categoryTiles(int $limit): array
     {
         $own = "(p.category_id = c.id OR p.category_id IN (SELECT k.id FROM categories k WHERE k.parent_id = c.id))";
+        $hide = self::digitalHidden();
         return Database::query(
             "SELECT c.id, c.name, c.slug,
-                    (SELECT COUNT(*) FROM products p WHERE p.status = 'active' AND p.deleted_at IS NULL AND {$own}) AS n,
+                    (SELECT COUNT(*) FROM products p WHERE p.status = 'active' AND p.deleted_at IS NULL AND {$own}{$hide}) AS n,
                     (SELECT i.path FROM product_images i JOIN products p ON p.id = i.product_id
-                      WHERE p.status = 'active' AND p.deleted_at IS NULL AND {$own}
+                      WHERE p.status = 'active' AND p.deleted_at IS NULL AND {$own}{$hide}
                       ORDER BY i.is_primary DESC, p.id DESC, i.position LIMIT 1) AS image
              FROM categories c WHERE c.parent_id IS NULL HAVING n > 0 ORDER BY n DESC, c.name LIMIT " . (int) $limit
         )->fetchAll();
@@ -297,10 +309,11 @@ final class Product extends Model
 
     public static function publicBySlug(string $slug): ?array
     {
+        $hide = self::digitalHidden();
         $row = Database::query(
             "SELECT p.id, p.name, p.slug, p.sku, p.category_id, p.description, p.stock, p.product_type, p.digital_delivery, p.digital_expiry_days, p.digital_max_downloads, p.retail_price, p.discount_price, p.discount_start, p.discount_end, c.name AS category_name, c.slug AS category_slug, pc.name AS parent_name, pc.slug AS parent_slug, b.name AS brand_name, b.slug AS brand_slug, b.logo AS brand_logo
              FROM products p LEFT JOIN categories c ON c.id = p.category_id LEFT JOIN categories pc ON pc.id = c.parent_id LEFT JOIN brands b ON b.id = p.brand_id
-             WHERE p.slug = ? AND p.status = 'active' AND p.deleted_at IS NULL",
+             WHERE p.slug = ? AND p.status = 'active'{$hide} AND p.deleted_at IS NULL",
             [$slug]
         )->fetch();
         return $row ?: null;

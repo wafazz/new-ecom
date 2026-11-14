@@ -57,6 +57,10 @@ final class CheckoutService
                 }
 
                 $digital = DigitalService::isDigital($p);
+                // A cart filled before the switch was turned off cannot be paid for while it is off.
+                if ($digital && !Modules::enabled('digital_products')) {
+                    throw new CheckoutException("\"{$p['name']}\" is a digital product, and digital products are not available right now. Please remove it from your cart.");
+                }
                 $stock = $digital ? DigitalService::stock($p) : (int) ($v['stock'] ?? $p['stock']);
                 // Units held by other carts are not free for this order.
                 $stock = max(0, $stock - CartService::heldByOthers((int) $p['id'], (int) ($l['variant_id'] ?? 0), $cartId));
