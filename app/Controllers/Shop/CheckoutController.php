@@ -81,12 +81,15 @@ final class CheckoutController extends Controller
 
         $loyalty = $this->loyaltyFor($cart, $discount);
         $discount += (int) ($loyalty['cents'] ?? 0);
+        $gift = $this->giftFor($cart, $discount);
+        $discount += (int) ($gift['cents'] ?? 0);
 
         $this->view('shop/checkout', [
             'title' => 'Checkout',
             'cart' => $cart,
             'voucher' => $voucher,
             'loyalty' => $loyalty,
+            'gift' => $gift,
             'discount_cents' => $discount,
             'voucher_note' => $voucherNote,
             'shipping_error' => $ship['error'],
@@ -171,14 +174,16 @@ final class CheckoutController extends Controller
 
         $voucherCode = Session::get('voucher');
         $pointsWanted = $memberId !== null ? (int) Session::get('points', 0) : 0;
+        $giftCode = Session::get('gift_card');
         try {
-            $result = CheckoutService::place((int) CartService::id(), $in, $method, $memberId, $newAccount, is_string($_COOKIE['ref'] ?? null) ? $_COOKIE['ref'] : null, is_string($voucherCode) ? $voucherCode : null, $pointsWanted);
+            $result = CheckoutService::place((int) CartService::id(), $in, $method, $memberId, $newAccount, is_string($_COOKIE['ref'] ?? null) ? $_COOKIE['ref'] : null, is_string($voucherCode) ? $voucherCode : null, $pointsWanted, is_string($giftCode) ? $giftCode : null);
         } catch (CheckoutException $e) {
             $toCart = in_array($e->getMessage(), ['Your cart is empty.', \App\Services\CartService::EXPIRED_MESSAGE], true);
             $this->backWithErrors($toCart ? '/cart' : '/checkout', ['form' => $e->getMessage()], $request->body);
         }
         Session::forget('voucher');
         Session::forget('points');
+        Session::forget('gift_card');
 
         // Optional newsletter sign-up at checkout: a confirmation email is sent, the address is added only once confirmed.
         if ($request->str('newsletter') === '1' && \App\Services\Modules::enabled('newsletter')) {
@@ -280,7 +285,50 @@ final class CheckoutController extends Controller
             $voucher = $q['ok'] ? (int) $q['discount'] : 0;
         }
         $loyalty = $this->loyaltyFor($cart, $voucher);
-        return $voucher + (int) ($loyalty['cents'] ?? 0);
+        $afterLoyalty = $voucher + (int) ($loyalty['cents'] ?? 0);
+        $gift = $this->giftFor($cart, $afterLoyalty);
+        return $afterLoyalty + (int) ($gift['cents'] ?? 0);
+    }
+
+    /**
+     * The gift card in this checkout: what it covers now and its balance. Null when no code is entered or the module is off.
+     * @return array{ok:bool, message:string, cents:int, balance:int}|null
+     */
+    private function giftFor(array $cart, int $discountCents): ?array
+    {
+        $code = Session::get('gift_card');
+        if (!is_string($code) || !\App\Services\Modules::enabled('gift_cards')) {
+            return null;
+        }
+        $q = \App\Services\GiftCardService::quote($code, max(0, (int) $cart['subtotal_cents'] - $discountCents));
+        if (!$q['ok']) {
+            Session::forget('gift_card');
+            return null;
+        }
+        return $q;
+    }
+
+    /** Apply a gift card code on this checkout. Rate limited against guessing. */
+    public function useGiftCard(Request $request): void
+    {
+        if (RateLimiter::tooMany('gift_card', $request->ip(), 10, 15)) {
+            $this->backWithErrors('/checkout', ['gift' => 'Too many attempts. Please wait a few minutes.']);
+        }
+        RateLimiter::hit('gift_card', $request->ip());
+        $code = \App\Services\GiftCardService::normalise($request->str('code'));
+        $cart = CartService::summary();
+        $q = \App\Services\GiftCardService::quote($code, (int) $cart['subtotal_cents']);
+        if (!$q['ok']) {
+            $this->backWithErrors('/checkout', ['gift' => $q['message']]);
+        }
+        Session::set('gift_card', implode('-', str_split($code, 4)));
+        $this->success('/checkout', 'Gift card applied. Your total is updated below.');
+    }
+
+    public function removeGiftCard(Request $request): void
+    {
+        Session::forget('gift_card');
+        $this->success('/checkout', 'Gift card removed.');
     }
 
     /**

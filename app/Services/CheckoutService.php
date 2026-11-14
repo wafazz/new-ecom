@@ -21,7 +21,7 @@ final class CheckoutService
      * @return array{order_id:int, order_no:string, token:?string, user_id:?int}
      * @throws CheckoutException
      */
-    public static function place(int $cartId, array $contact, string $paymentMethod, ?int $userId, ?array $newAccount = null, ?string $refCode = null, ?string $voucherCode = null, int $pointsRequested = 0): array
+    public static function place(int $cartId, array $contact, string $paymentMethod, ?int $userId, ?array $newAccount = null, ?string $refCode = null, ?string $voucherCode = null, int $pointsRequested = 0, ?string $giftCode = null): array
     {
         $pdo = Database::connection();
         $pdo->beginTransaction();
@@ -134,6 +134,16 @@ final class CheckoutService
                 $discount += $lp['cents'];
             }
 
+            // Gift card: covers up to its balance and no more than the items left after the discounts above.
+            $giftCardId = null;
+            $giftUsed = 0;
+            if ($giftCode !== null && $giftCode !== '' && Modules::enabled('gift_cards')) {
+                $g = GiftCardService::reserve($giftCode, $subtotal - $discount);
+                $giftCardId = $g['id'];
+                $giftUsed = $g['cents'];
+                $discount += $giftUsed;
+            }
+
             // Postage is worked out here from the zone, weight and payment method. The browser never sets it.
             $quote = ShippingRates::quote($shipLines, $subtotal - $discount, (string) $contact['state'], $paymentMethod);
             $shipping = $quote['fee'];
@@ -157,6 +167,9 @@ final class CheckoutService
             $orderId = (int) $pdo->lastInsertId();
             if ($userId !== null && $pointsUsed > 0) {
                 LoyaltyService::spend($orderId, $userId, $pointsUsed);
+            }
+            if ($giftCardId !== null && $giftUsed > 0) {
+                GiftCardService::spend($orderId, $giftCardId, $giftUsed);
             }
 
             foreach ($items as $it) {

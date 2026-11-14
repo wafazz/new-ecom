@@ -47,6 +47,8 @@ return function (Router $r): void {
         $r->post('/checkout/voucher/remove', 'Shop/CheckoutController@removeVoucher');
         $r->post('/checkout/points', 'Shop/CheckoutController@usePoints', ['module:loyalty']);
         $r->post('/checkout/points/remove', 'Shop/CheckoutController@removePoints', ['module:loyalty']);
+        $r->post('/checkout/gift-card', 'Shop/CheckoutController@useGiftCard', ['module:gift_cards']);
+        $r->post('/checkout/gift-card/remove', 'Shop/CheckoutController@removeGiftCard', ['module:gift_cards']);
         $r->get('/track', 'Shop/OrderTrackController@form');
         $r->post('/track', 'Shop/OrderTrackController@lookup');
         $r->get('/order/{orderNo}/{token}', 'Shop/OrderTrackController@show');
@@ -247,6 +249,13 @@ return function (Router $r): void {
         $r->group('/superadmin', ['auth:superadmin'], function (Router $r): void {
             $r->get('/modules', 'Superadmin/ModulesController@index');
             $r->post('/modules/{key}', 'Superadmin/ModulesController@toggle');
+        });
+
+        // Gift cards (admin and superadmin)
+        $r->group('/admin', ['auth:admin'], function (Router $r): void {
+            $r->get('/gift-cards', 'Admin/GiftCardController@index', ['module:gift_cards']);
+            $r->post('/gift-cards', 'Admin/GiftCardController@store', ['module:gift_cards']);
+            $r->post('/gift-cards/{id}/active', 'Admin/GiftCardController@toggle', ['module:gift_cards']);
         });
 
         // Product CSV import and export (admin and superadmin)

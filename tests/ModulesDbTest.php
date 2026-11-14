@@ -160,6 +160,20 @@ check('loyalty: spending moves the points out of the balance', $LS::balance($lpU
 $LS::reverse($ptsOrder1);
 check('loyalty: a refund never takes the balance below zero', $LS::balance($lpUser) === 0);
 
+// Gift cards: a code covers up to its balance, a spend cannot exceed it, and a cancelled order gives the money back once.
+$gcCode = \App\Services\GiftCardService::issue(5000, 1);
+check('gift cards: a new card covers up to its balance and no more than the items', \App\Services\GiftCardService::quote($gcCode, 3000)['cents'] === 3000 && \App\Services\GiftCardService::quote($gcCode, 9000)['cents'] === 5000);
+check('gift cards: codes are typed loosely (spaces and case do not matter)', \App\Services\GiftCardService::quote(strtolower(str_replace('-', ' ', $gcCode)), 1000)['ok'] === true);
+DB::query("INSERT INTO orders (order_no, customer_name, customer_email, customer_phone, ship_line1, ship_city, ship_state, ship_postcode, subtotal, total, payment_method, status) VALUES ('GC-1', 'Gift Test', 'gift@example.test', '0123', 'Line 1', 'City', 'Selangor', '43000', 30.00, 30.00, 'cod', 'pending')");
+$gcOrder1 = (int) DB::connection()->lastInsertId();
+$gcRes = \App\Services\GiftCardService::reserve($gcCode, 3000);
+\App\Services\GiftCardService::spend($gcOrder1, $gcRes['id'], $gcRes['cents']);
+check('gift cards: spending takes the amount off the balance', (int) DB::query('SELECT balance_cents FROM gift_cards WHERE id = ?', [$gcRes['id']])->fetchColumn() === 2000);
+check('gift cards: a reserve for more than the balance covers only the balance', \App\Services\GiftCardService::reserve($gcCode, 9000)['cents'] === 2000);
+\App\Services\GiftCardService::restore($gcOrder1);
+\App\Services\GiftCardService::restore($gcOrder1);
+check('gift cards: a cancelled order gives the amount back once', (int) DB::query('SELECT balance_cents FROM gift_cards WHERE id = ?', [$gcRes['id']])->fetchColumn() === 5000);
+
 // Newsletter: a sign-up only counts once its confirmation link is used, and the link works once.
 DB::query('DELETE FROM newsletter_subscribers');
 $nlToken = bin2hex(random_bytes(32));
