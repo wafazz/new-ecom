@@ -204,20 +204,31 @@ $infoDialog = function (string $key, string $label, bool $canAdd): string {
     </section>
     <?php endforeach; ?>
 
-    <form id="bill-basket" class="bill-basket" method="post" enctype="multipart/form-data" data-basket aria-label="Pay selected modules together">
+    <form id="bill-basket" class="bill-basket" method="post" enctype="multipart/form-data" data-basket data-max-bytes="5242880" aria-label="Pay selected modules together">
         <?= csrf_field() ?>
         <div class="bill-basket-info">
-            <strong data-basket-summary>Select modules to pay together.</strong>
+            <div class="bill-basket-head">
+                <strong data-basket-summary>Select modules to pay together.</strong>
+                <span class="bill-basket-count" data-basket-count aria-hidden="true">0</span>
+            </div>
             <ul class="bill-basket-list" data-basket-list aria-label="Selected modules"></ul>
-            <span class="muted" data-basket-msg role="status" aria-live="polite"></span>
-            <div class="bill-basket-total" aria-live="polite"><span>Total to pay</span><strong data-basket-total>RM 0.00</strong></div>
+            <p class="muted bill-basket-hint" data-basket-hint>Tick “Add to payment” on one or more modules to start.</p>
+            <p class="bill-basket-err" data-basket-msg role="alert"></p>
+            <div class="bill-basket-total"><span>Total to pay</span><strong data-basket-total aria-live="polite">RM 0.00</strong></div>
         </div>
         <div class="bill-basket-actions">
             <button class="btn bill-pay" type="submit" formaction="<?= e(url('/admin/billing/pay-selected')) ?>" data-basket-pay data-ready="<?= $billplzReady ? '1' : '0' ?>" disabled>Pay selected by Billplz</button>
+            <?php if (!$billplzReady): ?><small class="muted">Card payment is not set up yet. Use a bank transfer receipt instead.</small><?php endif; ?>
             <?php if ($bank !== null): ?>
-                <label class="bill-file"><span>One receipt for all selected (JPG, PNG or PDF)</span>
-                    <input type="file" name="receipt" accept="image/jpeg,image/png,application/pdf" data-file-input></label>
-                <p class="muted bill-filename" data-file-name aria-live="polite"></p>
+                <div class="bill-drop" data-drop>
+                    <label class="bill-file"><span>One receipt for all selected</span>
+                        <input type="file" name="receipt" accept="image/jpeg,image/png,application/pdf" data-file-input data-basket-file></label>
+                    <div class="bill-file-row">
+                        <span class="muted bill-filename" data-file-name aria-live="polite">No file chosen</span>
+                        <button class="bill-file-clear" type="button" data-file-clear hidden>Remove</button>
+                    </div>
+                    <small class="muted">JPG, PNG or PDF, up to 5 MB.</small>
+                </div>
                 <button class="btn secondary" type="submit" formaction="<?= e(url('/admin/billing/receipt-selected')) ?>" data-basket-receipt disabled>Upload one receipt for selected</button>
             <?php endif; ?>
         </div>

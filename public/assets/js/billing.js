@@ -99,7 +99,8 @@
     var inlineHandle = setInterval(function () { if (tickInline() === 0) clearInterval(inlineHandle); }, 1000);
   }
 
-  Array.prototype.forEach.call(document.querySelectorAll('[data-file-input]'), function (input) {
+  // Per-card receipt pickers only. The basket's picker is handled in the basket block below.
+  Array.prototype.forEach.call(document.querySelectorAll('[data-file-input]:not([data-basket-file])'), function (input) {
     var out = input.closest('form').querySelector('[data-file-name]');
     input.addEventListener('change', function () {
       var f = input.files && input.files[0];
@@ -116,6 +117,14 @@
     var msg = basket.querySelector('[data-basket-msg]');
     var payBtn = basket.querySelector('[data-basket-pay]');
     var recBtn = basket.querySelector('[data-basket-receipt]');
+    var count = basket.querySelector('[data-basket-count]');
+    var hint = basket.querySelector('[data-basket-hint]');
+    var drop = basket.querySelector('[data-drop]');
+    var fileInput = basket.querySelector('[data-basket-file]');
+    var fileName = basket.querySelector('[data-file-name]');
+    var fileClear = basket.querySelector('[data-file-clear]');
+    var maxBytes = Number(basket.dataset.maxBytes || 5242880);
+    var allowedTypes = ['image/jpeg', 'image/png', 'application/pdf'];
     var cardOf = function (el) { return el.closest('.bill-card'); };
     var picked = function () {
       return Array.prototype.filter.call(document.querySelectorAll('[data-pick]'), function (c) { return c.checked; });
@@ -124,9 +133,34 @@
       var r = cardOf(pick).querySelector('input[name=period]:checked');
       return r || null;
     };
+    var fileChosen = function () { return !!(fileInput && fileInput.files && fileInput.files[0]); };
+    // Returns an error message for a bad receipt, or '' when it is fine.
+    var receiptProblem = function () {
+      if (!fileChosen()) return 'Choose a receipt file first.';
+      var f = fileInput.files[0];
+      if (allowedTypes.indexOf(f.type) === -1) return 'Receipt must be a JPG, PNG or PDF.';
+      if (f.size > maxBytes) return 'Receipt is larger than 5 MB.';
+      return '';
+    };
+    function bump(el) {
+      el.classList.remove('is-bump');
+      void el.offsetWidth; // restart the animation
+      el.classList.add('is-bump');
+    }
+    function setFileState() {
+      var f = fileChosen() ? fileInput.files[0] : null;
+      var problem = f ? receiptProblem() : '';
+      if (fileName) fileName.textContent = f ? (problem ? f.name + ' (' + problem + ')' : 'Ready: ' + f.name) : 'No file chosen';
+      if (fileClear) fileClear.hidden = !f;
+      if (drop) {
+        drop.classList.toggle('is-ready', !!f && !problem);
+        drop.classList.toggle('is-bad', !!problem);
+      }
+    }
     function refresh() {
       var picks = picked();
       var total = 0;
+      var before = totalEl.textContent;
       list.innerHTML = '';
       picks.forEach(function (p) {
         var r = planOf(p);
@@ -136,31 +170,89 @@
         var li = document.createElement('li');
         var name = cardOf(p).querySelector('.bill-head h2');
         var plan = r.parentNode.querySelector('.bill-plan-name');
-        li.appendChild(document.createTextNode((name ? name.textContent : p.value) + ' · ' + (plan ? plan.textContent : r.value)));
+        var label = document.createElement('span');
+        label.textContent = (name ? name.textContent : p.value) + ' · ' + (plan ? plan.textContent : r.value);
+        li.appendChild(label);
+        var right = document.createElement('span');
+        right.className = 'bill-basket-end';
         var amt = document.createElement('span');
         amt.className = 'bill-basket-amt';
         amt.textContent = 'RM ' + amount.toFixed(2);
-        li.appendChild(amt);
+        right.appendChild(amt);
+        var rm = document.createElement('button');
+        rm.type = 'button';
+        rm.className = 'bill-basket-rm';
+        rm.dataset.remove = p.value;
+        rm.setAttribute('aria-label', 'Remove ' + label.textContent + ' from this payment');
+        rm.textContent = '×';
+        right.appendChild(rm);
+        li.appendChild(right);
         list.appendChild(li);
       });
-      totalEl.textContent = 'RM ' + total.toFixed(2);
+      var newTotal = 'RM ' + total.toFixed(2);
+      totalEl.textContent = newTotal;
+      if (before !== newTotal) bump(totalEl);
+      if (count) {
+        count.textContent = String(picks.length);
+        if (count.dataset.last !== String(picks.length)) bump(count);
+        count.dataset.last = String(picks.length);
+      }
       summary.textContent = picks.length === 0
         ? 'Select modules to pay together.'
         : (picks.length === 1 ? '1 module selected' : picks.length + ' modules selected');
+      if (hint) {
+        hint.textContent = picks.length === 0
+          ? 'Tick “Add to payment” on one or more modules to start.'
+          : (fileChosen() ? 'Receipt chosen. Upload it, or pay by Billplz.' : 'Pay by Billplz, or attach one receipt for everything selected.');
+      }
       msg.textContent = '';
+      setFileState();
       if (payBtn) payBtn.disabled = !(picks.length && payBtn.dataset.ready === '1');
-      if (recBtn) recBtn.disabled = !picks.length;
+      if (recBtn) recBtn.disabled = !(picks.length && fileChosen() && !receiptProblem());
     }
+    // Un-tick a module from the basket list.
+    list.addEventListener('click', function (e) {
+      var b = e.target.closest && e.target.closest('[data-remove]');
+      if (!b) return;
+      var box = document.querySelector('[data-pick="' + b.dataset.remove + '"]');
+      if (box) { box.checked = false; refresh(); }
+    });
     document.addEventListener('change', function (e) {
       if (e.target.matches && (e.target.matches('[data-pick]') || e.target.matches('input[name=period]'))) refresh();
     });
+    if (fileInput) {
+      fileInput.addEventListener('change', function () {
+        var problem = receiptProblem();
+        if (problem && fileChosen()) msg.textContent = problem;
+        else msg.textContent = '';
+        refresh();
+      });
+    }
+    if (fileClear) {
+      fileClear.addEventListener('click', function () {
+        fileInput.value = '';
+        msg.textContent = '';
+        refresh();
+        fileInput.focus();
+      });
+    }
     basket.addEventListener('submit', function (e) {
       basket.querySelectorAll('input[data-item]').forEach(function (n) { n.remove(); });
       var picks = picked();
+      var isReceipt = e.submitter && e.submitter.hasAttribute && e.submitter.hasAttribute('data-basket-receipt');
       if (!picks.length) {
         e.preventDefault();
         msg.textContent = 'Choose at least one module.';
         return;
+      }
+      if (isReceipt) {
+        var problem = receiptProblem();
+        if (problem) {
+          e.preventDefault();
+          msg.textContent = problem;
+          setFileState();
+          return;
+        }
       }
       picks.forEach(function (p) {
         var r = planOf(p);
