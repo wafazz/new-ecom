@@ -1060,3 +1060,7 @@ a.vis-card:hover{transform:translateY(-3px);box-shadow:0 14px 28px -12px rgba(47
 .term-amount input{min-height:46px;padding:.5rem .7rem;border:1px solid var(--border-strong);border-radius:12px;background:var(--surface);color:var(--text);font:inherit;font-size:16px;font-variant-numeric:tabular-nums}
 .term-amount-hint{font-size:.8rem}
 .term-continue{width:100%;min-height:46px;margin-top:.7rem}
+
+/* Admin > Buy Add-On Module: modules without a price yet */
+.bill-status.is-soon{background:#eef2ff;color:#3730a3;border:1px dashed #6366f1}
+.bill-card-soon{opacity:.92;border-style:dashed}

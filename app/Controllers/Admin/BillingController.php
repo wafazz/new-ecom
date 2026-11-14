@@ -22,6 +22,8 @@ final class BillingController extends Controller
         foreach (Modules::LIST as $key => [$label]) {
             $plans = ModulePricing::plans($key);
             if ($plans === []) {
+                // No price set yet: listed so the admin can see it, marked as coming soon, with no way to pay.
+                $rows[] = ['key' => $key, 'label' => $label, 'coming_soon' => true, 'quotes' => [], 'until' => null, 'subscribed' => null, 'covered' => false, 'open' => null, 'switched_on' => Modules::switchedOn($key)];
                 continue;
             }
             $quotes = [];
@@ -34,6 +36,7 @@ final class BillingController extends Controller
                 'until' => ModuleBillingService::paidUntil($key), 'subscribed' => ModuleBillingService::subscribedPeriod($key),
                 'covered' => ModuleBillingService::covered($key), 'open' => $open,
                 'switched_on' => Modules::switchedOn($key),
+                'coming_soon' => false,
             ];
         }
         $this->view('admin/billing', [
