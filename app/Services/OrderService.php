@@ -165,6 +165,9 @@ final class OrderService
             Database::query('INSERT INTO order_events (order_id, event, note, actor_id) VALUES (?, ?, ?, ?)', [$orderId, $to, $note ?: null, $actorId]);
             if ($to === 'completed') {
                 AffiliateService::recordCommission($order, self::items($orderId));
+                if (Modules::enabled('loyalty')) {
+                    LoyaltyService::earn($orderId);
+                }
             }
             $pdo->commit();
             Queue::later('whatsapp.status', ['order_id' => $orderId, 'status' => $to]); // queued after the commit: a WhatsApp problem cannot undo the change

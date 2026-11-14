@@ -25,6 +25,7 @@ final class Modules
         'product_csv' => ['Product import and export', 'Export all prices and stock as a spreadsheet, or upload one to change them by SKU. Off hides the page. Nothing is changed by the switch.'],
         'returns' => ['Returns and refunds', 'Return requests from customers, approval, stock return and refund records. Off hides the return form and the admin page. Open requests are kept.'],
         'support' => ['Order messages', 'A message thread on each order, between the customer and the shop, with the admin reply list. Off hides the thread on order pages and the admin list. Existing messages are kept.'],
+        'loyalty' => ['Loyalty points', 'Members earn points on completed orders and can spend them at checkout. Off hides the points at checkout and stops earning and spending. Balances are kept.'],
         'stock_movements' => ['Stock movement log', 'The Stock Movement page and the Movement links on Stock Control. Off hides the page only: stock is still changed and every change is still recorded.'],
         'vouchers' => ['Discount coupons', 'Discount codes shoppers enter at checkout, and the Vouchers menu. Off stops every code at once; orders that already used a code keep their discount.'],
     ];

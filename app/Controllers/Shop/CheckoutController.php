@@ -79,10 +79,14 @@ final class CheckoutController extends Controller
         // Postage for the state already known, with Cash-on-delivery not yet picked; the page updates it as the shopper chooses.
         $ship = $this->shippingFor($cart, (string) ($defaults['state'] ?? ''), '', $discount);
 
+        $loyalty = $this->loyaltyFor($cart, $discount);
+        $discount += (int) ($loyalty['cents'] ?? 0);
+
         $this->view('shop/checkout', [
             'title' => 'Checkout',
             'cart' => $cart,
             'voucher' => $voucher,
+            'loyalty' => $loyalty,
             'discount_cents' => $discount,
             'voucher_note' => $voucherNote,
             'shipping_error' => $ship['error'],
@@ -166,13 +170,15 @@ final class CheckoutController extends Controller
         }
 
         $voucherCode = Session::get('voucher');
+        $pointsWanted = $memberId !== null ? (int) Session::get('points', 0) : 0;
         try {
-            $result = CheckoutService::place((int) CartService::id(), $in, $method, $memberId, $newAccount, is_string($_COOKIE['ref'] ?? null) ? $_COOKIE['ref'] : null, is_string($voucherCode) ? $voucherCode : null);
+            $result = CheckoutService::place((int) CartService::id(), $in, $method, $memberId, $newAccount, is_string($_COOKIE['ref'] ?? null) ? $_COOKIE['ref'] : null, is_string($voucherCode) ? $voucherCode : null, $pointsWanted);
         } catch (CheckoutException $e) {
             $toCart = in_array($e->getMessage(), ['Your cart is empty.', \App\Services\CartService::EXPIRED_MESSAGE], true);
             $this->backWithErrors($toCart ? '/cart' : '/checkout', ['form' => $e->getMessage()], $request->body);
         }
         Session::forget('voucher');
+        Session::forget('points');
 
         // Optional newsletter sign-up at checkout: a confirmation email is sent, the address is added only once confirmed.
         if ($request->str('newsletter') === '1' && \App\Services\Modules::enabled('newsletter')) {
@@ -264,15 +270,56 @@ final class CheckoutController extends Controller
         return $methods;
     }
 
-    /** The voucher discount in this checkout, re-checked against the cart. */
+    /** The voucher discount plus any loyalty points in this checkout, re-checked against the cart. */
     private function discountFor(array $cart): int
     {
+        $voucher = 0;
         $code = Session::get('voucher');
-        if (!is_string($code)) {
-            return 0;
+        if (is_string($code)) {
+            $q = VoucherService::quote($code, (int) $cart['subtotal_cents']);
+            $voucher = $q['ok'] ? (int) $q['discount'] : 0;
         }
-        $q = VoucherService::quote($code, (int) $cart['subtotal_cents']);
-        return $q['ok'] ? (int) $q['discount'] : 0;
+        $loyalty = $this->loyaltyFor($cart, $voucher);
+        return $voucher + (int) ($loyalty['cents'] ?? 0);
+    }
+
+    /**
+     * What the points box shows: the balance, the points that would be used now, and their value.
+     * Null for guests and while the loyalty module is off.
+     * @return array{balance:int, applied:int, cents:int}|null
+     */
+    private function loyaltyFor(array $cart, int $voucherCents): ?array
+    {
+        $me = Auth::user();
+        if ($me === null || $me['role'] !== 'member' || !\App\Services\Modules::enabled('loyalty')) {
+            return null;
+        }
+        $items = max(0, (int) $cart['subtotal_cents'] - $voucherCents);
+        $requested = (int) Session::get('points', 0);
+        $balance = \App\Services\LoyaltyService::balance((int) $me['id']);
+        $lp = \App\Services\LoyaltyService::discountFor((int) $me['id'], $items, $requested);
+        return ['balance' => $balance, 'applied' => $lp['points'], 'cents' => $lp['cents']];
+    }
+
+    /** Use points on this checkout (member only). Saved in the session like a discount code. */
+    public function usePoints(Request $request): void
+    {
+        $me = Auth::user();
+        if ($me === null || $me['role'] !== 'member') {
+            $this->backWithErrors('/checkout', ['points' => 'Log in to use your points.']);
+        }
+        $raw = trim($request->str('points'));
+        if (!ctype_digit($raw) || (int) $raw < 1) {
+            $this->backWithErrors('/checkout', ['points' => 'Enter how many points to use.']);
+        }
+        Session::set('points', min((int) $raw, 1000000));
+        $this->success('/checkout', 'Points will be used on this order. Your total is updated below.');
+    }
+
+    public function removePoints(Request $request): void
+    {
+        Session::forget('points');
+        $this->success('/checkout', 'Points removed from this order.');
     }
 
     /** Postage for the state and payment method the shopper has picked, so the page can show it as they choose. */

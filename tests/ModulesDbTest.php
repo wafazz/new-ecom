@@ -142,6 +142,24 @@ check('order messages: a staff reply is saved', \App\Services\SupportService::po
 check('order messages: a staff reply clears the waiting list', !in_array($msgOrder, array_map('intval', array_column(\App\Services\SupportService::waiting(), 'id')), true));
 check('order messages: the thread keeps both messages in order', count(\App\Services\SupportService::thread($msgOrder)) === 2);
 
+// Loyalty: earn on completion (once), spend at checkout (capped), a refund takes back only what is still there.
+$lpUser = User::create('member', 'Points Fan', 'points@example.test', 'long-password-1');
+DB::query("INSERT INTO orders (order_no, user_id, customer_name, customer_email, customer_phone, ship_line1, ship_city, ship_state, ship_postcode, subtotal, total, payment_method, status) VALUES ('PTS-1', ?, 'Points Fan', 'points@example.test', '0123', 'Line 1', 'City', 'Selangor', '43000', 100.00, 100.00, 'cod', 'completed')", [$lpUser]);
+$ptsOrder1 = (int) DB::connection()->lastInsertId();
+DB::query("INSERT INTO orders (order_no, user_id, customer_name, customer_email, customer_phone, ship_line1, ship_city, ship_state, ship_postcode, subtotal, total, payment_method, status) VALUES ('PTS-2', ?, 'Points Fan', 'points@example.test', '0123', 'Line 1', 'City', 'Selangor', '43000', 50.00, 50.00, 'cod', 'pending')", [$lpUser]);
+$ptsOrder2 = (int) DB::connection()->lastInsertId();
+$LS = \App\Services\LoyaltyService::class;
+$LS::earn($ptsOrder1);
+check('loyalty: a completed order earns 1 point per RM', $LS::balance($lpUser) === 100);
+$LS::earn($ptsOrder1);
+check('loyalty: earning twice on the same order does not double the points', $LS::balance($lpUser) === 100);
+$cap = $LS::discountFor($lpUser, 10000, 500);
+check('loyalty: a checkout can use at most half of the items, and only what the balance holds', $cap['points'] === 100 && $cap['cents'] === 100);
+$LS::spend($ptsOrder2, $lpUser, 100);
+check('loyalty: spending moves the points out of the balance', $LS::balance($lpUser) === 0);
+$LS::reverse($ptsOrder1);
+check('loyalty: a refund never takes the balance below zero', $LS::balance($lpUser) === 0);
+
 // Newsletter: a sign-up only counts once its confirmation link is used, and the link works once.
 DB::query('DELETE FROM newsletter_subscribers');
 $nlToken = bin2hex(random_bytes(32));

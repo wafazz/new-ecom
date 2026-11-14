@@ -140,6 +140,25 @@ $defaultMethod = isset($methods['cod']) ? 'cod' : (string) array_key_first($meth
     <?php endif; ?>
     <?php if ($voucher_note): ?><p class="alert bad"><?= e($voucher_note) ?></p><?php endif; ?>
     <p class="sum-row"><span>Subtotal</span><span><?= e(money($cart['subtotal_cents'] / 100)) ?></span></p>
+    <?php if (!empty($loyalty)): ?>
+        <div class="co-points">
+            <p class="sum-row"><span>Your points</span><strong><?= (int) $loyalty['balance'] ?></strong></p>
+            <?php if ($loyalty['applied'] > 0): ?>
+                <p class="muted">Using <?= (int) $loyalty['applied'] ?> points (RM<?= e(number_format($loyalty['cents'] / 100, 2)) ?> off).</p>
+                <form method="post" action="<?= e(url('/checkout/points/remove')) ?>"><?= csrf_field() ?><button class="s-btn secondary block" type="submit">Stop using points</button></form>
+            <?php elseif ($loyalty['balance'] > 0): ?>
+                <form method="post" action="<?= e(url('/checkout/points')) ?>">
+                    <?= csrf_field() ?>
+                    <label>Use points (100 points = RM1; up to half of the items)
+                        <input name="points" inputmode="numeric" value="<?= (int) $loyalty['balance'] ?>"></label>
+                    <?= field_error('points') ?>
+                    <button class="s-btn secondary block" type="submit">Use points</button>
+                </form>
+            <?php else: ?>
+                <p class="muted">You earn 1 point for each RM1 spent on completed orders.</p>
+            <?php endif; ?>
+        </div>
+    <?php endif; ?>
     <?php if ($discount_cents > 0): ?>
         <p class="sum-row"><span>Discount</span><span>−<?= e(money($discount_cents / 100)) ?></span></p>
     <?php endif; ?>

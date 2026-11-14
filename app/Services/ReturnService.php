@@ -116,6 +116,7 @@ final class ReturnService
                     Database::query("UPDATE return_requests SET status = 'refunded', refund_amount = ?, refunded_at = NOW(), staff_note = COALESCE(?, staff_note) WHERE id = ?",
                         [number_format($value, 2, '.', ''), $note, $requestId]);
                     AuditService::log($actorId, 'return.refunded', "order {$order['order_no']}: RM" . number_format($value, 2, '.', ''));
+                    LoyaltyService::reverse((int) $order['id']);
                     break;
 
                 default:

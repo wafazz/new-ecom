@@ -21,7 +21,7 @@ final class CheckoutService
      * @return array{order_id:int, order_no:string, token:?string, user_id:?int}
      * @throws CheckoutException
      */
-    public static function place(int $cartId, array $contact, string $paymentMethod, ?int $userId, ?array $newAccount = null, ?string $refCode = null, ?string $voucherCode = null): array
+    public static function place(int $cartId, array $contact, string $paymentMethod, ?int $userId, ?array $newAccount = null, ?string $refCode = null, ?string $voucherCode = null, int $pointsRequested = 0): array
     {
         $pdo = Database::connection();
         $pdo->beginTransaction();
@@ -126,6 +126,14 @@ final class CheckoutService
                 VoucherService::redeem((int) $voucher['id']);
             }
 
+            // Loyalty points: members can spend up to half of the items' value; the ledger is locked while it is checked.
+            $pointsUsed = 0;
+            if ($userId !== null && $pointsRequested > 0 && Modules::enabled('loyalty')) {
+                $lp = LoyaltyService::discountFor($userId, $subtotal - $discount, $pointsRequested);
+                $pointsUsed = $lp['points'];
+                $discount += $lp['cents'];
+            }
+
             // Postage is worked out here from the zone, weight and payment method. The browser never sets it.
             $quote = ShippingRates::quote($shipLines, $subtotal - $discount, (string) $contact['state'], $paymentMethod);
             $shipping = $quote['fee'];
@@ -147,6 +155,9 @@ final class CheckoutService
                 ]
             );
             $orderId = (int) $pdo->lastInsertId();
+            if ($userId !== null && $pointsUsed > 0) {
+                LoyaltyService::spend($orderId, $userId, $pointsUsed);
+            }
 
             foreach ($items as $it) {
                 Database::query(

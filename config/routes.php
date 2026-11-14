@@ -45,6 +45,8 @@ return function (Router $r): void {
         $r->get('/checkout/shipping', 'Shop/CheckoutController@shippingQuote');
         $r->post('/checkout/voucher', 'Shop/CheckoutController@applyVoucher');
         $r->post('/checkout/voucher/remove', 'Shop/CheckoutController@removeVoucher');
+        $r->post('/checkout/points', 'Shop/CheckoutController@usePoints', ['module:loyalty']);
+        $r->post('/checkout/points/remove', 'Shop/CheckoutController@removePoints', ['module:loyalty']);
         $r->get('/track', 'Shop/OrderTrackController@form');
         $r->post('/track', 'Shop/OrderTrackController@lookup');
         $r->get('/order/{orderNo}/{token}', 'Shop/OrderTrackController@show');
