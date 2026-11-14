@@ -189,6 +189,17 @@ $path = rtrim((string) parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH), 
             <a class="s-logo<?= $siteLogo ? ' s-logo-only' : '' ?>" href="<?= e(url('/')) ?>"><span class="s-logo-mark" aria-hidden="true"><?php if ($siteLogo): ?><img class="s-logo-img" src="<?= e($siteLogo) ?>" alt="<?= e($appName) ?>"><?php else: ?><?= e(mb_strtoupper(mb_substr($appName, 0, 1))) ?><?php endif; ?></span><?php if (!$siteLogo): ?><span class="s-logo-text"><?= e($appName) ?></span><?php endif; ?></a>
             <p>Everyday favourites, delivered to your door. Browse the collection, save what you like and check out as a guest or with an account.</p>
         </div>
+        <?php if (\App\Services\Modules::enabled('newsletter')): ?>
+        <div class="s-newsletter">
+            <h3>Newsletter</h3>
+            <p>News and offers, sent now and then. We email you to confirm before adding you.</p>
+            <form method="post" action="<?= e(url('/newsletter')) ?>" class="s-news-form">
+                <?= csrf_field() ?>
+                <input type="email" name="email" required maxlength="190" placeholder="you@example.com" autocomplete="email" aria-label="Email address">
+                <button class="s-btn" type="submit">Sign up</button>
+            </form>
+        </div>
+        <?php endif; ?>
         <div>
             <h3>Shop</h3>
             <a href="<?= e(url('/products')) ?>">All products</a>

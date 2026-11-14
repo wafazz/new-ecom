@@ -174,6 +174,11 @@ final class CheckoutController extends Controller
         }
         Session::forget('voucher');
 
+        // Optional newsletter sign-up at checkout: a confirmation email is sent, the address is added only once confirmed.
+        if ($request->str('newsletter') === '1' && \App\Services\Modules::enabled('newsletter')) {
+            \App\Services\NewsletterService::subscribe((string) ($in['email'] ?? ''));
+        }
+
         if ($newAccount !== null) {
             Auth::login(User::find($result['user_id']));
         }

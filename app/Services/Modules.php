@@ -18,6 +18,7 @@ final class Modules
         'flash_sales' => ['Flash sales', 'Time-limited discounts on products. Off hides the Flash sales menus and storefront blocks, and prices go back to normal at once.'],
         'affiliates' => ['Affiliate programme', 'Referral links, commissions and withdrawals. Off stops new referral tracking and commissions and hides the affiliate pages; existing commissions and payouts stay on record.'],
         'digital_products' => ['Digital products', 'Digital downloads and licence keys. Off hides them from the shop and stops new purchases. Existing buyers keep their downloads.'],
+        'newsletter' => ['Newsletter sign-up', 'Sign-up boxes in the footer and at checkout, and the Newsletter list for admins. Off hides them and stops new sign-ups. Subscribers already on the list are kept.'],
         'stock_movements' => ['Stock movement log', 'The Stock Movement page and the Movement links on Stock Control. Off hides the page only: stock is still changed and every change is still recorded.'],
         'vouchers' => ['Discount coupons', 'Discount codes shoppers enter at checkout, and the Vouchers menu. Off stops every code at once; orders that already used a code keep their discount.'],
     ];

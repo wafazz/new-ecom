@@ -19,6 +19,8 @@ return function (Router $r): void {
         $r->get('/health', 'Shop/HomeController@health');
         $r->get('/live/visitors', 'Shop/HomeController@liveVisitors');
         $r->get('/verify-email/{token}', 'Auth/VerifyEmailController@confirm');
+        $r->post('/newsletter', 'Shop/NewsletterController@subscribe', ['module:newsletter']);
+        $r->get('/newsletter/confirm/{token}', 'Shop/NewsletterController@confirm', ['module:newsletter']);
         $r->get('/install', 'InstallController@show');
         $r->post('/install/check', 'InstallController@check');
         $r->post('/install/finish', 'InstallController@finish');
@@ -240,6 +242,12 @@ return function (Router $r): void {
         $r->group('/superadmin', ['auth:superadmin'], function (Router $r): void {
             $r->get('/modules', 'Superadmin/ModulesController@index');
             $r->post('/modules/{key}', 'Superadmin/ModulesController@toggle');
+        });
+
+        // Newsletter list (admin and superadmin)
+        $r->group('/admin', ['auth:admin'], function (Router $r): void {
+            $r->get('/newsletter', 'Admin/NewsletterController@index', ['module:newsletter']);
+            $r->get('/newsletter/export', 'Admin/NewsletterController@export', ['module:newsletter']);
         });
 
         // Staff portal

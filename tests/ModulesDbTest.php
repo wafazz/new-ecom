@@ -63,6 +63,16 @@ check('switched off: a stock change is still recorded', $after === $before + 1);
 check('switched off: the stock level still changes', (int) DB::query('SELECT stock FROM products WHERE id = ?', [$tote])->fetchColumn() === 18);
 Modules::set('stock_movements', true);
 
+// Newsletter: a sign-up only counts once its confirmation link is used, and the link works once.
+DB::query('DELETE FROM newsletter_subscribers');
+$nlToken = bin2hex(random_bytes(32));
+DB::query("INSERT INTO newsletter_subscribers (email, status, token_hash, token_expires) VALUES ('fan@example.test', 'pending', ?, NOW() + INTERVAL 1 DAY)", [hash('sha256', $nlToken)]);
+check('newsletter: a pending sign-up is not active yet', (int) DB::query("SELECT COUNT(*) FROM newsletter_subscribers WHERE status = 'active'")->fetchColumn() === 0);
+check('newsletter: the confirmation link confirms the address', \App\Services\NewsletterService::confirm($nlToken) === 'fan@example.test');
+check('newsletter: the same link cannot be used twice', \App\Services\NewsletterService::confirm($nlToken) === null);
+check('newsletter: a bad link is refused', \App\Services\NewsletterService::confirm(str_repeat('a', 64)) === null);
+check('newsletter: a bad address is refused before anything is sent', \App\Services\NewsletterService::subscribe('not-an-email') === 'invalid');
+
 // Digital products: hidden from the shop and not sold while off. Existing downloads are not touched.
 $digId = Product::insert(['weight_kg' => null, 'width_cm' => null, 'length_cm' => null, 'height_cm' => null,
     'name' => 'Ebook Guide', 'slug' => 'ebook-guide', 'sku' => 'EBK001', 'category_id' => null, 'brand_id' => null,

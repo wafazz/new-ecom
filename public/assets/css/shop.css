@@ -768,3 +768,7 @@ body.shop .select2-container--default .select2-results>.select2-results__options
   .live-float .live-eye{display:inline-block}
   .live-float .live-head-num{display:inline-block}
 }
+
+/* Newsletter sign-up in the storefront footer */
+.s-news-form{display:flex;flex-wrap:wrap;gap:.4rem}
+.s-news-form input{flex:1 1 180px;min-width:0;padding:.55rem .7rem;border:1px solid var(--border-strong);border-radius:10px;background:var(--surface);color:var(--text);font:inherit}

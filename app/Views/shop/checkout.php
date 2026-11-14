@@ -90,6 +90,9 @@ $defaultMethod = isset($methods['cod']) ? 'cod' : (string) array_key_first($meth
         </div>
         <?php endif; ?>
         <label>Order note (optional) <textarea name="notes" rows="2" maxlength="500" placeholder="Anything we should know about the delivery?"><?= old('notes') ?></textarea></label>
+        <?php if (\App\Services\Modules::enabled('newsletter')): ?>
+        <label class="check"><input type="checkbox" name="newsletter" value="1" <?= old('newsletter') === '1' ? 'checked' : '' ?>> Send me news and offers (we will email you to confirm first)</label>
+        <?php endif; ?>
     </section>
 
     <?php if ($guest): ?>
