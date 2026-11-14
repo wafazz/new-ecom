@@ -38,13 +38,14 @@ final class Modules
         'member_prices' => ['Member price groups', 'Member groups (for example wholesale or VIP) with their own lower prices on chosen products. Off makes every shopper pay the public price.'],
         'store_credit' => ['Store credit', 'Refunds can be given as store credit to a member, and credit can be spent at checkout. Off hides credit at checkout and stops new credit refunds. Balances are kept.'],
         'preorders' => ['Pre-orders', 'Sell a product before its stock arrives, up to a limit, with an expected date. Off stops new pre-orders. Existing pre-orders are kept.'],
+        'purchase_orders' => ['Supplier purchase orders', 'Suppliers, purchase orders to them, and recorded deliveries. Stock goes up only when a delivery is recorded, never past what was ordered. Off hides the pages.'],
         'stock_movements' => ['Stock movement log', 'The Stock Movement page and the Movement links on Stock Control. Off hides the page only: stock is still changed and every change is still recorded.'],
         'vouchers' => ['Discount coupons', 'Discount codes shoppers enter at checkout, and the Vouchers menu. Off stops every code at once; orders that already used a code keep their discount.'],
     ];
 
     /** Every module is off until a superadmin turns it on. */
     public const OFF_BY_DEFAULT = [
-        'flash_sales', 'vouchers', 'affiliates', 'digital_products', 'stock_movements', 'price_alerts', 'accounting_export', 'stock_counts', 'quantity_breaks', 'member_prices', 'store_credit', 'preorders',
+        'flash_sales', 'vouchers', 'affiliates', 'digital_products', 'stock_movements', 'price_alerts', 'accounting_export', 'stock_counts', 'quantity_breaks', 'member_prices', 'store_credit', 'preorders', 'purchase_orders',
         'abandoned_cart_emails', 'back_in_stock', 'product_csv', 'bulk_pricing', 'returns', 'loyalty', 'gift_cards',
         'bundles', 'newsletter', 'sales_reports', 'support', 'tax',
     ];

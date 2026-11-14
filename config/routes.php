@@ -336,6 +336,16 @@ return function (Router $r): void {
             $r->post('/member-prices/price', 'Admin/MemberPriceController@price', ['module:member_prices']);
         });
 
+        // Supplier purchase orders (admin and superadmin)
+        $r->group('/admin', ['auth:admin'], function (Router $r): void {
+            $r->get('/purchase-orders', 'Admin/PurchaseOrderController@index', ['module:purchase_orders']);
+            $r->post('/purchase-orders/supplier', 'Admin/PurchaseOrderController@supplier', ['module:purchase_orders']);
+            $r->post('/purchase-orders', 'Admin/PurchaseOrderController@create', ['module:purchase_orders']);
+            $r->get('/purchase-orders/{id}', 'Admin/PurchaseOrderController@show', ['module:purchase_orders']);
+            $r->post('/purchase-orders/{id}/send', 'Admin/PurchaseOrderController@send', ['module:purchase_orders']);
+            $r->post('/purchase-orders/{id}/receive', 'Admin/PurchaseOrderController@receive', ['module:purchase_orders']);
+        });
+
         // Pre-orders (admin and superadmin)
         $r->group('/admin', ['auth:admin'], function (Router $r): void {
             $r->get('/preorders', 'Admin/PreorderController@index', ['module:preorders']);

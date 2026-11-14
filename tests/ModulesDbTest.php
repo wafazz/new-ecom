@@ -403,6 +403,23 @@ check('pre-orders: arrival sets stock to arrived minus sold', \App\Services\Preo
 check('pre-orders: the pre-order closes on arrival', !\App\Services\PreorderService::isPreorder($po));
 Modules::set('preorders', false);
 
+// Purchase orders: stock goes up only on a recorded delivery, never past the ordered quantity.
+$poProd = Product::insert(['weight_kg' => '1.000', 'width_cm' => '10', 'length_cm' => '10', 'height_cm' => '10',
+    'name' => 'Supplied Tote', 'slug' => 'supplied-tote', 'sku' => 'SUP001', 'category_id' => null, 'brand_id' => null,
+    'base_price' => '5', 'company_base_price' => '10', 'retail_price' => '10.00', 'discount_price' => null, 'stock' => 1, 'status' => 'active']);
+check('purchase orders: a supplier is saved', \App\Services\PurchaseOrderService::createSupplier('Acme Supply', '', '7', 1) === null);
+$poSupplier = (int) DB::query("SELECT id FROM suppliers WHERE name = 'Acme Supply'")->fetchColumn();
+$poId = \App\Services\PurchaseOrderService::createOrder($poSupplier, [['product_id' => $poProd, 'qty' => 10, 'unit_cost' => '4.00']], 1);
+check('purchase orders: a draft order is made', is_int($poId));
+check('purchase orders: a draft must be sent before it can receive', \App\Services\PurchaseOrderService::receive($poId, [1 => '2'], 1) !== null);
+\App\Services\PurchaseOrderService::send($poId, 1);
+$poItem = (int) DB::query('SELECT id FROM purchase_order_items WHERE po_id = ?', [$poId])->fetchColumn();
+check('purchase orders: a delivery adds to stock', \App\Services\PurchaseOrderService::receive($poId, [$poItem => '4'], 1) === null && (int) DB::query('SELECT stock FROM products WHERE id = ?', [$poProd])->fetchColumn() === 5);
+check('purchase orders: a delivery cannot go past the ordered quantity', \App\Services\PurchaseOrderService::receive($poId, [$poItem => '7'], 1) !== null);
+check('purchase orders: the order is part-received', (string) DB::query('SELECT status FROM purchase_orders WHERE id = ?', [$poId])->fetchColumn() === 'part_received');
+\App\Services\PurchaseOrderService::receive($poId, [$poItem => '6'], 1);
+check('purchase orders: the rest arrives and the order is received, with stock matching the total', (string) DB::query('SELECT status FROM purchase_orders WHERE id = ?', [$poId])->fetchColumn() === 'received' && (int) DB::query('SELECT stock FROM products WHERE id = ?', [$poProd])->fetchColumn() === 11);
+
 // Newsletter: a sign-up only counts once its confirmation link is used, and the link works once.
 DB::query('DELETE FROM newsletter_subscribers');
 $nlToken = bin2hex(random_bytes(32));
