@@ -13,6 +13,9 @@ check('superadmin signs in on its own page', Auth::LOGIN['superadmin'] === '/sup
 check('admin and superadmin both count as admin roles', Auth::ADMIN_ROLES === ['admin', 'superadmin']);
 check('plain admin is not given the superadmin login', Auth::LOGIN['admin'] === '/admin/login');
 check('flash sales is a known module', isset(Modules::LIST['flash_sales']));
+check('payments: the billing period must be one-time, monthly or yearly', \App\Services\ModulePricing::validate('weekly', '1') !== null && \App\Services\ModulePricing::validate('yearly', '49.90') === null);
+check('payments: a price has at most two decimals', \App\Services\ModulePricing::validate('monthly', '12.345') !== null);
+check('payments: a collection ID with spaces is refused before anything is saved', isset(\App\Services\PlatformSettings::save(['billplz_mode' => 'sandbox', 'billplz_collection_id' => 'bad id'], 1)['billplz_collection_id']));
 check('an unknown module is never on', Modules::enabled('no_such_module') === false);
 
 if (!str_ends_with((string) env('DB_NAME', ''), '_test')) {

@@ -250,6 +250,9 @@ return function (Router $r): void {
         $r->group('/superadmin', ['auth:superadmin'], function (Router $r): void {
             $r->get('/modules', 'Superadmin/ModulesController@index');
             $r->post('/modules/{key}', 'Superadmin/ModulesController@toggle');
+            $r->post('/modules/{key}/price', 'Superadmin/ModulesController@price');
+            $r->get('/billing', 'Superadmin/ModulesController@billing');
+            $r->post('/billing', 'Superadmin/ModulesController@saveBilling');
         });
 
         // SST (admin and superadmin)

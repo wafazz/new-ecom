@@ -8,16 +8,23 @@ use App\Core\Controller;
 use App\Core\Request;
 use App\Core\Response;
 use App\Services\AuditService;
+use App\Services\ModulePricing;
 use App\Services\Modules;
+use App\Services\PlatformSettings;
 
 /** Superadmin only (route group auth:superadmin). Turns whole modules on and off. */
 final class ModulesController extends Controller
 {
     public function index(Request $request): void
     {
+        $modules = Modules::all();
+        foreach ($modules as &$m) {
+            $m['price'] = ModulePricing::price($m['key']);
+        }
+        unset($m);
         $this->view('superadmin/modules', [
             'title' => 'Modules',
-            'modules' => Modules::all(),
+            'modules' => $modules,
             'audit' => $this->auditRows(),
             'scripts' => ['modules.js'],
         ], 'portal');
@@ -39,6 +46,34 @@ final class ModulesController extends Controller
             Response::json(['ok' => true, 'key' => $key, 'enabled' => $on, 'message' => $message, 'audit' => $this->auditRows()]);
         }
         $this->success('/superadmin/modules', $message);
+    }
+
+    /** Sets a module's price and billing period. Superadmin only (route group). */
+    public function price(Request $request, string $key): void
+    {
+        if (!isset(Modules::LIST[$key])) {
+            Response::abort(404);
+        }
+        $error = ModulePricing::set($key, $request->str('period'), trim($request->str('amount')), (int) Auth::user()['id']);
+        if ($error !== null) {
+            $this->backWithErrors('/superadmin/modules', ['price_' . $key => $error]);
+        }
+        $this->success('/superadmin/modules', Modules::LIST[$key][0] . ' price saved.');
+    }
+
+    /** Payment setup page: Billplz and bank details for module payments. */
+    public function billing(Request $request): void
+    {
+        $this->view('superadmin/billing', ['title' => 'Payment setup', 'o' => PlatformSettings::overview(), 'errors' => []], 'portal');
+    }
+
+    public function saveBilling(Request $request): void
+    {
+        $errors = PlatformSettings::save($request->body, (int) Auth::user()['id']);
+        if ($errors !== []) {
+            $this->backWithErrors('/superadmin/billing', $errors);
+        }
+        $this->success('/superadmin/billing', 'Payment details saved.');
     }
 
     /**

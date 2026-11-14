@@ -21,6 +21,18 @@ $onCount = count(array_filter($modules, fn($m) => $m['enabled']));
                         <span class="mod-status <?= $m['enabled'] ? 'is-on' : 'is-off' ?>"><?= $m['enabled'] ? 'On' : 'Off' ?></span>
                     </div>
                     <p class="muted mod-help"><?= e($m['help']) ?></p>
+                    <form method="post" action="<?= e(url('/superadmin/modules/' . $m['key'] . '/price')) ?>" class="mod-price" data-no-busy>
+                        <?= csrf_field() ?>
+                        <label>Billing
+                            <select name="period">
+                                <?php foreach (\App\Services\ModulePricing::PERIODS as $pk => $pl): ?>
+                                    <option value="<?= e($pk) ?>" <?= $m['price']['period'] === $pk ? 'selected' : '' ?>><?= e($pl) ?></option>
+                                <?php endforeach; ?>
+                            </select></label>
+                        <label>Price (RM, 0 = free)
+                            <input name="amount" inputmode="decimal" value="<?= e(number_format($m['price']['amount'], 2, '.', '')) ?>" aria-label="Price for <?= e($m['label']) ?>"></label>
+                        <button class="btn secondary sm" type="submit">Save price</button>
+                    </form>
                     <form method="post" action="<?= e(url('/superadmin/modules/' . $m['key'])) ?>" class="mod-form">
                         <?= csrf_field() ?>
                         <input type="hidden" name="enabled" value="<?= $m['enabled'] ? '0' : '1' ?>">
