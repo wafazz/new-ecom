@@ -277,7 +277,7 @@ final class ModuleBillingService
             $shop = (string) config('app.name');
             $label = Modules::LIST[$key][0];
             $text = "{$label} at {$shop} is paid up until {$until}. It will switch off on that date unless it is paid again.\n\n"
-                . "Renew it in the admin portal under Module billing: " . url('/admin/billing') . "\n\nAmount due: RM" . number_format((float) $inv['amount'], 2) . ' (' . ModulePricing::PERIODS[$inv['period']] . ').';
+                . "Renew it in the admin portal under Buy Add-On Module: " . url('/admin/billing') . "\n\nAmount due: RM" . number_format((float) $inv['amount'], 2) . ' (' . ModulePricing::PERIODS[$inv['period']] . ').';
             foreach (Database::query("SELECT email FROM users WHERE role = 'admin' AND status = 'active'")->fetchAll(\PDO::FETCH_COLUMN) as $to) {
                 $r = MailService::send((string) $to, "{$label} renews soon", $text, 'module_billing');
                 if ($r['ok']) {

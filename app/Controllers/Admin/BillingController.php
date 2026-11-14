@@ -37,7 +37,7 @@ final class BillingController extends Controller
             ];
         }
         $this->view('admin/billing', [
-            'title' => 'Module billing',
+            'title' => 'Buy Add-On Module',
             'rows' => $rows,
             'bank' => PlatformSettings::bank(),
             'billplzReady' => PlatformSettings::billplzCredentials() !== null,

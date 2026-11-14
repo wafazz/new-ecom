@@ -6,7 +6,7 @@ $periods = \App\Services\ModulePricing::PERIODS;
 <div class="msg-page bill-page">
     <header class="msg-head">
         <div>
-            <h1>Module billing</h1>
+            <h1>Buy Add-On Module</h1>
             <p class="muted">Pick a plan for each module, then pay by Billplz or send a bank transfer receipt. A paid module stays on while it is paid up.</p>
         </div>
     </header>
