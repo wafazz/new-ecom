@@ -138,6 +138,26 @@ $infoDialog = function (string $key, string $label, bool $canAdd): string {
                     <p class="bill-note is-bad">The last receipt was not accepted: <?= e($r['open']['note']) ?></p>
                 <?php endif; ?>
 
+                <?php
+                // One discount countdown per module card: the discount that ends soonest.
+                $soonest = null;
+                foreach ($r['quotes'] as $q) {
+                    if ($q['kind'] !== null && $q['ends_at'] && ($soonest === null || strtotime((string) $q['ends_at']) < strtotime((string) $soonest['ends_at']))) {
+                        $soonest = $q;
+                    }
+                }
+                ?>
+                <?php if ($soonest !== null): ?>
+                    <div class="flip-clock is-discount is-mini" data-end-ms="<?= (int) (strtotime((string) $soonest['ends_at']) * 1000) ?>" data-ended-text="Offer ended" role="timer" aria-label="Time left on this discount">
+                        <div class="flip-units" data-units>
+                            <?php foreach (['D', 'H', 'M', 'S'] as $unit): ?>
+                                <div class="flip-unit"><div class="flip-tile"><span class="flip-num">00</span></div><span class="flip-label"><?= e($unit) ?></span></div>
+                            <?php endforeach; ?>
+                        </div>
+                        <small class="flip-end">Discount ends <?= e(date('d M Y, H:i', strtotime((string) $soonest['ends_at']))) ?></small>
+                    </div>
+                <?php endif; ?>
+
                 <form method="post" enctype="multipart/form-data" class="bill-form" data-bill-form>
                     <?= csrf_field() ?>
                     <fieldset class="bill-plans">
@@ -150,14 +170,6 @@ $infoDialog = function (string $key, string $label, bool $canAdd): string {
                                     <?php if ($q['kind'] !== null): ?>
                                         <s><?= e($money($q['list'])) ?></s> <strong><?= e($money($q['final'])) ?></strong>
                                         <small class="bill-disc"><?= e(\App\Services\ModulePricing::describe(['kind' => $q['kind'], 'value' => $q['value']])) ?></small>
-                                        <div class="flip-clock is-discount is-mini" data-end-ms="<?= (int) (strtotime((string) $q['ends_at']) * 1000) ?>" data-ended-text="Offer ended" role="timer" aria-label="Time left on this discount">
-                                            <div class="flip-units" data-units>
-                                                <?php foreach (['D', 'H', 'M', 'S'] as $unit): ?>
-                                                    <div class="flip-unit"><div class="flip-tile"><span class="flip-num">00</span></div><span class="flip-label"><?= e($unit) ?></span></div>
-                                                <?php endforeach; ?>
-                                            </div>
-                                            <small class="flip-end">Discount ends <?= e(date('d M Y, H:i', strtotime((string) $q['ends_at']))) ?></small>
-                                        </div>
                                     <?php else: ?>
                                         <strong><?= e($money($q['list'])) ?></strong>
                                     <?php endif; ?>
