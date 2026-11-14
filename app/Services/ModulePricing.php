@@ -11,16 +11,26 @@ final class ModulePricing
     public const PERIODS = ['one_time' => 'One-time', 'monthly' => 'Monthly', 'yearly' => 'Yearly'];
     public const MAX_AMOUNT = 99999.99;
 
-    /** @return array{period:string, amount:float} */
-    public static function price(string $key): array
+    /** The plans a module offers: period => list price (RM). A period with no amount is not offered. @return array<string,float> */
+    public static function plans(string $key): array
     {
-        $r = Database::query('SELECT period, amount FROM module_prices WHERE module_key = ?', [$key])->fetch();
-        return $r ? ['period' => (string) $r['period'], 'amount' => (float) $r['amount']] : ['period' => 'monthly', 'amount' => 0.0];
+        $out = [];
+        foreach (Database::query('SELECT period, amount FROM module_prices WHERE module_key = ? AND amount > 0 ORDER BY FIELD(period, \'one_time\', \'monthly\', \'yearly\')', [$key])->fetchAll() as $r) {
+            $out[(string) $r['period']] = (float) $r['amount'];
+        }
+        return $out;
     }
 
+    /** A module with no plan offered needs no payment. */
     public static function isFree(string $key): bool
     {
-        return self::price($key)['amount'] <= 0;
+        return self::plans($key) === [];
+    }
+
+    /** The list price of one plan, or null when that plan is not offered. */
+    public static function listPrice(string $key, string $period): ?float
+    {
+        return self::plans($key)[$period] ?? null;
     }
 
     /** @return string|null error message, or null when valid */
@@ -132,17 +142,17 @@ final class ModulePricing
     }
 
     /**
-     * What a module costs now: the list price, the discount that applies, and the final amount.
+     * What one plan of a module costs now: the list price, the discount that applies, and the final amount.
      * @return array{period:string, list:float, final:float, kind:?string, value:float, ends_at:?string, scope:?string}
      */
-    public static function quote(string $key): array
+    public static function quote(string $key, string $period): array
     {
-        $price = self::price($key);
+        $list = self::listPrice($key, $period) ?? 0.0;
         $d = self::activeDiscount($key);
-        $final = $d === null ? $price['amount'] : self::finalFor($price['amount'], $d['kind'], $d['value']);
+        $final = $d === null ? $list : self::finalFor($list, $d['kind'], $d['value']);
         return [
-            'period' => $price['period'],
-            'list' => $price['amount'],
+            'period' => $period,
+            'list' => $list,
             'final' => max(0.0, (float) $final),
             'kind' => $d['kind'] ?? null,
             'value' => $d['value'] ?? 0.0,
@@ -151,20 +161,44 @@ final class ModulePricing
         ];
     }
 
+    /** Sets one plan's price. An amount of 0 takes that plan off offer. @return string|null error */
     public static function set(string $key, string $period, string $amount, int $actorId): ?string
     {
         if (!isset(Modules::LIST[$key])) {
             return 'Unknown module.';
         }
+        $amount = trim($amount) === '' ? '0' : trim($amount);
         if (($error = self::validate($period, $amount)) !== null) {
             return $error;
         }
-        Database::query(
-            'INSERT INTO module_prices (module_key, period, amount) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE period = VALUES(period), amount = VALUES(amount)',
-            [$key, $period, number_format((float) $amount, 2, '.', '')]
-        );
-        AuditService::log($actorId, 'module.price', "{$key}: " . self::PERIODS[$period] . ' RM' . number_format((float) $amount, 2));
+        if ((float) $amount <= 0) {
+            Database::query('DELETE FROM module_prices WHERE module_key = ? AND period = ?', [$key, $period]);
+            AuditService::log($actorId, 'module.price', "{$key}: " . self::PERIODS[$period] . ' plan taken off offer');
+        } else {
+            Database::query(
+                'INSERT INTO module_prices (module_key, period, amount) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE amount = VALUES(amount)',
+                [$key, $period, number_format((float) $amount, 2, '.', '')]
+            );
+            AuditService::log($actorId, 'module.price', "{$key}: " . self::PERIODS[$period] . ' RM' . number_format((float) $amount, 2));
+        }
         ModuleBillingService::flushCache();
         return null;
+    }
+
+    /**
+     * Saves all three plans of a module from the form (blank or 0 = not offered).
+     * @param array<string,string> $amounts period => amount
+     * @return array<string,string> errors by period (empty when saved)
+     */
+    public static function setPlans(string $key, array $amounts, int $actorId): array
+    {
+        $errors = [];
+        foreach (array_keys(self::PERIODS) as $period) {
+            $err = self::set($key, $period, (string) ($amounts[$period] ?? '0'), $actorId);
+            if ($err !== null) {
+                $errors[$period] = $err;
+            }
+        }
+        return $errors;
     }
 }

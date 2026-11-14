@@ -56,8 +56,19 @@ final class ModuleBillingService
         };
     }
 
-    /** The invoice still waiting for payment for this module, or a new one. @return array<string,mixed>|string error or invoice */
-    public static function invoiceFor(string $key, int $requestedBy): array|string
+    /** The period this module was bought with, or null. */
+    public static function subscribedPeriod(string $key): ?string
+    {
+        $p = Database::query('SELECT period FROM module_subscriptions WHERE module_key = ?', [$key])->fetchColumn();
+        return $p === false || $p === null ? null : (string) $p;
+    }
+
+    /**
+     * The invoice for one plan of a module: the open one for the same plan, or a new one. An open invoice for a different
+     * plan is replaced, unless a receipt for it is waiting for review.
+     * @return array<string,mixed>|string error or invoice
+     */
+    public static function invoiceFor(string $key, string $period, int $requestedBy): array|string
     {
         if (!isset(Modules::LIST[$key])) {
             return 'Unknown module.';
@@ -65,19 +76,28 @@ final class ModuleBillingService
         if (ModulePricing::isFree($key)) {
             return 'This module is free. There is nothing to pay.';
         }
+        if (ModulePricing::listPrice($key, $period) === null) {
+            return 'That plan is not offered for this module.';
+        }
         $open = Database::query("SELECT * FROM module_invoices WHERE module_key = ? AND status IN ('unpaid','pending_review') ORDER BY id DESC LIMIT 1", [$key])->fetch();
         if ($open) {
-            return $open;
+            if ($open['period'] === $period) {
+                return $open;
+            }
+            if ($open['status'] === 'pending_review') {
+                return 'A receipt for another plan is waiting for review. Wait for the superadmin to check it first.';
+            }
+            Database::query("UPDATE module_invoices SET status = 'rejected', note = 'Replaced by another plan' WHERE id = ?", [(int) $open['id']]);
         }
-        $price = ModulePricing::quote($key); // the price now, with any discount; the invoice keeps it
+        $price = ModulePricing::quote($key, $period); // the price now, with any discount; the invoice keeps it
         $until = self::paidUntil($key);
         $start = ($until !== null && $until >= date('Y-m-d') && $until !== self::FOREVER)
             ? date('Y-m-d', strtotime($until . ' +1 day'))
             : date('Y-m-d');
-        $end = self::periodEnd($start, $price['period']);
+        $end = self::periodEnd($start, $period);
         Database::query(
             "INSERT INTO module_invoices (module_key, period, amount, period_start, period_end, status, requested_by) VALUES (?, ?, ?, ?, ?, 'unpaid', ?)",
-            [$key, $price['period'], number_format($price['final'], 2, '.', ''), $start, $end, $requestedBy]
+            [$key, $period, number_format($price['final'], 2, '.', ''), $start, $end, $requestedBy]
         );
         return Database::query('SELECT * FROM module_invoices WHERE id = ?', [(int) Database::connection()->lastInsertId()])->fetch();
     }
@@ -147,8 +167,8 @@ final class ModuleBillingService
             }
             Database::query("UPDATE module_invoices SET status = 'paid', paid_at = NOW(), reviewed_by = ?, reviewed_at = NOW(), note = ? WHERE id = ?", [$actorId, mb_substr($note, 0, 255), $invoiceId]);
             Database::query(
-                'INSERT INTO module_subscriptions (module_key, paid_until) VALUES (?, ?) ON DUPLICATE KEY UPDATE paid_until = VALUES(paid_until)',
-                [$inv['module_key'], $inv['period_end']]
+                'INSERT INTO module_subscriptions (module_key, paid_until, period) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE paid_until = VALUES(paid_until), period = VALUES(period)',
+                [$inv['module_key'], $inv['period_end'], $inv['period']]
             );
             AuditService::log($actorId, 'module.paid', "invoice {$invoiceId}: {$inv['module_key']} until {$inv['period_end']}");
             $pdo->commit();
@@ -208,7 +228,8 @@ final class ModuleBillingService
     {
         $sent = 0;
         foreach (array_keys(Modules::LIST) as $key) {
-            if (ModulePricing::isFree($key) || ModulePricing::price($key)['period'] === 'one_time') {
+            $sub = self::subscribedPeriod($key);
+            if (ModulePricing::isFree($key) || $sub === null || $sub === 'one_time') {
                 continue;
             }
             $until = self::paidUntil($key);
@@ -219,7 +240,7 @@ final class ModuleBillingService
             if ((int) $already > 0) {
                 continue;
             }
-            $inv = self::invoiceFor($key, 0);
+            $inv = self::invoiceFor($key, $sub, 0);
             if (is_string($inv)) {
                 continue;
             }

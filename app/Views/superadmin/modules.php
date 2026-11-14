@@ -49,22 +49,33 @@ $onCount = count(array_filter($modules, fn($m) => $m['enabled']));
                         <span class="mod-status <?= $m['enabled'] ? 'is-on' : 'is-off' ?>"><?= $m['enabled'] ? 'On' : ($m['waiting'] ? 'Waiting for payment' : 'Off') ?></span>
                     </div>
                     <p class="muted mod-help"><?= e($m['help']) ?></p>
-                    <?php if ($m['quote']['list'] > 0): ?>
-                        <p class="muted">Price: <?= $m['quote']['kind'] !== null ? '<s>RM' . e(number_format($m['quote']['list'], 2)) . '</s> <strong>RM' . e(number_format($m['quote']['final'], 2)) . '</strong> (' . e(\App\Services\ModulePricing::describe(['kind' => $m['quote']['kind'], 'value' => $m['quote']['value']])) . ' until ' . e(date('d M Y, H:i', strtotime((string) $m['quote']['ends_at']))) . ')' : '<strong>RM' . e(number_format($m['quote']['list'], 2)) . '</strong>' ?> <?= e(\App\Services\ModulePricing::PERIODS[$m['quote']['period']]) ?></p>
+                    <?php if (!empty($m['plans'])): ?>
+                        <div class="mod-plans">
+                            <p class="muted">Plans:</p>
+                            <ul class="mod-plan-list">
+                                <?php foreach ($m['quotes'] as $pk => $q): ?>
+                                    <li>
+                                        <?= e(\App\Services\ModulePricing::PERIODS[$pk]) ?>:
+                                        <?php if ($q['kind'] !== null): ?>
+                                            <s>RM<?= e(number_format($q['list'], 2)) ?></s> <strong>RM<?= e(number_format($q['final'], 2)) ?></strong>
+                                            (<?= e(\App\Services\ModulePricing::describe(['kind' => $q['kind'], 'value' => $q['value']])) ?> until <?= e(date('d M Y, H:i', strtotime((string) $q['ends_at']))) ?>)
+                                        <?php else: ?>
+                                            <strong>RM<?= e(number_format($q['list'], 2)) ?></strong>
+                                        <?php endif; ?>
+                                    </li>
+                                <?php endforeach; ?>
+                            </ul>
+                        </div>
                     <?php endif; ?>
                     <form method="post" action="<?= e(url('/superadmin/modules/' . $m['key'] . '/price')) ?>" class="mod-price" data-no-busy>
                         <?= csrf_field() ?>
-                        <label>Billing
-                            <select name="period">
-                                <?php foreach (\App\Services\ModulePricing::PERIODS as $pk => $pl): ?>
-                                    <option value="<?= e($pk) ?>" <?= $m['price']['period'] === $pk ? 'selected' : '' ?>><?= e($pl) ?></option>
-                                <?php endforeach; ?>
-                            </select></label>
-                        <label>Price (RM, 0 = free)
-                            <input name="amount" inputmode="decimal" value="<?= e(number_format($m['price']['amount'], 2, '.', '')) ?>" aria-label="Price for <?= e($m['label']) ?>"></label>
-                        <button class="btn secondary sm" type="submit">Save price</button>
+                        <?php foreach (\App\Services\ModulePricing::PERIODS as $pk => $pl): ?>
+                            <label><?= e($pl) ?> (RM, blank = not offered)
+                                <input name="<?= e($pk) ?>" inputmode="decimal" value="<?= e(isset($m['plans'][$pk]) ? number_format($m['plans'][$pk], 2, '.', '') : '') ?>" aria-label="<?= e($pl) ?> price for <?= e($m['label']) ?>"></label>
+                        <?php endforeach; ?>
+                        <button class="btn secondary sm" type="submit">Save plans</button>
                     </form>
-                    <?php if ($m['quote']['list'] > 0): ?>
+                    <?php if (!empty($m['plans'])): ?>
                     <form method="post" action="<?= e(url('/superadmin/discounts')) ?>" class="mod-price">
                         <?= csrf_field() ?>
                         <input type="hidden" name="scope" value="<?= e($m['key']) ?>">
