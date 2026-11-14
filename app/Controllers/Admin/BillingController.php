@@ -62,6 +62,63 @@ final class BillingController extends Controller
         $this->redirect($url);
     }
 
+    /** Pays several modules in one Billplz bill. Items are "key:period" pairs from the selected cards. */
+    public function paySelected(Request $request): void
+    {
+        $ids = $this->selectedInvoices($request);
+        $me = Auth::user();
+        $url = null;
+        $error = ModuleBillingService::startBillplzMany($ids, ['name' => $me['name'], 'email' => $me['email']], $url);
+        if ($error !== null) {
+            $this->backWithErrors('/admin/billing', ['form' => $error]);
+        }
+        if (!is_string($url) || !BillplzGateway::safeUrl($url)) {
+            Response::abort(502);
+        }
+        $this->redirect($url);
+    }
+
+    /** Uploads one transfer receipt that covers several selected modules. */
+    public function receiptSelected(Request $request): void
+    {
+        $ids = $this->selectedInvoices($request);
+        $error = ModuleBillingService::attachReceiptMany($ids, $_FILES['receipt'] ?? [], (int) Auth::user()['id']);
+        if ($error !== null) {
+            $this->backWithErrors('/admin/billing', ['form' => $error]);
+        }
+        $this->success('/admin/billing', 'Receipt sent for ' . count($ids) . ' module(s). The superadmin will check it.');
+    }
+
+    /**
+     * Open invoices for the selected "key:period" items, all tied to one group reference.
+     * @return array<int,int> invoice ids
+     */
+    private function selectedInvoices(Request $request): array
+    {
+        $items = $request->input('items', []);
+        if (!is_array($items) || $items === []) {
+            $this->backWithErrors('/admin/billing', ['form' => 'Choose at least one module and plan.']);
+        }
+        $group = bin2hex(random_bytes(8));
+        $ids = [];
+        foreach (array_slice(array_unique($items), 0, 20) as $item) {
+            if (!is_string($item) || !str_contains($item, ':')) {
+                continue;
+            }
+            [$key, $period] = explode(':', $item, 2);
+            $invoice = ModuleBillingService::invoiceFor($key, $period, (int) Auth::user()['id']);
+            if (is_string($invoice)) {
+                $this->backWithErrors('/admin/billing', ['form' => $invoice]);
+            }
+            \App\Core\Database::query('UPDATE module_invoices SET group_ref = ? WHERE id = ?', [$group, (int) $invoice['id']]);
+            $ids[] = (int) $invoice['id'];
+        }
+        if ($ids === []) {
+            $this->backWithErrors('/admin/billing', ['form' => 'Choose at least one module and plan.']);
+        }
+        return $ids;
+    }
+
     public function receipt(Request $request, string $key): void
     {
         $invoice = ModuleBillingService::invoiceFor($key, (string) $request->str('period'), (int) Auth::user()['id']);

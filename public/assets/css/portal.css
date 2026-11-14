@@ -996,3 +996,18 @@ a.vis-card:hover{transform:translateY(-3px);box-shadow:0 14px 28px -12px rgba(47
 .mod-timer,.bill-disc-timer{font-variant-numeric:tabular-nums;font-weight:600;color:var(--accent);white-space:nowrap}
 .bill-disc-timer{display:block;font-size:.78rem}
 .mod-timer.is-ended,.bill-disc-timer.is-ended{color:var(--bad-fg,#b00020)}
+
+/* Admin > Module billing: select modules and pay together (basket) */
+.bill-pick{display:flex;align-items:center;gap:.5rem;min-height:44px;font-size:.92rem;cursor:pointer;color:var(--text);font-weight:600}
+.bill-pick input{width:20px;height:20px;accent-color:var(--accent);flex:none}
+.bill-basket{position:sticky;bottom:0;z-index:20;margin-top:1.2rem;padding:.9rem 1rem;border:1px solid var(--border-strong);border-radius:16px;background:var(--surface);box-shadow:0 -10px 30px -18px rgba(15,23,42,.35);display:flex;flex-wrap:wrap;gap:.7rem 1.2rem;align-items:center;justify-content:space-between}
+.bill-basket-info{display:grid;gap:.15rem;min-width:0}
+.bill-basket-info [data-basket-msg]{font-size:.85rem;color:var(--bad-fg,#b00020)}
+.bill-basket-actions{display:flex;flex-wrap:wrap;gap:.6rem;align-items:flex-end}
+.bill-basket-actions .bill-file{min-width:min(100%,240px)}
+.bill-basket .btn[disabled]{opacity:.5;cursor:not-allowed}
+@media (max-width:560px){
+  .bill-basket{padding:.8rem;border-radius:14px}
+  .bill-basket-actions,.bill-basket-actions .btn,.bill-basket-actions .bill-file{width:100%}
+  .bill-basket-actions .btn{min-height:46px}
+}

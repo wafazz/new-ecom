@@ -75,4 +75,55 @@
       out.textContent = f ? 'Selected: ' + f.name : '';
     });
   });
+
+  // ---- Pay several modules together: the basket --------------------------------------------------------------
+  var basket = document.getElementById('bill-basket');
+  if (basket) {
+    var summary = basket.querySelector('[data-basket-summary]');
+    var msg = basket.querySelector('[data-basket-msg]');
+    var payBtn = basket.querySelector('[data-basket-pay]');
+    var recBtn = basket.querySelector('[data-basket-receipt]');
+    var cardOf = function (el) { return el.closest('.bill-card'); };
+    var picked = function () {
+      return Array.prototype.filter.call(document.querySelectorAll('[data-pick]'), function (c) { return c.checked; });
+    };
+    var planOf = function (pick) {
+      var r = cardOf(pick).querySelector('input[name=period]:checked');
+      return r || null;
+    };
+    function refresh() {
+      var picks = picked();
+      var total = 0;
+      picks.forEach(function (p) { var r = planOf(p); if (r) total += Number(r.dataset.final || 0); });
+      summary.textContent = picks.length
+        ? picks.length + ' selected · RM ' + total.toFixed(2) + ' in total'
+        : 'Select modules to pay together.';
+      msg.textContent = '';
+      if (payBtn) payBtn.disabled = !(picks.length && payBtn.dataset.ready === '1');
+      if (recBtn) recBtn.disabled = !picks.length;
+    }
+    document.addEventListener('change', function (e) {
+      if (e.target.matches && (e.target.matches('[data-pick]') || e.target.matches('input[name=period]'))) refresh();
+    });
+    basket.addEventListener('submit', function (e) {
+      basket.querySelectorAll('input[data-item]').forEach(function (n) { n.remove(); });
+      var picks = picked();
+      if (!picks.length) {
+        e.preventDefault();
+        msg.textContent = 'Choose at least one module.';
+        return;
+      }
+      picks.forEach(function (p) {
+        var r = planOf(p);
+        if (!r) return;
+        var h = document.createElement('input');
+        h.type = 'hidden';
+        h.name = 'items[]';
+        h.value = p.value + ':' + r.value;
+        h.dataset.item = '1';
+        basket.appendChild(h);
+      });
+    });
+    refresh();
+  }
 })();
