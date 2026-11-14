@@ -15,8 +15,28 @@ $periods = \App\Services\ModulePricing::PERIODS;
         <section class="msg-card"><p class="muted">No module has a plan yet, so there is nothing to pay.</p></section>
     <?php endif; ?>
 
+    <?php
+    // Sections, in order: modules the shop subscribes to (paid up or granted), modules with prices, modules without a price yet.
+    $sections = [
+        'subscribed' => ['Subscribed', []],
+        'priced' => ['Has prices', []],
+        'soon' => ['Not setting price yet', []],
+    ];
+    foreach ($rows as $row) {
+        if (!empty($row['coming_soon'])) {
+            $sections['soon'][1][] = $row;
+        } elseif ($row['covered'] && $row['quotes'] !== []) {
+            $sections['subscribed'][1][] = $row;
+        } else {
+            $sections['priced'][1][] = $row;
+        }
+    }
+    ?>
+    <?php foreach ($sections as $sectionKey => [$sectionTitle, $sectionRows]): if ($sectionRows === []) { continue; } ?>
+    <section class="bill-section bill-section-<?= e($sectionKey) ?>" aria-labelledby="bill-sec-<?= e($sectionKey) ?>">
+        <h2 class="bill-section-title" id="bill-sec-<?= e($sectionKey) ?>"><?= e($sectionTitle) ?> <small class="muted">(<?= count($sectionRows) ?>)</small></h2>
     <div class="bill-grid">
-        <?php foreach ($rows as $r):
+        <?php foreach ($sectionRows as $r):
             if (!empty($r['coming_soon'])):
         ?>
             <article class="bill-card bill-card-soon">
@@ -138,6 +158,8 @@ $periods = \App\Services\ModulePricing::PERIODS;
             </article>
         <?php endforeach; ?>
     </div>
+    </section>
+    <?php endforeach; ?>
 
     <form id="bill-basket" class="bill-basket" method="post" enctype="multipart/form-data" data-basket aria-label="Pay selected modules together">
         <?= csrf_field() ?>
