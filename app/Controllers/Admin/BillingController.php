@@ -33,6 +33,7 @@ final class BillingController extends Controller
                 'key' => $key, 'label' => $label, 'quotes' => $quotes,
                 'until' => ModuleBillingService::paidUntil($key), 'subscribed' => ModuleBillingService::subscribedPeriod($key),
                 'covered' => ModuleBillingService::covered($key), 'open' => $open,
+                'switched_on' => Modules::switchedOn($key),
             ];
         }
         $this->view('admin/billing', [
