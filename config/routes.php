@@ -45,6 +45,7 @@ return function (Router $r): void {
         $r->get('/checkout/shipping', 'Shop/CheckoutController@shippingQuote');
         $r->post('/checkout/voucher', 'Shop/CheckoutController@applyVoucher');
         $r->post('/checkout/voucher/remove', 'Shop/CheckoutController@removeVoucher');
+        $r->get('/cart/restore/{token}', 'Shop/CartRestoreController@restore', ['auth:member', 'module:abandoned_cart_emails']);
         $r->post('/checkout/points', 'Shop/CheckoutController@usePoints', ['module:loyalty']);
         $r->post('/checkout/points/remove', 'Shop/CheckoutController@removePoints', ['module:loyalty']);
         $r->post('/checkout/gift-card', 'Shop/CheckoutController@useGiftCard', ['module:gift_cards']);

@@ -29,6 +29,7 @@ final class Modules
         'gift_cards' => ['Gift cards', 'Gift cards admins issue and customers redeem at checkout. Off hides the checkout box and stops new redemptions. Existing cards and balances are kept.'],
         'bundles' => ['Bundles', 'Products made of other products, sold at one price. Off stops new bundle sales and hides the bundle list. Orders already placed are still returned to stock correctly.'],
         'tax' => ['SST on orders', 'SST worked out on tax-inclusive prices and shown at checkout, on orders and on invoices, with a monthly SST report. Off shows no SST and stores none on new orders. Existing orders keep their SST.'],
+        'abandoned_cart_emails' => ['Abandoned cart emails', 'A reminder email with a restore link, for signed-in members who leave items in their cart. Off stops the reminders and the restore link. Snapshots already saved are kept.'],
         'stock_movements' => ['Stock movement log', 'The Stock Movement page and the Movement links on Stock Control. Off hides the page only: stock is still changed and every change is still recorded.'],
         'vouchers' => ['Discount coupons', 'Discount codes shoppers enter at checkout, and the Vouchers menu. Off stops every code at once; orders that already used a code keep their discount.'],
     ];

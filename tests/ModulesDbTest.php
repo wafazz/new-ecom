@@ -217,6 +217,18 @@ Modules::set('tax', false);
 check('SST: switched off, no SST is worked out', \App\Services\TaxService::rateFor($taxP) === 0.0);
 Modules::set('tax', true);
 
+// Abandoned carts: a member cart is snapshotted while held; it is due after the idle delay unless the member ordered since.
+$acUser = User::create('member', 'Cart Forgetter', 'cart@example.test', 'long-password-1');
+DB::query("INSERT INTO carts (user_id) VALUES (?)", [$acUser]);
+$acCart = (int) DB::connection()->lastInsertId();
+DB::query("INSERT INTO cart_items (cart_id, product_id, variant_id, qty, reserved_until) VALUES (?, ?, NULL, 1, NOW() + INTERVAL 1 HOUR)", [$acCart, $bpA]);
+check('abandoned carts: a cart with held items is snapshotted', \App\Services\AbandonedCartService::snapshot() >= 1);
+DB::query("UPDATE abandoned_carts SET last_seen_at = NOW() - INTERVAL 3 HOUR WHERE cart_id = ?", [$acCart]);
+check('abandoned carts: an idle cart is due a reminder', in_array($acCart, array_map('intval', array_column(\App\Services\AbandonedCartService::due(7200), 'cart_id')), true));
+DB::query("INSERT INTO orders (order_no, user_id, customer_name, customer_email, customer_phone, ship_line1, ship_city, ship_state, ship_postcode, subtotal, total, payment_method, status) VALUES ('AC-1', ?, 'Cart Forgetter', 'cart@example.test', '0123', 'Line 1', 'City', 'Selangor', '43000', 10.00, 10.00, 'cod', 'pending')", [$acUser]);
+check('abandoned carts: no reminder once the member has ordered since', !in_array($acCart, array_map('intval', array_column(\App\Services\AbandonedCartService::due(7200), 'cart_id')), true));
+check('abandoned carts: a bad restore link is refused', \App\Services\AbandonedCartService::restore($acUser, str_repeat('b', 64)) === null);
+
 // Newsletter: a sign-up only counts once its confirmation link is used, and the link works once.
 DB::query('DELETE FROM newsletter_subscribers');
 $nlToken = bin2hex(random_bytes(32));
