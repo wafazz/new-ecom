@@ -174,6 +174,26 @@ check('gift cards: a reserve for more than the balance covers only the balance',
 \App\Services\GiftCardService::restore($gcOrder1);
 check('gift cards: a cancelled order gives the amount back once', (int) DB::query('SELECT balance_cents FROM gift_cards WHERE id = ?', [$gcRes['id']])->fetchColumn() === 5000);
 
+// Bundles: stock comes from the parts; a sale and a cancellation move stock on the parts; the bundle has no stock of its own.
+$mkSimple = fn(string $name, string $sku, int $stock) => Product::insert(['weight_kg' => '1.000', 'width_cm' => '10', 'length_cm' => '10', 'height_cm' => '10',
+    'name' => $name, 'slug' => strtolower($sku), 'sku' => $sku, 'category_id' => null, 'brand_id' => null,
+    'base_price' => '5', 'company_base_price' => '10', 'retail_price' => '10.00', 'discount_price' => null, 'stock' => $stock, 'status' => 'active']);
+$bpA = $mkSimple('Bundle Part A', 'BPA001', 6);
+$bpB = $mkSimple('Bundle Part B', 'BPB001', 4);
+$bpZ = $mkSimple('Gift Pack', 'GPK001', 0);
+check('bundles: a bundle is saved from its parts', \App\Services\BundleService::setParts($bpZ, [['product_id' => $bpA, 'qty' => 1], ['product_id' => $bpB, 'qty' => 2]], 1) === null);
+$stockOf = fn(int $id) => (int) DB::query('SELECT stock FROM products WHERE id = ?', [$id])->fetchColumn();
+check('bundles: the bundle can make 2 from the parts on the shelf', $stockOf($bpZ) === 2);
+\App\Services\BundleService::adjustLine($bpZ, null, -1, 'order', null, 1);
+check('bundles: a sale takes stock from each part', $stockOf($bpA) === 5 && $stockOf($bpB) === 2);
+check('bundles: the bundle count follows the parts after a sale', $stockOf($bpZ) === 1);
+\App\Services\BundleService::adjustLine($bpZ, null, 1, 'cancel', null, 1);
+check('bundles: a cancelled bundle puts stock back on each part', $stockOf($bpA) === 6 && $stockOf($bpB) === 4 && $stockOf($bpZ) === 2);
+check('bundles: the bundle has no stock of its own to change directly', (function () use ($bpZ) { try { \App\Services\StockService::delta($bpZ, null, 1, 'manual'); return false; } catch (\DomainException) { return true; } })());
+\App\Services\StockService::delta($bpB, null, -4, 'manual', null, 1, 'bundle test');
+check('bundles: a part out of stock makes the bundle unavailable', $stockOf($bpZ) === 0);
+check('bundles: a bundle cannot contain itself', \App\Services\BundleService::setParts($bpZ, [['product_id' => $bpZ, 'qty' => 1]], 1) !== null);
+
 // Newsletter: a sign-up only counts once its confirmation link is used, and the link works once.
 DB::query('DELETE FROM newsletter_subscribers');
 $nlToken = bin2hex(random_bytes(32));

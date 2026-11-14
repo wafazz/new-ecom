@@ -251,6 +251,12 @@ return function (Router $r): void {
             $r->post('/modules/{key}', 'Superadmin/ModulesController@toggle');
         });
 
+        // Bundles (admin and superadmin)
+        $r->group('/admin', ['auth:admin'], function (Router $r): void {
+            $r->get('/bundles', 'Admin/BundleController@index', ['module:bundles']);
+            $r->post('/bundles', 'Admin/BundleController@save', ['module:bundles']);
+        });
+
         // Gift cards (admin and superadmin)
         $r->group('/admin', ['auth:admin'], function (Router $r): void {
             $r->get('/gift-cards', 'Admin/GiftCardController@index', ['module:gift_cards']);

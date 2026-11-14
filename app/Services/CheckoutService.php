@@ -57,6 +57,9 @@ final class CheckoutService
                 }
 
                 $digital = DigitalService::isDigital($p);
+                if (BundleService::isBundle((int) $p['id']) && !Modules::enabled('bundles')) {
+                    throw new CheckoutException("\"{$p['name']}\" is a bundle, and bundles are not available right now. Please remove it from your cart.");
+                }
                 // A cart filled before the switch was turned off cannot be paid for while it is off.
                 if ($digital && !Modules::enabled('digital_products')) {
                     throw new CheckoutException("\"{$p['name']}\" is a digital product, and digital products are not available right now. Please remove it from your cart.");
@@ -181,7 +184,7 @@ final class CheckoutService
                      $it['qty'], PricingService::format($it['unit'] * $it['qty']), $affiliateId !== null ? $it['rate'] : null, $it['delivery']]
                 );
                 if ($it['delivery'] === null) {
-                    StockService::delta($it['product_id'], $it['variant_id'], -$it['qty'], 'order', $orderId, $userId); // locks the row, logs the movement
+                    BundleService::adjustLine((int) $it['product_id'], $it['variant_id'] !== null ? (int) $it['variant_id'] : null, -(int) $it['qty'], 'order', $orderId, $userId); // locks the row, logs the movement
                 } // digital items have no stock to take; license keys are assigned when the order is paid
             }
 

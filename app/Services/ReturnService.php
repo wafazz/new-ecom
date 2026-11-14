@@ -141,7 +141,7 @@ final class ReturnService
              WHERE oi.order_id = ? AND p.product_type <> 'digital'",
             [(int) $order['id']]
         )->fetchAll() as $item) {
-            StockService::delta((int) $item['product_id'], $item['variant_id'] !== null ? (int) $item['variant_id'] : null, (int) $item['qty'], 'return', (int) $order['id'], $actorId, 'Return received');
+            BundleService::adjustLine((int) $item['product_id'], $item['variant_id'] !== null ? (int) $item['variant_id'] : null, (int) $item['qty'], 'return', (int) $order['id'], $actorId);
         }
         Database::query('UPDATE return_requests SET stock_restored = 1 WHERE id = ?', [(int) $req['id']]);
     }

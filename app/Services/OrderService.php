@@ -268,7 +268,7 @@ final class OrderService
                 continue; // digital items never took stock (license keys are released with the order, see DigitalService)
             }
             try {
-                StockService::delta((int) $it['product_id'], $it['variant_id'] !== null ? (int) $it['variant_id'] : null, (int) $it['qty'], $reason, $orderId, $actorId);
+                BundleService::adjustLine((int) $it['product_id'], $it['variant_id'] !== null ? (int) $it['variant_id'] : null, (int) $it['qty'], $reason, $orderId, $actorId);
             } catch (\DomainException) {
                 // the variation was removed since the order: its stock no longer exists
             }
