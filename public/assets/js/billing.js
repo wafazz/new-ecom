@@ -123,6 +123,9 @@
     var fileInput = basket.querySelector('[data-basket-file]');
     var fileName = basket.querySelector('[data-file-name]');
     var fileClear = basket.querySelector('[data-file-clear]');
+    var toggle = document.querySelector('[data-basket-toggle]');
+    var countMini = document.querySelector('[data-basket-count-mini]');
+    var totalMini = document.querySelector('[data-basket-total-mini]');
     var maxBytes = Number(basket.dataset.maxBytes || 5242880);
     var allowedTypes = ['image/jpeg', 'image/png', 'application/pdf'];
     var cardOf = function (el) { return el.closest('.bill-card'); };
@@ -192,6 +195,8 @@
       var newTotal = 'RM ' + total.toFixed(2);
       totalEl.textContent = newTotal;
       if (before !== newTotal) bump(totalEl);
+      if (countMini) countMini.textContent = String(picks.length);
+      if (totalMini) totalMini.textContent = newTotal;
       if (count) {
         count.textContent = String(picks.length);
         if (count.dataset.last !== String(picks.length)) bump(count);
@@ -265,6 +270,14 @@
         basket.appendChild(h);
       });
     });
+    // Hidden by default; the bar above always shows the count and total.
+    function setBasketOpen(open) {
+      basket.hidden = !open;
+      if (toggle) toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+    }
+    if (toggle) {
+      toggle.addEventListener('click', function () { setBasketOpen(basket.hidden); });
+    }
     refresh();
   }
 
