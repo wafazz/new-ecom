@@ -23,7 +23,8 @@ $periods = \App\Services\ModulePricing::PERIODS;
             $isLifetime = $status === 'paid' && $r['until'] === '9999-12-31';
             $daysLeft = ($status === 'paid' && !$isLifetime && $r['until'] !== null) ? (int) ceil((strtotime((string) $r['until'] . ' 23:59:59') - time()) / 86400) : null;
             $window = match ($r['subscribed']) { 'monthly' => 7, 'yearly' => 21, default => null };
-            $canPay = !$isLifetime && ($status !== 'paid' || ($window !== null && $daysLeft !== null && $daysLeft <= $window));
+            // A module the superadmin has switched off can always be bought or renewed (lifetime has nothing to buy).
+            $canPay = !$isLifetime && ($status !== 'paid' || !$r['switched_on'] || ($window !== null && $daysLeft !== null && $daysLeft <= $window));
         ?>
             <article class="bill-card">
                 <header class="bill-head">
@@ -33,7 +34,9 @@ $periods = \App\Services\ModulePricing::PERIODS;
                     </span>
                 </header>
 
-                <?php if ($isLifetime): ?>
+                <?php if (!$r['switched_on'] && $status === 'paid' && !$isLifetime): ?>
+                    <p class="bill-note">Switched off by the superadmin. You can renew now; the superadmin switches it back on.</p>
+                <?php elseif ($isLifetime): ?>
                     <p class="bill-note">Lifetime plan. No payment is needed.</p>
                 <?php elseif (!$canPay): ?>
                     <p class="bill-note">Renewal opens <?= $r['subscribed'] === 'yearly' ? '3 weeks' : '7 days' ?> before it ends<?= $r['until'] !== null ? ' (' . e(date('d M Y', strtotime((string) $r['until']))) . ')' : '' ?>.</p>

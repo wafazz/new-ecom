@@ -55,6 +55,12 @@ final class Modules
         return ModuleBillingService::covered($key);
     }
 
+    /** The superadmin's switch itself (before the paid-up check). */
+    public static function switchedOn(string $key): bool
+    {
+        return Setting::get('module.' . $key, in_array($key, self::OFF_BY_DEFAULT, true) ? '0' : '1') === '1';
+    }
+
     /** Switched on by a superadmin but not paid up: shown on the Modules page as waiting for payment. */
     public static function waitingForPayment(string $key): bool
     {
