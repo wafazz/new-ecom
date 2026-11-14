@@ -3,20 +3,32 @@
 $money = fn(float $v): string => 'RM ' . number_format($v, 2);
 $periods = \App\Services\ModulePricing::PERIODS;
 // The info button and its dialog for one module. The dialog opens from the button (see billing.js).
-$infoDialog = function (string $key, string $label): string {
+$infoDialog = function (string $key, string $label, bool $canAdd): string {
     $i = \App\Services\ModuleInfo::for($key);
     $id = 'info-' . preg_replace('/[^a-z0-9_]/', '-', $key);
-    return '<button type="button" class="bill-info-btn" data-info-open="' . e($id) . '" aria-label="About ' . e($label) . '" title="About ' . e($label) . '">i</button>'
-        . '<dialog class="bill-info-dialog" id="' . e($id) . '" aria-labelledby="' . e($id) . '-title">'
+    $tabs = ['what' => 'What it does', 'where' => 'Where to find it', 'on' => 'When it is on', 'off' => 'When it is off'];
+    $html = '<button type="button" class="bill-info-btn" data-info-open="' . e($id) . '" aria-label="About ' . e($label) . '" title="About ' . e($label) . '">i</button>'
+        . '<dialog class="bill-info-dialog" id="' . e($id) . '" aria-labelledby="' . e($id) . '-title" data-info-dialog>'
         . '<form method="dialog" class="bill-info-close-form"><button class="bill-info-close" aria-label="Close">×</button></form>'
         . '<h2 id="' . e($id) . '-title">' . e($label) . '</h2>'
-        . '<dl class="bill-info-list">'
-        . '<dt>What it does</dt><dd>' . e($i['what']) . '</dd>'
-        . '<dt>Where to find it</dt><dd>' . e($i['where']) . '</dd>'
-        . '<dt>When it is on</dt><dd>' . e($i['on']) . '</dd>'
-        . '<dt>When it is off</dt><dd>' . e($i['off']) . '</dd>'
-        . '</dl>'
+        . '<div class="bill-info-tabs" role="tablist" aria-label="About ' . e($label) . '" data-info-tabs>';
+    $first = true;
+    foreach ($tabs as $k => $t) {
+        $html .= '<button type="button" role="tab" id="' . e($id) . '-tab-' . $k . '" aria-controls="' . e($id) . '-panel-' . $k . '" aria-selected="' . ($first ? 'true' : 'false') . '" tabindex="' . ($first ? '0' : '-1') . '" data-info-tab="' . $k . '">' . e($t) . '</button>';
+        $first = false;
+    }
+    $html .= '</div>';
+    $first = true;
+    foreach ($tabs as $k => $t) {
+        $html .= '<div role="tabpanel" id="' . e($id) . '-panel-' . $k . '" aria-labelledby="' . e($id) . '-tab-' . $k . '" class="bill-info-panel"' . ($first ? '' : ' hidden') . ' data-info-panel="' . $k . '"><p>' . e($i[$k]) . '</p></div>';
+        $first = false;
+    }
+    $html .= '<div class="bill-info-actions">'
+        . ($canAdd ? '<button type="button" class="btn sm" data-info-add="' . e($key) . '">Add to payment</button>' : '')
+        . '<button type="button" class="btn secondary sm" data-info-done>Close</button>'
+        . '</div>'
         . '</dialog>';
+    return $html;
 };
 ?>
 <div class="msg-page bill-page">
@@ -56,7 +68,7 @@ $infoDialog = function (string $key, string $label): string {
             if (!empty($r['coming_soon'])):
         ?>
             <article class="bill-card bill-card-soon">
-                <?= $infoDialog($r['key'], $r['label']) ?>
+                <?= $infoDialog($r['key'], $r['label'], false) ?>
                 <header class="bill-head">
                     <h2><?= e($r['label']) ?></h2>
                     <span class="bill-status is-soon">Coming soon</span>
@@ -77,7 +89,7 @@ $infoDialog = function (string $key, string $label): string {
             $canPay = !$isLifetime && ($status !== 'paid' || !$r['switched_on'] || ($window !== null && $daysLeft !== null && $daysLeft <= $window));
         ?>
             <article class="bill-card">
-                <?= $infoDialog($r['key'], $r['label']) ?>
+                <?= $infoDialog($r['key'], $r['label'], true) ?>
                 <header class="bill-head">
                     <h2><?= e($r['label']) ?></h2>
                     <span class="bill-status is-<?= e($status) ?>">

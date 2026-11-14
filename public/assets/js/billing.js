@@ -176,17 +176,65 @@
     refresh();
   }
 
-  // ---- Module info popups: open from the "i" button, close with ×, Escape, or a click outside the box ----------
+  // ---- Module info popups ---------------------------------------------------------------------------------
+  // Opens from the "i" button. Tabs switch the four sections (arrow keys too). "Add to payment" ticks the card's box.
+  // While a popup is open the page behind it does not scroll; it scrolls again when the popup closes.
+  var scrollLocks = 0;
+  var savedOverflow = '';
+  function lockScroll() {
+    if (scrollLocks++ === 0) {
+      savedOverflow = document.body.style.overflow;
+      document.body.style.overflow = 'hidden';
+      document.documentElement.classList.add('info-open');
+    }
+  }
+  function unlockScroll() {
+    if (scrollLocks > 0 && --scrollLocks === 0) {
+      document.body.style.overflow = savedOverflow;
+      document.documentElement.classList.remove('info-open');
+    }
+  }
+  function showTab(dlg, key, focus) {
+    Array.prototype.forEach.call(dlg.querySelectorAll('[data-info-tab]'), function (t) {
+      var on = t.getAttribute('data-info-tab') === key;
+      t.setAttribute('aria-selected', on ? 'true' : 'false');
+      t.setAttribute('tabindex', on ? '0' : '-1');
+      if (on && focus) t.focus();
+    });
+    Array.prototype.forEach.call(dlg.querySelectorAll('[data-info-panel]'), function (p) {
+      p.hidden = p.getAttribute('data-info-panel') !== key;
+    });
+  }
+  Array.prototype.forEach.call(document.querySelectorAll('.bill-info-dialog'), function (dlg) {
+    dlg.addEventListener('close', unlockScroll);
+    dlg.addEventListener('click', function (e) {
+      if (e.target === dlg) dlg.close();
+      var tab = e.target.closest && e.target.closest('[data-info-tab]');
+      if (tab) showTab(dlg, tab.getAttribute('data-info-tab'), false);
+      if (e.target.closest && e.target.closest('[data-info-done]')) dlg.close();
+      var add = e.target.closest && e.target.closest('[data-info-add]');
+      if (add) {
+        var box = document.querySelector('[data-pick="' + add.getAttribute('data-info-add') + '"]');
+        if (box && !box.checked) { box.checked = true; box.dispatchEvent(new Event('change', { bubbles: true })); }
+        dlg.close();
+      }
+    });
+    dlg.addEventListener('keydown', function (e) {
+      var tab = e.target.getAttribute && e.target.getAttribute('data-info-tab');
+      if (!tab) return;
+      var order = ['what', 'where', 'on', 'off'];
+      var i = order.indexOf(tab);
+      if (e.key === 'ArrowRight') { e.preventDefault(); showTab(dlg, order[(i + 1) % order.length], true); }
+      if (e.key === 'ArrowLeft') { e.preventDefault(); showTab(dlg, order[(i + order.length - 1) % order.length], true); }
+    });
+  });
   Array.prototype.forEach.call(document.querySelectorAll('[data-info-open]'), function (btn) {
     btn.addEventListener('click', function () {
       var dlg = document.getElementById(btn.getAttribute('data-info-open'));
       if (!dlg) return;
+      showTab(dlg, 'what', false);
       if (typeof dlg.showModal === 'function') { dlg.showModal(); } else { dlg.setAttribute('open', ''); }
-    });
-  });
-  Array.prototype.forEach.call(document.querySelectorAll('.bill-info-dialog'), function (dlg) {
-    dlg.addEventListener('click', function (e) {
-      if (e.target === dlg) dlg.close();
+      lockScroll();
     });
   });
 })();
