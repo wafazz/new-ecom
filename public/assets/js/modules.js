@@ -185,9 +185,56 @@
     return Promise.resolve(window.confirm('Switch off ' + name + '? ' + text));
   }
 
+  // ---- Pricing and discounts (inside each card): live prices, save only when changed, quick end dates ----
+  function fmt(n) { return 'RM' + n.toFixed(2); }
+  function finalOf(list, kind, value) {
+    if (kind === 'fixed') return Math.min(list, value);
+    return Math.round(list * (1 - value / 100) * 100) / 100;
+  }
+  function paintPlans(form) {
+    var dirty = false;
+    Array.prototype.forEach.call(form.querySelectorAll('[data-plan-input]'), function (inp) {
+      var raw = inp.value.trim().replace(',', '.');
+      var label = inp.closest('.mod-plan').querySelector('[data-final]');
+      var list = parseFloat(raw);
+      if (inp.value.trim() !== (inp.dataset.initial || '')) dirty = true;
+      if (raw === '' || isNaN(list) || list <= 0) {
+        label.textContent = 'Not offered';
+      } else if (inp.dataset.discKind) {
+        label.textContent = 'Now ' + fmt(finalOf(list, inp.dataset.discKind, parseFloat(inp.dataset.discValue)));
+      } else {
+        label.textContent = fmt(list);
+      }
+    });
+    var save = form.querySelector('[data-save-plans]');
+    if (save) save.disabled = !dirty;
+  }
+  Array.prototype.forEach.call(list.querySelectorAll('[data-plans-form]'), function (form) {
+    form.addEventListener('input', function () { paintPlans(form); });
+    paintPlans(form);
+  });
+
+  Array.prototype.forEach.call(list.querySelectorAll('[data-discount-form]'), function (form) {
+    var value = form.querySelector('[data-value-input]');
+    Array.prototype.forEach.call(form.querySelectorAll('input[name=kind]'), function (radio) {
+      radio.addEventListener('change', function () {
+        value.placeholder = radio.value === 'fixed' ? 'e.g. 50.00' : 'e.g. 20';
+      });
+    });
+    Array.prototype.forEach.call(form.querySelectorAll('[data-days]'), function (chip) {
+      chip.addEventListener('click', function () {
+        var d = new Date(Date.now() + Number(chip.dataset.days) * 86400000);
+        var pad = function (n) { return n < 10 ? '0' + n : '' + n; };
+        var local = d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) + 'T' + pad(d.getHours()) + ':' + pad(d.getMinutes());
+        form.querySelector('[data-ends]').value = local;
+        Array.prototype.forEach.call(form.querySelectorAll('[data-days]'), function (c) { c.classList.toggle('is-on', c === chip); });
+      });
+    });
+  });
+
   list.addEventListener('submit', function (e) {
     var form = e.target;
-    if (form.classList.contains('mod-price')) return; // price forms post normally (no switch)
+    if (form.classList.contains('mod-price') || form.classList.contains('mod-plain')) return; // price, discount and clear forms post normally
     var card = form.closest('[data-module]');
     if (!card || card.classList.contains('is-busy')) { e.preventDefault(); return; }
     e.preventDefault();
