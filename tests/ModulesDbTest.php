@@ -76,6 +76,15 @@ check('back in stock: a waiting alert is recorded', \App\Services\StockAlertServ
 check('back in stock: a restock queues the alert (waiting until the worker sends it)', \App\Services\StockAlertService::waiting($soldOut, 0) === true);
 check('back in stock: an item already in stock is not put on the list', \App\Services\StockAlertService::store($soldOut, 0, 'other@example.test', null) === 'in_stock');
 
+// Sales reports: cancelled orders are left out of the totals.
+foreach ([['RPT-A', 'completed', '40.00'], ['RPT-B', 'cancelled', '99.00']] as [$no, $st, $amt]) {
+    DB::query("INSERT INTO orders (order_no, customer_name, customer_email, customer_phone, ship_line1, ship_city, ship_state, ship_postcode, subtotal, total, payment_method, status) VALUES (?, 'Report Test', 'rpt@example.test', '0123', 'Line 1', 'City', 'Selangor', '43000', ?, ?, 'cod', ?)", [$no, $amt, $amt, $st]);
+}
+$today = date('Y-m-d');
+$rep = \App\Services\SalesReportService::summary($today, $today);
+check('sales report: cancelled orders are not counted', $rep['orders'] === 1 && abs($rep['sales'] - 40.0) < 0.001);
+check('sales report: payment split matches the total', abs(array_sum(array_column(\App\Services\SalesReportService::byPayment($today, $today), 'sales')) - 40.0) < 0.001);
+
 // Newsletter: a sign-up only counts once its confirmation link is used, and the link works once.
 DB::query('DELETE FROM newsletter_subscribers');
 $nlToken = bin2hex(random_bytes(32));

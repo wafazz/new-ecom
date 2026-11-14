@@ -245,6 +245,12 @@ return function (Router $r): void {
             $r->post('/modules/{key}', 'Superadmin/ModulesController@toggle');
         });
 
+        // Sales reports (admin and superadmin, read-only)
+        $r->group('/admin', ['auth:admin'], function (Router $r): void {
+            $r->get('/reports', 'Admin/ReportController@index', ['module:sales_reports']);
+            $r->get('/reports/export', 'Admin/ReportController@export', ['module:sales_reports']);
+        });
+
         // Newsletter list (admin and superadmin)
         $r->group('/admin', ['auth:admin'], function (Router $r): void {
             $r->get('/newsletter', 'Admin/NewsletterController@index', ['module:newsletter']);
