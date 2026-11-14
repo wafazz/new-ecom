@@ -159,6 +159,13 @@
       amount.setAttribute('aria-label', 'Amount to record (RM)');
       amountLabel.appendChild(amount);
       amountLabel.appendChild(el('small', 'muted term-amount-hint', '0.00 means free of charge.'));
+      var remarkLabel = el('label', 'term-amount');
+      remarkLabel.appendChild(el('span', 'term-amount-name', 'Remark on the invoice (optional)'));
+      var remark = el('input');
+      remark.type = 'text';
+      remark.maxLength = 160;
+      remark.setAttribute('aria-label', 'Remark on the invoice');
+      remarkLabel.appendChild(remark);
       var chosen = null;
       var error = el('p', 'pin-error', '');
       var done = false;
@@ -187,6 +194,7 @@
       });
       panel.appendChild(options);
       panel.appendChild(amountLabel);
+      panel.appendChild(remarkLabel);
       panel.appendChild(error);
       var go = el('button', 'btn term-continue', 'Continue');
       go.type = 'button';
@@ -194,7 +202,7 @@
         if (!chosen) { error.textContent = 'Choose monthly, yearly or lifetime.'; return; }
         var v = amount.value.trim();
         if (!/^\d{1,5}(\.\d{1,2})?$/.test(v) || parseFloat(v) > 99999.99) { error.textContent = 'Enter an amount such as 0.00 or 120.00.'; return; }
-        finish({ term: chosen, amount: v });
+        finish({ term: chosen, amount: v, remark: remark.value.trim() });
       });
       panel.appendChild(go);
       var cancel = el('button', 'pin-cancel', 'Cancel');
@@ -216,7 +224,7 @@
     setBusy(card, true);
     var fd = new FormData(form);
     fd.set('pin', pin);
-    if (grant) { fd.set('term', grant.term); fd.set('amount', grant.amount); }
+    if (grant) { fd.set('term', grant.term); fd.set('amount', grant.amount); fd.set('remark', grant.remark || ''); }
     return fetch(form.action, {
       method: 'POST',
       body: fd,

@@ -57,7 +57,7 @@ final class ModulesController extends Controller
         $on = $request->str('enabled') === '1';
         // Switching on a paid module needs a term (monthly, yearly or lifetime): the superadmin grants it by hand.
         if ($on && !ModulePricing::isFree($key)) {
-            $grant = ModuleBillingService::grant($key, $request->str('term'), (int) Auth::user()['id'], trim($request->str('amount')));
+            $grant = ModuleBillingService::grant($key, $request->str('term'), (int) Auth::user()['id'], trim($request->str('amount')), $request->str('remark'));
             if ($grant !== null) {
                 if (Request::wantsJson()) {
                     Response::json(['ok' => false, 'message' => $grant], 422);

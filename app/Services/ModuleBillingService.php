@@ -293,7 +293,7 @@ final class ModuleBillingService
      * A superadmin grants a paid module by hand for a term (monthly, yearly or lifetime). The grant is recorded as a paid
      * invoice with the method 'manual'. The term starts after any time already paid. @return string|null error
      */
-    public static function grant(string $key, string $term, int $actorId, ?string $amount = null): ?string
+    public static function grant(string $key, string $term, int $actorId, ?string $amount = null, ?string $remark = null): ?string
     {
         if (!in_array($term, ['monthly', 'yearly', 'one_time'], true)) {
             return 'Choose monthly, yearly or lifetime.';
@@ -312,6 +312,14 @@ final class ModuleBillingService
         $value = $amount ?? number_format(ModulePricing::listPrice($key, $term) !== null ? ModulePricing::quote($key, $term)['final'] : 0.0, 2, '.', '');
         $value = number_format((float) $value, 2, '.', '');
         $note = (float) $value === 0.0 ? 'Free of charge: granted by superadmin' : 'Manual payment: granted by superadmin';
+        // The superadmin's own remark is shown on the invoice, after the standard note.
+        $remark = $remark === null ? '' : trim(preg_replace('/[\x00-\x1F\x7F]/u', ' ', $remark) ?? '');
+        if (mb_strlen($remark) > 160) {
+            return 'The remark is too long (160 characters at most).';
+        }
+        if ($remark !== '') {
+            $note .= ' · Remark: ' . $remark;
+        }
         Database::query(
             "INSERT INTO module_invoices (module_key, period, amount, period_start, period_end, status, method, note, requested_by, reviewed_by, reviewed_at, paid_at)
              VALUES (?, ?, ?, ?, ?, 'paid', 'manual', ?, ?, ?, NOW(), NOW())",

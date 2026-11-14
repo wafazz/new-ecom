@@ -60,7 +60,8 @@ $onCount = count(array_filter($modules, fn($m) => $m['enabled']));
                         <?php if ($hasPlans): ?>
                         <noscript><label class="mod-pin-fallback">Term (when switching on)
                             <select name="term"><option value="monthly">Monthly</option><option value="yearly">Yearly</option><option value="one_time">Lifetime</option></select></label>
-                            <label>Amount to record (RM, 0.00 = free of charge)<input name="amount" inputmode="decimal" placeholder="blank = plan price"></label></noscript>
+                            <label>Amount to record (RM, 0.00 = free of charge)<input name="amount" inputmode="decimal" placeholder="blank = plan price"></label>
+                            <label>Remark on the invoice (optional)<input name="remark" maxlength="160"></label></noscript>
                         <?php endif; ?>
                         <noscript><label class="mod-pin-fallback">Your PIN <input type="password" name="pin" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" autocomplete="off" required></label></noscript>
                         <button type="submit" class="mod-switch" role="switch"
