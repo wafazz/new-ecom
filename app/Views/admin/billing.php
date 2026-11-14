@@ -36,10 +36,13 @@ $periods = \App\Services\ModulePricing::PERIODS;
                 <?php if ($status === 'paid' && $r['until'] !== null && $r['until'] !== '9999-12-31'):
                     $endMs = strtotime((string) $r['until'] . ' 23:59:59') * 1000;
                 ?>
-                    <div class="bill-count" data-end-ms="<?= (int) $endMs ?>" role="timer" aria-label="Time left on this plan">
-                        <span class="bill-count-label">Time left</span>
-                        <span class="bill-count-value" data-count>--</span>
-                        <small class="muted bill-count-end">Ends <?= e(date('d M Y, H:i', $endMs / 1000)) ?></small>
+                    <div class="flip-clock" data-end-ms="<?= (int) $endMs ?>" role="timer" aria-label="Time left on this plan">
+                        <div class="flip-units" data-units>
+                            <?php foreach (['Days', 'Hours', 'Minutes', 'Seconds'] as $unit): ?>
+                                <div class="flip-unit"><div class="flip-tile"><span class="flip-num">00</span></div><span class="flip-label"><?= e($unit) ?></span></div>
+                            <?php endforeach; ?>
+                        </div>
+                        <small class="flip-end muted">Ends <?= e(date('d M Y, H:i', $endMs / 1000)) ?></small>
                     </div>
                 <?php elseif ($status === 'paid'): ?>
                     <div class="bill-count is-lifetime" role="status"><span class="bill-count-label">No end date</span></div>
