@@ -115,6 +115,23 @@ check('product CSV: the good row changes the stock', (int) $after['stock'] === 7
 check('product CSV: the export lists the SKU', in_array('CSVA1', array_column(\App\Services\ProductCsvService::exportRows(), 0), true));
 check('product CSV: a file without headers is refused', \App\Services\ProductCsvService::check("CSVA1,1,1\n")['fatal'] !== null);
 
+// Returns: one open request at a time, stock back once on receipt, a refund cannot be recorded twice.
+$retId = Product::insert(['weight_kg' => '1.000', 'width_cm' => '10', 'length_cm' => '10', 'height_cm' => '10',
+    'name' => 'Return Item', 'slug' => 'return-item', 'sku' => 'RET001', 'category_id' => null, 'brand_id' => null,
+    'base_price' => '5', 'company_base_price' => '10', 'retail_price' => '20.00', 'discount_price' => null, 'stock' => 5, 'status' => 'active']);
+DB::query("INSERT INTO orders (order_no, customer_name, customer_email, customer_phone, ship_line1, ship_city, ship_state, ship_postcode, subtotal, total, payment_method, status) VALUES ('RET-1', 'Ret Test', 'ret@example.test', '0123', 'Line 1', 'City', 'Selangor', '43000', 40.00, 40.00, 'cod', 'completed')");
+$retOrder = (int) DB::connection()->lastInsertId();
+DB::query('INSERT INTO order_items (order_id, product_id, product_name, unit_price, retail_price, base_price, company_base_price, qty, line_total) VALUES (?, ?, ?, 20, 20, 5, 10, 2, 40)', [$retOrder, $retId, 'Return Item']);
+$RS = \App\Services\ReturnService::class;
+check('returns: a customer can ask for a return on a completed order', $RS::request($retOrder, 'Arrived with a crack') === null);
+check('returns: a second request while one is open is refused', $RS::request($retOrder, 'Another reason here') !== null);
+$retReq = (int) $RS::forOrder($retOrder)['id'];
+check('returns: approve moves it on', $RS::decide($retReq, 'approve', 1) === null);
+check('returns: receiving puts the stock back', $RS::decide($retReq, 'receive', 1) === null && (int) DB::query('SELECT stock FROM products WHERE id = ?', [$retId])->fetchColumn() === 7);
+check('returns: a refund above the order total is refused', $RS::decide($retReq, 'refund', 1, null, '99.00') !== null);
+check('returns: the refund is recorded once', $RS::decide($retReq, 'refund', 1, null, '40.00') === null && $RS::decide($retReq, 'refund', 1, null, '40.00') !== null);
+check('returns: no new request after a refund', $RS::request($retOrder, 'Second try after refund') !== null);
+
 // Newsletter: a sign-up only counts once its confirmation link is used, and the link works once.
 DB::query('DELETE FROM newsletter_subscribers');
 $nlToken = bin2hex(random_bytes(32));

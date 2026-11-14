@@ -49,6 +49,7 @@ return function (Router $r): void {
         $r->post('/track', 'Shop/OrderTrackController@lookup');
         $r->get('/order/{orderNo}/{token}', 'Shop/OrderTrackController@show');
         $r->post('/order/{orderNo}/{token}/cancel', 'Shop/OrderTrackController@cancel');
+        $r->post('/order/{orderNo}/{token}/return', 'Shop/OrderTrackController@requestReturn', ['module:returns']);
         $r->post('/order/{orderNo}/{token}/receipt', 'Shop/OrderTrackController@receipt');
         $r->get('/order/{orderNo}/{token}/receipt/{id}', 'Shop/OrderTrackController@receiptFile');
         $r->get('/order/{orderNo}/{token}/invoice', 'Shop/InvoiceController@guest');
@@ -254,6 +255,12 @@ return function (Router $r): void {
             $r->post('/products/csv/cancel', 'Admin/ProductCsvController@cancel', ['module:product_csv']);
         });
 
+        // Returns and refunds (admin and superadmin)
+        $r->group('/admin', ['auth:admin'], function (Router $r): void {
+            $r->get('/returns', 'Admin/ReturnController@index', ['module:returns']);
+            $r->post('/returns/{id}/{action}', 'Admin/ReturnController@decide', ['module:returns']);
+        });
+
         // Bulk prices (admin and superadmin): preview, apply, undo
         $r->group('/admin', ['auth:admin'], function (Router $r): void {
             $r->get('/bulk-pricing', 'Admin/BulkPricingController@index', ['module:bulk_pricing']);
@@ -288,6 +295,7 @@ return function (Router $r): void {
             $r->get('/orders/{orderNo}', 'Member/OrderController@show');
             $r->get('/orders/{orderNo}/invoice', 'Shop/InvoiceController@member');
             $r->post('/orders/{orderNo}/cancel', 'Member/OrderController@cancel');
+            $r->post('/orders/{orderNo}/return', 'Member/OrderController@requestReturn', ['module:returns']);
             $r->post('/orders/{orderNo}/receipt', 'Member/OrderController@receipt');
             $r->get('/orders/{orderNo}/receipt/{id}', 'Member/OrderController@receiptFile');
             $r->post('/orders/{orderNo}/pay', 'Member/OrderController@pay');
