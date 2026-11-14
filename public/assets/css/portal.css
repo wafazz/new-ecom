@@ -1075,3 +1075,7 @@ a.vis-card:hover{transform:translateY(-3px);box-shadow:0 14px 28px -12px rgba(47
 /* Counter numbers scale with their tile: the tile is a size container, the digits are a share of its width */
 @supports not (font-size: 1cqw) { .flip-num{font-size:clamp(1.9rem,6.2vw,2.8rem)} .flip-clock.is-mini .flip-num{font-size:clamp(1rem,3.4vw,1.35rem)} }
 .bill-about{margin:0;font-size:.92rem;line-height:1.5;color:var(--text)}
+
+/* Billing plan tiles: old price and new price on separate lines; "RM" and the amount never split */
+.bill-price{display:grid;gap:.1rem;justify-items:start}
+.bill-price>s,.bill-price>strong{white-space:nowrap}
