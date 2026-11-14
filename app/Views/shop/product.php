@@ -67,6 +67,9 @@ $wishInit = $wish === true;
             <s id="price-was" <?= $base['on_sale'] ? '' : 'hidden' ?>><?= e(money($base['retail'])) ?></s>
             <span class="save-badge" id="price-save" <?= $discount > 0 ? '' : 'hidden' ?>>Save <?= $discount ?>%</span>
         </p>
+        <?php if (!empty($memberPrice)): ?>
+            <p class="pdp-member-price">Your member price: <strong>RM<?= e($memberPrice) ?></strong></p>
+        <?php endif; ?>
         <?php if (!empty($breaks)): ?>
             <ul class="pdp-breaks" aria-label="Quantity prices">
                 <?php foreach ($breaks as $b): ?><li>Buy <?= (int) $b['min_qty'] ?> or more for RM<?= e(number_format($b['unit_price'], 2)) ?> each</li><?php endforeach; ?>

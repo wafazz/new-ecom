@@ -367,6 +367,23 @@ Modules::set('quantity_breaks', false);
 check('quantity breaks: switched off, the normal price applies', \App\Services\PriceBreakService::unitFor($qb, 10, 1000) === 1000);
 Modules::set('quantity_breaks', true);
 
+// Member prices: a group member pays the lower group price; a guest or a member outside the group pays the public price.
+$mpProd = Product::insert(['weight_kg' => '1.000', 'width_cm' => '10', 'length_cm' => '10', 'height_cm' => '10',
+    'name' => 'Group Tee', 'slug' => 'group-tee', 'sku' => 'GRP001', 'category_id' => null, 'brand_id' => null,
+    'base_price' => '5', 'company_base_price' => '10', 'retail_price' => '20.00', 'discount_price' => null, 'stock' => 9, 'status' => 'active']);
+$mpUser = User::create('member', 'Wholesale Buyer', 'wholesale@example.test', 'long-password-1');
+check('member prices: a group is created', \App\Services\MemberPriceService::createGroup('Wholesale', 1) === null);
+$mpGroup = (int) DB::query("SELECT id FROM member_groups WHERE name = 'Wholesale'")->fetchColumn();
+check('member prices: a group price above the public price is refused', \App\Services\MemberPriceService::setPrice($mpGroup, $mpProd, '25.00', 1) !== null);
+check('member prices: a lower group price is saved', \App\Services\MemberPriceService::setPrice($mpGroup, $mpProd, '12.00', 1) === null);
+check('member prices: the member is put in the group', \App\Services\MemberPriceService::assign('wholesale@example.test', $mpGroup, 1) === null);
+Modules::set('member_prices', true);
+check('member prices: a group member pays the group price', \App\Services\MemberPriceService::priceFor($mpUser, $mpProd, 2000) === 1200);
+check('member prices: a guest pays the public price', \App\Services\MemberPriceService::priceFor(null, $mpProd, 2000) === 2000);
+Modules::set('member_prices', false);
+check('member prices: switched off, the public price applies', \App\Services\MemberPriceService::priceFor($mpUser, $mpProd, 2000) === 2000);
+Modules::set('member_prices', true);
+
 // Newsletter: a sign-up only counts once its confirmation link is used, and the link works once.
 DB::query('DELETE FROM newsletter_subscribers');
 $nlToken = bin2hex(random_bytes(32));

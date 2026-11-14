@@ -79,7 +79,8 @@ final class CheckoutService
                 $p = FlashSaleService::attach([$p])[0]; // the charged price includes any running flash sale
                 $eff = PricingService::effective($p, $v);
                 $cost = PricingService::resolveVariant($p, $v ?? []);
-                $unit = PriceBreakService::unitFor((int) $p['id'], $productQty[(int) $p['id']] ?? 0, PricingService::cents($eff['price']));
+                $memberUnit = MemberPriceService::priceFor($userId, (int) $p['id'], PricingService::cents($eff['price']));
+                $unit = PriceBreakService::unitFor((int) $p['id'], $productQty[(int) $p['id']] ?? 0, $memberUnit);
                 $subtotal += $unit * (int) $l['qty'];
                 $shipLines[] = ['weight_kg' => $p['weight_kg'], 'qty' => (int) $l['qty'], 'digital' => $digital];
                 $hasDigital = $hasDigital || $digital;

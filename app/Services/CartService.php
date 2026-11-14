@@ -257,6 +257,20 @@ final class CartService
                 $problem = $problem || !$available || $qty < (int) $r['requested'];
             }
         }
+        // Member price groups first (signed-in members only), then quantity breaks on that price.
+        $memberId = null;
+        $me = \App\Core\Auth::user();
+        if ($me !== null && $me['role'] === 'member') {
+            $memberId = (int) $me['id'];
+        }
+        foreach ($items as &$it) {
+            if ($it['available']) {
+                $it['unit_cents'] = MemberPriceService::priceFor($memberId, $it['product_id'], $it['unit_cents']);
+                $it['line_cents'] = $it['unit_cents'] * $it['qty'];
+                $it['unit'] = number_format($it['unit_cents'] / 100, 2, '.', '');
+            }
+        }
+        unset($it);
         // Quantity price breaks: the total of each product across its lines sets the price of every line for it.
         $totals = [];
         foreach ($items as $it) {

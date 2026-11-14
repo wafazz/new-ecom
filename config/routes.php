@@ -326,6 +326,14 @@ return function (Router $r): void {
             $r->post('/bulk-pricing/{id}/undo', 'Admin/BulkPricingController@undo', ['module:bulk_pricing']);
         });
 
+        // Member price groups (admin and superadmin)
+        $r->group('/admin', ['auth:admin'], function (Router $r): void {
+            $r->get('/member-prices', 'Admin/MemberPriceController@index', ['module:member_prices']);
+            $r->post('/member-prices/group', 'Admin/MemberPriceController@group', ['module:member_prices']);
+            $r->post('/member-prices/assign', 'Admin/MemberPriceController@assign', ['module:member_prices']);
+            $r->post('/member-prices/price', 'Admin/MemberPriceController@price', ['module:member_prices']);
+        });
+
         // Quantity prices (admin and superadmin)
         $r->group('/admin', ['auth:admin'], function (Router $r): void {
             $r->get('/price-breaks', 'Admin/PriceBreakController@index', ['module:quantity_breaks']);
