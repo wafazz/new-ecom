@@ -63,7 +63,7 @@ Admin-editable (Settings page): guest checkout on/off, flat shipping fee, defaul
 php bin/create-admin.php --superadmin "Your Name" you@example.com
 ```
 
-The 12 newer modules (newsletter, back-in-stock alerts, product import and export, bulk prices, returns, order messages, loyalty points, gift cards, bundles, sales reports, SST, abandoned cart emails) are off until a superadmin switches them on. The original modules (flash sales, coupons, affiliates, digital products, stock movement log) stay on.
+Every module is off until a superadmin switches it on: the 12 newer ones (newsletter, back-in-stock alerts, product import and export, bulk prices, returns, order messages, loyalty points, gift cards, bundles, sales reports, SST, abandoned cart emails) and the original five (flash sales, coupons, affiliates, digital products, stock movement log).
 
 A switched-off module returns 404 on its pages, hides its menu items, and stops its storefront blocks and prices. Its data is kept. Flash sales is the first module; to make another one switchable, add it to `Modules::LIST` and guard its routes with `module:<key>`.
 

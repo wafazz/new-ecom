@@ -35,8 +35,9 @@ final class Modules
         'vouchers' => ['Discount coupons', 'Discount codes shoppers enter at checkout, and the Vouchers menu. Off stops every code at once; orders that already used a code keep their discount.'],
     ];
 
-    /** The newer modules: off until a superadmin turns them on. */
+    /** Every module is off until a superadmin turns it on. */
     public const OFF_BY_DEFAULT = [
+        'flash_sales', 'vouchers', 'affiliates', 'digital_products', 'stock_movements',
         'abandoned_cart_emails', 'back_in_stock', 'product_csv', 'bulk_pricing', 'returns', 'loyalty', 'gift_cards',
         'bundles', 'newsletter', 'sales_reports', 'support', 'tax',
     ];
