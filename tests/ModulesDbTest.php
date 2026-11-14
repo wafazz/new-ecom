@@ -25,6 +25,9 @@ check('discounts: an unknown discount type is refused', \App\Services\ModulePric
 check('discounts: an unknown module is refused', \App\Services\ModulePricing::validateDiscount('no_such_module', 'percent', '10', date('Y-m-d\TH:i', time() + 86400), time()) !== null);
 check('discounts: a fixed price never raises a price', \App\Services\ModulePricing::finalFor(30.0, 'fixed', 50.0) === 30.0 && \App\Services\ModulePricing::finalFor(120.0, 'fixed', 50.0) === 50.0);
 check('discounts: a percentage takes that share off', \App\Services\ModulePricing::finalFor(120.0, 'percent', 25.0) === 90.0);
+check('PIN: a new PIN must be six digits', \App\Services\SuperadminPin::validateNew('12345', '12345') !== null && \App\Services\SuperadminPin::validateNew('12a456', '12a456') !== null);
+check('PIN: the default PIN cannot be chosen again', \App\Services\SuperadminPin::validateNew('123456', '123456') !== null);
+check('PIN: the confirmation must match', \App\Services\SuperadminPin::validateNew('204817', '204818') !== null && \App\Services\SuperadminPin::validateNew('204817', '204817') === null);
 check('payments: a collection ID with spaces is refused before anything is saved', isset(\App\Services\PlatformSettings::save(['billplz_mode' => 'sandbox', 'billplz_collection_id' => 'bad id'], 1)['billplz_collection_id']));
 check('an unknown module is never on', Modules::enabled('no_such_module') === false);
 
@@ -278,6 +281,17 @@ DB::query('DELETE FROM module_discounts');
 check('billing: paying the same invoice twice changes nothing', \App\Services\ModuleBillingService::markPaid((int) $invA['id'], 1, 'again') === false);
 check('billing: a free module never needs an invoice', is_string(\App\Services\ModuleBillingService::invoiceFor('newsletter', $billUser)) || ModulePricing::isFree('newsletter'));
 check('billing: a receipt that is not waiting for review cannot be approved', \App\Services\ModuleBillingService::review((int) $invA['id'], true, '', 1) !== null);
+
+// Superadmin PIN: the default works until changed; 5 wrong tries lock it; a changed PIN replaces the old one.
+$pinUser = User::create('superadmin', 'PIN Test', 'pin@example.test', 'long-password-1');
+check('PIN: the default PIN works before anything is set', \App\Services\SuperadminPin::verify($pinUser, '123456')['ok'] === true);
+check('PIN: a wrong PIN is refused', \App\Services\SuperadminPin::verify($pinUser, '000000')['error'] === 'wrong');
+for ($i = 0; $i < 4; $i++) { \App\Services\SuperadminPin::verify($pinUser, '000000'); }
+check('PIN: five wrong tries lock it, even for the right PIN', \App\Services\SuperadminPin::verify($pinUser, '123456')['error'] === 'locked');
+DB::query('UPDATE users SET pin_locked_until = NULL, pin_failed = 0 WHERE id = ?', [$pinUser]);
+check('PIN: a superadmin can change it', \App\Services\SuperadminPin::change($pinUser, '123456', '204817', '204817') === null && \App\Services\SuperadminPin::isCustom($pinUser));
+check('PIN: the old default stops working after a change', \App\Services\SuperadminPin::verify($pinUser, '123456')['ok'] === false);
+check('PIN: the new PIN works', \App\Services\SuperadminPin::verify($pinUser, '204817')['ok'] === true);
 
 // Abandoned carts: a member cart is snapshotted while held; it is due after the idle delay unless the member ordered since.
 $acUser = User::create('member', 'Cart Forgetter', 'cart@example.test', 'long-password-1');

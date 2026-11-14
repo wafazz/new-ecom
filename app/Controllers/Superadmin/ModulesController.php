@@ -11,6 +11,7 @@ use App\Services\AuditService;
 use App\Services\ModulePricing;
 use App\Services\Modules;
 use App\Services\PlatformSettings;
+use App\Services\SuperadminPin;
 
 /** Superadmin only (route group auth:superadmin). Turns whole modules on and off. */
 final class ModulesController extends Controller
@@ -28,6 +29,7 @@ final class ModulesController extends Controller
             'title' => 'Modules',
             'modules' => $modules,
             'global' => ModulePricing::discountRow('global'),
+            'pinCustom' => SuperadminPin::isCustom((int) Auth::user()['id']),
             'audit' => $this->auditRows(),
             'scripts' => ['modules.js'],
         ], 'portal');
@@ -38,6 +40,15 @@ final class ModulesController extends Controller
     {
         if (!isset(Modules::LIST[$key])) {
             Response::abort(404);
+        }
+        // A module is switched only with this superadmin's PIN, checked here as well as on the page.
+        $check = SuperadminPin::verify((int) Auth::user()['id'], $request->str('pin'));
+        if (!$check['ok']) {
+            $msg = $check['error'] === 'locked' ? 'Too many wrong PINs. Try again in 15 minutes.' : 'Wrong PIN. Try again.';
+            if (Request::wantsJson()) {
+                Response::json(['ok' => false, 'pin' => true, 'locked' => $check['error'] === 'locked', 'message' => $msg], 403);
+            }
+            $this->backWithErrors('/superadmin/modules', ['form' => $msg]);
         }
         $on = $request->str('enabled') === '1';
         Modules::set($key, $on);
@@ -81,6 +92,21 @@ final class ModulesController extends Controller
             $this->backWithErrors('/superadmin/modules', ['form' => $error]);
         }
         $this->success('/superadmin/modules', 'Discount saved. It ends at the time you chose.');
+    }
+
+    /** Security page: change this superadmin's PIN. */
+    public function security(Request $request): void
+    {
+        $this->view('superadmin/security', ['title' => 'Security', 'custom' => SuperadminPin::isCustom((int) Auth::user()['id'])], 'portal');
+    }
+
+    public function changePin(Request $request): void
+    {
+        $error = SuperadminPin::change((int) Auth::user()['id'], $request->str('current'), $request->str('pin'), $request->str('confirm'));
+        if ($error !== null) {
+            $this->backWithErrors('/superadmin/security', ['form' => $error]);
+        }
+        $this->success('/superadmin/security', 'PIN changed. Use the new PIN to switch modules on and off.');
     }
 
     /** Payment setup page: Billplz and bank details for module payments. */

@@ -45,7 +45,7 @@ $groups = match ($role) {
         'Administration' => [['/admin/staff', 'Staff', 'users', 0], ...($newsletterMenu ? [['/admin/newsletter', 'Newsletter', 'heart', 0]] : []), ['/admin/visitors', 'Visitors', 'pin', 0], ['/admin/shipping-rates', 'Shipping rates', 'truck', 0], ['/admin/invoice', 'Invoice details', 'stack', 0], ['/admin/billing', 'Module billing', 'card', 0], ['/admin/backup', 'Backup', 'lock', 0], ['/admin/email/announce', 'Announcements', 'heart', 0], ['/admin/payments', 'Payments', 'card', 0], ['/admin/api', 'API Management', 'link', 0, [['/admin/whatsapp', 'WhatsApp', '', 0], ['/admin/email', 'Email', '', 0], ['/admin/payments/billplz', 'Billplz', '', 0], ['/admin/shipping/ninjavan', 'NinjaVan', '', 0], ['/admin/shipping/jnt-express', 'J&T Express', '', 0]]], ['/admin/settings', 'Settings', 'gear', 0]],
         'Account' => [['/admin/profile', 'Profile', 'user', 0], ['/admin/password', 'Password', 'lock', 0]],
     ] + ($role === 'superadmin' ? [
-        'Superadmin' => [['/superadmin/modules', 'Modules', 'gear', 0], ['/superadmin/billing', 'Payment setup', 'card', 0], ['/superadmin/invoices', 'Module invoices', 'coin', 0]],
+        'Superadmin' => [['/superadmin/modules', 'Modules', 'gear', 0], ['/superadmin/billing', 'Payment setup', 'card', 0], ['/superadmin/invoices', 'Module invoices', 'coin', 0], ['/superadmin/security', 'Security (PIN)', 'lock', 0]],
     ] : []),
     'staff' => array_filter([
         'Overview' => [['/staff', 'Dashboard', 'home', 0]],
