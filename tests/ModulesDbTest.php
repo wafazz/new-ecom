@@ -250,10 +250,14 @@ foreach (['flash_sales', 'vouchers', 'affiliates', 'digital_products', 'stock_mo
 DB::query('DELETE FROM module_invoices');
 DB::query('DELETE FROM module_subscriptions');
 check('billing: a priced module can be given a price', \App\Services\ModulePricing::set('bundles', 'yearly', '120.00', 1) === null);
+check('plans: a module can offer more than one plan', \App\Services\ModulePricing::set('bundles', 'monthly', '12.00', 1) === null && count(\App\Services\ModulePricing::plans('bundles')) === 2);
+check('plans: a blank plan is taken off offer', \App\Services\ModulePricing::set('bundles', 'monthly', '', 1) === null && !isset(\App\Services\ModulePricing::plans('bundles')['monthly']));
+\App\Services\ModulePricing::set('bundles', 'monthly', '12.00', 1);
 $billUser = 1;
-$invA = \App\Services\ModuleBillingService::invoiceFor('bundles', $billUser);
+$invA = \App\Services\ModuleBillingService::invoiceFor('bundles', 'yearly', $billUser);
 check('billing: an unpaid priced module gets an invoice', is_array($invA) && $invA['status'] === 'unpaid' && $invA['period'] === 'yearly');
-check('billing: the same open invoice is reused, not doubled', (int) DB::query('SELECT COUNT(*) FROM module_invoices')->fetchColumn() === 1 && \App\Services\ModuleBillingService::invoiceFor('bundles', $billUser)['id'] === $invA['id']);
+check('billing: a plan that is not offered cannot be bought', is_string(\App\Services\ModuleBillingService::invoiceFor('bundles', 'one_time', $billUser)));
+check('billing: the same open invoice is reused, not doubled', (int) DB::query('SELECT COUNT(*) FROM module_invoices')->fetchColumn() === 1 && \App\Services\ModuleBillingService::invoiceFor('bundles', 'yearly', $billUser)['id'] === $invA['id']);
 check('billing: a module is not covered until its invoice is paid', \App\Services\ModuleBillingService::covered('bundles') === false);
 check('billing: paying extends the paid-until date', \App\Services\ModuleBillingService::markPaid((int) $invA['id'], 1, 'test') === true && \App\Services\ModuleBillingService::covered('bundles') === true);
 Modules::set('bundles', true);
@@ -266,20 +270,20 @@ DB::query("UPDATE module_subscriptions SET paid_until = ? WHERE module_key = 'bu
 check('billing: paying again switches it back on', Modules::enabled('bundles') === true);
 DB::query('DELETE FROM module_discounts');
 $tomorrow = date('Y-m-d\TH:i', time() + 86400);
-check('discounts: with no discount the list price applies', (float) \App\Services\ModulePricing::quote('bundles')['final'] === 120.0);
+check('discounts: with no discount the list price applies', (float) \App\Services\ModulePricing::quote('bundles', 'yearly')['final'] === 120.0);
 \App\Services\ModulePricing::setDiscount('global', 'percent', '10', $tomorrow, 1);
-check('discounts: a global percentage applies to every priced module', (float) \App\Services\ModulePricing::quote('bundles')['final'] === 108.0);
+check('discounts: a global percentage applies to every priced module', (float) \App\Services\ModulePricing::quote('bundles', 'yearly')['final'] === 108.0);
 \App\Services\ModulePricing::setDiscount('bundles', 'fixed', '75', $tomorrow, 1);
-check('discounts: a module fixed price overrides the global one', (float) \App\Services\ModulePricing::quote('bundles')['final'] === 75.0);
+check('discounts: a module fixed price overrides the global one', (float) \App\Services\ModulePricing::quote('bundles', 'yearly')['final'] === 75.0);
 DB::query("UPDATE module_discounts SET ends_at = ? WHERE scope = 'bundles'", [date('Y-m-d H:i:s', time() - 60)]);
-check('discounts: an expired module discount falls back to the global one', (float) \App\Services\ModulePricing::quote('bundles')['final'] === 108.0);
+check('discounts: an expired module discount falls back to the global one', (float) \App\Services\ModulePricing::quote('bundles', 'yearly')['final'] === 108.0);
 \App\Services\ModulePricing::setDiscount('global', 'fixed', '999', $tomorrow, 1);
-check('discounts: a global fixed price never raises a module above its list price', (float) \App\Services\ModulePricing::quote('bundles')['final'] === 120.0);
+check('discounts: a global fixed price never raises a module above its list price', (float) \App\Services\ModulePricing::quote('bundles', 'yearly')['final'] === 120.0);
 DB::query("UPDATE module_discounts SET ends_at = ? WHERE scope = 'global'", [date('Y-m-d H:i:s', time() - 60)]);
-check('discounts: an expired global discount gives the list price back', (float) \App\Services\ModulePricing::quote('bundles')['final'] === 120.0);
+check('discounts: an expired global discount gives the list price back', (float) \App\Services\ModulePricing::quote('bundles', 'yearly')['final'] === 120.0);
 DB::query('DELETE FROM module_discounts');
 check('billing: paying the same invoice twice changes nothing', \App\Services\ModuleBillingService::markPaid((int) $invA['id'], 1, 'again') === false);
-check('billing: a free module never needs an invoice', is_string(\App\Services\ModuleBillingService::invoiceFor('newsletter', $billUser)) || ModulePricing::isFree('newsletter'));
+check('billing: a free module never needs an invoice', is_string(\App\Services\ModuleBillingService::invoiceFor('newsletter', 'yearly', $billUser)) || ModulePricing::isFree('newsletter'));
 check('billing: a receipt that is not waiting for review cannot be approved', \App\Services\ModuleBillingService::review((int) $invA['id'], true, '', 1) !== null);
 
 // Superadmin PIN: the default works until changed; 5 wrong tries lock it; a changed PIN replaces the old one.

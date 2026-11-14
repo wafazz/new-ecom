@@ -20,8 +20,11 @@ final class ModulesController extends Controller
     {
         $modules = Modules::all();
         foreach ($modules as &$m) {
-            $m['price'] = ModulePricing::price($m['key']);
-            $m['quote'] = ModulePricing::quote($m['key']);
+            $m['plans'] = ModulePricing::plans($m['key']);
+            $m['quotes'] = [];
+            foreach (array_keys($m['plans']) as $period) {
+                $m['quotes'][$period] = ModulePricing::quote($m['key'], $period);
+            }
             $m['own_discount'] = ModulePricing::discountRow($m['key']);
         }
         unset($m);
@@ -68,11 +71,15 @@ final class ModulesController extends Controller
         if (!isset(Modules::LIST[$key])) {
             Response::abort(404);
         }
-        $error = ModulePricing::set($key, $request->str('period'), trim($request->str('amount')), (int) Auth::user()['id']);
-        if ($error !== null) {
-            $this->backWithErrors('/superadmin/modules', ['form' => $error]);
+        $errors = ModulePricing::setPlans($key, [
+            'one_time' => (string) $request->str('one_time'),
+            'monthly' => (string) $request->str('monthly'),
+            'yearly' => (string) $request->str('yearly'),
+        ], (int) Auth::user()['id']);
+        if ($errors !== []) {
+            $this->backWithErrors('/superadmin/modules', ['form' => implode(' ', $errors)]);
         }
-        $this->success('/superadmin/modules', Modules::LIST[$key][0] . ' price saved.');
+        $this->success('/superadmin/modules', Modules::LIST[$key][0] . ' plans saved. Leave a plan blank to stop offering it.');
     }
 
     /** A discount on all priced modules ('global') or on one module. Clear it with clear=1. */

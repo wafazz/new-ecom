@@ -20,13 +20,20 @@ final class BillingController extends Controller
     {
         $rows = [];
         foreach (Modules::LIST as $key => [$label]) {
-            $price = ModulePricing::quote($key);
-            if ($price['list'] <= 0) {
+            $plans = ModulePricing::plans($key);
+            if ($plans === []) {
                 continue;
             }
-            $until = ModuleBillingService::paidUntil($key);
+            $quotes = [];
+            foreach (array_keys($plans) as $period) {
+                $quotes[$period] = ModulePricing::quote($key, $period);
+            }
             $open = \App\Core\Database::query("SELECT * FROM module_invoices WHERE module_key = ? AND status IN ('unpaid','pending_review') ORDER BY id DESC LIMIT 1", [$key])->fetch() ?: null;
-            $rows[] = ['key' => $key, 'label' => $label, 'price' => $price, 'until' => $until, 'covered' => ModuleBillingService::covered($key), 'open' => $open];
+            $rows[] = [
+                'key' => $key, 'label' => $label, 'quotes' => $quotes,
+                'until' => ModuleBillingService::paidUntil($key), 'subscribed' => ModuleBillingService::subscribedPeriod($key),
+                'covered' => ModuleBillingService::covered($key), 'open' => $open,
+            ];
         }
         $this->view('admin/billing', [
             'title' => 'Module billing',
@@ -38,7 +45,7 @@ final class BillingController extends Controller
 
     public function pay(Request $request, string $key): void
     {
-        $invoice = ModuleBillingService::invoiceFor($key, (int) Auth::user()['id']);
+        $invoice = ModuleBillingService::invoiceFor($key, (string) $request->str('period'), (int) Auth::user()['id']);
         if (is_string($invoice)) {
             $this->backWithErrors('/admin/billing', ['form' => $invoice]);
         }
@@ -56,7 +63,7 @@ final class BillingController extends Controller
 
     public function receipt(Request $request, string $key): void
     {
-        $invoice = ModuleBillingService::invoiceFor($key, (int) Auth::user()['id']);
+        $invoice = ModuleBillingService::invoiceFor($key, (string) $request->str('period'), (int) Auth::user()['id']);
         if (is_string($invoice)) {
             $this->backWithErrors('/admin/billing', ['form' => $invoice]);
         }
