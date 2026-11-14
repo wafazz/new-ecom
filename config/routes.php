@@ -326,6 +326,12 @@ return function (Router $r): void {
             $r->post('/bulk-pricing/{id}/undo', 'Admin/BulkPricingController@undo', ['module:bulk_pricing']);
         });
 
+        // Accounting export (admin and superadmin, read-only)
+        $r->group('/admin', ['auth:admin'], function (Router $r): void {
+            $r->get('/accounting', 'Admin/AccountingController@index', ['module:accounting_export']);
+            $r->get('/accounting/export', 'Admin/AccountingController@export', ['module:accounting_export']);
+        });
+
         // Sales reports (admin and superadmin, read-only)
         $r->group('/admin', ['auth:admin'], function (Router $r): void {
             $r->get('/reports', 'Admin/ReportController@index', ['module:sales_reports']);

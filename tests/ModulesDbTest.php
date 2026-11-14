@@ -331,6 +331,16 @@ DB::query('DELETE FROM jobs');
 Product::update($pa, ['retail_price' => '75.00']);
 check('price alerts: a price change queues a price check', (int) DB::query("SELECT COUNT(*) FROM jobs WHERE type = 'price.drop'")->fetchColumn() === 1);
 
+// Accounting: an order's journal balances, and a cancelled order is left out.
+DB::query("INSERT INTO orders (order_no, customer_name, customer_email, customer_phone, ship_line1, ship_city, ship_state, ship_postcode, subtotal, discount_total, shipping_fee, tax_total, total, payment_method, status, created_at) VALUES ('ACC-1', 'Acc Test', 'acc@example.test', '0123', 'Line 1', 'City', 'Selangor', '43000', 100.00, 10.00, 8.00, 5.00, 98.00, 'cod', 'completed', NOW())");
+DB::query("INSERT INTO orders (order_no, customer_name, customer_email, customer_phone, ship_line1, ship_city, ship_state, ship_postcode, subtotal, discount_total, shipping_fee, tax_total, total, payment_method, status, created_at) VALUES ('ACC-2', 'Acc Test', 'acc@example.test', '0123', 'Line 1', 'City', 'Selangor', '43000', 50.00, 0, 0, 0, 50.00, 'cod', 'cancelled', NOW())");
+$accToday = date('Y-m-d');
+$accLines = \App\Services\AccountingExportService::journal($accToday, $accToday);
+$accTotals = \App\Services\AccountingExportService::totals($accLines);
+check('accounting: an order journal balances (debits equal credits)', $accTotals['balanced'] === true);
+check('accounting: the order journal debits the amount received (98.00)', abs(array_sum(array_column(array_filter($accLines, fn($l) => $l['ref'] === 'ACC-1'), 'debit')) - 98.0) < 0.005);
+check('accounting: a cancelled order is left out', !in_array('ACC-2', array_column($accLines, 'ref'), true));
+
 // Newsletter: a sign-up only counts once its confirmation link is used, and the link works once.
 DB::query('DELETE FROM newsletter_subscribers');
 $nlToken = bin2hex(random_bytes(32));
