@@ -175,4 +175,18 @@
     });
     refresh();
   }
+
+  // ---- Module info popups: open from the "i" button, close with ×, Escape, or a click outside the box ----------
+  Array.prototype.forEach.call(document.querySelectorAll('[data-info-open]'), function (btn) {
+    btn.addEventListener('click', function () {
+      var dlg = document.getElementById(btn.getAttribute('data-info-open'));
+      if (!dlg) return;
+      if (typeof dlg.showModal === 'function') { dlg.showModal(); } else { dlg.setAttribute('open', ''); }
+    });
+  });
+  Array.prototype.forEach.call(document.querySelectorAll('.bill-info-dialog'), function (dlg) {
+    dlg.addEventListener('click', function (e) {
+      if (e.target === dlg) dlg.close();
+    });
+  });
 })();

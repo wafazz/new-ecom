@@ -2,6 +2,22 @@
 /** Expects $rows (paid modules: key, label, quotes per plan, until, subscribed, covered, open invoice), $bank, $billplzReady. */
 $money = fn(float $v): string => 'RM ' . number_format($v, 2);
 $periods = \App\Services\ModulePricing::PERIODS;
+// The info button and its dialog for one module. The dialog opens from the button (see billing.js).
+$infoDialog = function (string $key, string $label): string {
+    $i = \App\Services\ModuleInfo::for($key);
+    $id = 'info-' . preg_replace('/[^a-z0-9_]/', '-', $key);
+    return '<button type="button" class="bill-info-btn" data-info-open="' . e($id) . '" aria-label="About ' . e($label) . '" title="About ' . e($label) . '">i</button>'
+        . '<dialog class="bill-info-dialog" id="' . e($id) . '" aria-labelledby="' . e($id) . '-title">'
+        . '<form method="dialog" class="bill-info-close-form"><button class="bill-info-close" aria-label="Close">×</button></form>'
+        . '<h2 id="' . e($id) . '-title">' . e($label) . '</h2>'
+        . '<dl class="bill-info-list">'
+        . '<dt>What it does</dt><dd>' . e($i['what']) . '</dd>'
+        . '<dt>Where to find it</dt><dd>' . e($i['where']) . '</dd>'
+        . '<dt>When it is on</dt><dd>' . e($i['on']) . '</dd>'
+        . '<dt>When it is off</dt><dd>' . e($i['off']) . '</dd>'
+        . '</dl>'
+        . '</dialog>';
+};
 ?>
 <div class="msg-page bill-page">
     <header class="msg-head">
@@ -40,6 +56,7 @@ $periods = \App\Services\ModulePricing::PERIODS;
             if (!empty($r['coming_soon'])):
         ?>
             <article class="bill-card bill-card-soon">
+                <?= $infoDialog($r['key'], $r['label']) ?>
                 <header class="bill-head">
                     <h2><?= e($r['label']) ?></h2>
                     <span class="bill-status is-soon">Coming soon</span>
@@ -60,6 +77,7 @@ $periods = \App\Services\ModulePricing::PERIODS;
             $canPay = !$isLifetime && ($status !== 'paid' || !$r['switched_on'] || ($window !== null && $daysLeft !== null && $daysLeft <= $window));
         ?>
             <article class="bill-card">
+                <?= $infoDialog($r['key'], $r['label']) ?>
                 <header class="bill-head">
                     <h2><?= e($r['label']) ?></h2>
                     <span class="bill-status is-<?= e($status) ?>">
