@@ -89,7 +89,7 @@ $infoDialog = function (string $key, string $label, bool $canAdd): string {
             $canPay = !$isLifetime && ($status !== 'paid' || !$r['switched_on'] || ($window !== null && $daysLeft !== null && $daysLeft <= $window));
         ?>
             <article class="bill-card">
-                <?= $infoDialog($r['key'], $r['label'], true) ?>
+                <?= $infoDialog($r['key'], $r['label'], false) ?>
                 <header class="bill-head">
                     <h2><?= e($r['label']) ?></h2>
                     <span class="bill-status is-<?= e($status) ?>">
