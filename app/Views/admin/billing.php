@@ -204,7 +204,14 @@ $infoDialog = function (string $key, string $label, bool $canAdd): string {
     </section>
     <?php endforeach; ?>
 
-    <form id="bill-basket" class="bill-basket" method="post" enctype="multipart/form-data" data-basket data-max-bytes="5242880" aria-label="Pay selected modules together">
+    <div class="bill-dock">
+    <button type="button" class="bill-basket-toggle" aria-expanded="false" aria-controls="bill-basket" data-basket-toggle>
+        <span class="bill-basket-toggle-title">Payment basket</span>
+        <span class="bill-basket-toggle-meta"><span class="bill-basket-count" data-basket-count-mini aria-hidden="true">0</span> <span data-basket-total-mini>RM 0.00</span></span>
+        <span class="bill-basket-chev" aria-hidden="true">▾</span>
+        <span class="sr-only">Show or hide the payment basket</span>
+    </button>
+    <form id="bill-basket" class="bill-basket" method="post" enctype="multipart/form-data" data-basket data-max-bytes="5242880" aria-label="Pay selected modules together" hidden>
         <?= csrf_field() ?>
         <div class="bill-basket-info">
             <div class="bill-basket-head">
@@ -233,4 +240,5 @@ $infoDialog = function (string $key, string $label, bool $canAdd): string {
             <?php endif; ?>
         </div>
     </form>
+    </div>
 </div>
