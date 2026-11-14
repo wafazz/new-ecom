@@ -217,6 +217,12 @@ Modules::set('tax', false);
 check('SST: switched off, no SST is worked out', \App\Services\TaxService::rateFor($taxP) === 0.0);
 Modules::set('tax', true);
 
+// Defaults: the 12 newer modules are off until a superadmin switches them on; the original modules stay on.
+$newKeys = \App\Services\Modules::OFF_BY_DEFAULT;
+DB::query("DELETE FROM settings WHERE `key` IN (" . implode(',', array_map(fn($k) => "'module." . $k . "'", $newKeys)) . ")");
+check('defaults: all 12 newer modules are off when never switched on', count(array_filter($newKeys, fn($k) => Modules::enabled($k))) === 0 && count($newKeys) === 12);
+check('defaults: the original modules are still on by default', Modules::enabled('flash_sales') && Modules::enabled('vouchers') && Modules::enabled('affiliates'));
+
 // Abandoned carts: a member cart is snapshotted while held; it is due after the idle delay unless the member ordered since.
 $acUser = User::create('member', 'Cart Forgetter', 'cart@example.test', 'long-password-1');
 DB::query("INSERT INTO carts (user_id) VALUES (?)", [$acUser]);

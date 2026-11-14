@@ -9,7 +9,8 @@ use App\Models\Setting;
  * Master on/off switches for whole features (flash sales, and any later module).
  * Only a superadmin can change them (Superadmin > Modules). A switched-off module is blocked everywhere:
  * its routes return 404, its menu items hide, and its storefront output and prices stop applying.
- * Stored in `settings` as module.<key> = 1 or 0. A module that was never set is on.
+ * Stored in `settings` as module.<key> = 1 or 0. A module that was never set is on, except the modules in OFF_BY_DEFAULT,
+ * which stay off until a superadmin switches them on.
  */
 final class Modules
 {
@@ -34,12 +35,25 @@ final class Modules
         'vouchers' => ['Discount coupons', 'Discount codes shoppers enter at checkout, and the Vouchers menu. Off stops every code at once; orders that already used a code keep their discount.'],
     ];
 
+    /** The newer modules: off until a superadmin turns them on. */
+    public const OFF_BY_DEFAULT = [
+        'abandoned_cart_emails', 'back_in_stock', 'product_csv', 'bulk_pricing', 'returns', 'loyalty', 'gift_cards',
+        'bundles', 'newsletter', 'sales_reports', 'support', 'tax',
+    ];
+
     public static function enabled(string $key): bool
     {
         if (!isset(self::LIST[$key])) {
             return false; // an unknown key is never switched on by accident
         }
-        return Setting::get('module.' . $key, '1') === '1';
+        $default = in_array($key, self::OFF_BY_DEFAULT, true) ? '0' : '1';
+        return Setting::get('module.' . $key, $default) === '1';
+    }
+
+    /** Whether a module is off until switched on (shown on the Modules page). */
+    public static function offByDefault(string $key): bool
+    {
+        return in_array($key, self::OFF_BY_DEFAULT, true);
     }
 
     public static function set(string $key, bool $on): void
@@ -55,7 +69,7 @@ final class Modules
     {
         $out = [];
         foreach (self::LIST as $key => [$label, $help]) {
-            $out[] = ['key' => $key, 'label' => $label, 'help' => $help, 'enabled' => self::enabled($key)];
+            $out[] = ['key' => $key, 'label' => $label, 'help' => $help, 'enabled' => self::enabled($key), 'off_by_default' => self::offByDefault($key)];
         }
         return $out;
     }
