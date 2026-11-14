@@ -63,6 +63,19 @@ check('switched off: a stock change is still recorded', $after === $before + 1);
 check('switched off: the stock level still changes', (int) DB::query('SELECT stock FROM products WHERE id = ?', [$tote])->fetchColumn() === 18);
 Modules::set('stock_movements', true);
 
+// Digital products: hidden from the shop and not sold while off. Existing downloads are not touched.
+$digId = Product::insert(['weight_kg' => null, 'width_cm' => null, 'length_cm' => null, 'height_cm' => null,
+    'name' => 'Ebook Guide', 'slug' => 'ebook-guide', 'sku' => 'EBK001', 'category_id' => null, 'brand_id' => null,
+    'base_price' => '5', 'company_base_price' => '10', 'retail_price' => '30.00', 'discount_price' => null, 'stock' => 0, 'status' => 'active',
+    'product_type' => 'digital', 'digital_delivery' => 'keys']);
+check('digital products are on by default: the product page loads', Product::publicBySlug('ebook-guide') !== null);
+Modules::set('digital_products', false);
+check('switched off: the digital product page is not found', Product::publicBySlug('ebook-guide') === null);
+check('switched off: digital products are not in the shop listing',
+    array_filter(Product::publicList('', null, 'newest', 1, 50)['rows'], fn($r) => $r['slug'] === 'ebook-guide') === []);
+check('switched off: a digital product cannot be added to a cart', \App\Services\CartService::add($digId, null, 1) === 'Digital products are not available right now.');
+Modules::set('digital_products', true);
+
 // Affiliates: a referral code is only recognised while the module is on (clicks, cookies and checkout attribution use it).
 $affId = User::create('member', 'Ana Referrer', 'ana@example.test', 'long-password-1');
 $refCode = \App\Services\AffiliateService::ensureCode($affId);

@@ -123,6 +123,9 @@ final class CartService
         if ($product === null || $product['status'] !== 'active') {
             return 'This product is not available.';
         }
+        if (DigitalService::isDigital($product) && !Modules::enabled('digital_products')) {
+            return 'Digital products are not available right now.';
+        }
 
         $hasVariants = (int) Database::query('SELECT COUNT(*) FROM product_variants WHERE product_id = ? AND deleted_at IS NULL', [$productId])->fetchColumn() > 0;
         if ($hasVariants) {
