@@ -46,7 +46,7 @@ $money = fn(float $v): string => 'RM ' . number_format($v, 2);
         <?php else: ?>
             <div class="msg-table-wrap">
                 <table class="msg-table">
-                    <thead><tr><th>#</th><th>Module</th><th>Amount</th><th>Method</th><th>Status</th><th>Paid</th></tr></thead>
+                    <thead><tr><th>#</th><th>Module</th><th>Amount</th><th>Method</th><th>Status</th><th>Paid</th><th>Note</th></tr></thead>
                     <tbody>
                         <?php foreach ($recent as $r): ?>
                             <tr>
@@ -56,6 +56,7 @@ $money = fn(float $v): string => 'RM ' . number_format($v, 2);
                                 <td><?= e((string) $r['method']) ?></td>
                                 <td><?= e($r['status']) ?></td>
                                 <td><?= e((string) $r['paid_at']) ?></td>
+                                <td><?= e((string) $r['note']) ?></td>
                             </tr>
                         <?php endforeach; ?>
                     </tbody>

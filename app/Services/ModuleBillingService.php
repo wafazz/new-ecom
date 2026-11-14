@@ -289,6 +289,51 @@ final class ModuleBillingService
         return $sent;
     }
 
+    /**
+     * A superadmin grants a paid module by hand for a term (monthly, yearly or lifetime). The grant is recorded as a paid
+     * invoice with the method 'manual'. The term starts after any time already paid. @return string|null error
+     */
+    public static function grant(string $key, string $term, int $actorId, ?string $amount = null, ?string $remark = null): ?string
+    {
+        if (!in_array($term, ['monthly', 'yearly', 'one_time'], true)) {
+            return 'Choose monthly, yearly or lifetime.';
+        }
+        // The superadmin can set the amount to record. Blank means the plan's price; 0.00 means free of charge.
+        $amount = $amount === null || trim($amount) === '' ? null : trim($amount);
+        if ($amount !== null && (preg_match('/^\d{1,5}(\.\d{1,2})?$/', $amount) !== 1 || (float) $amount > ModulePricing::MAX_AMOUNT)) {
+            return 'Enter an amount from 0.00 to 99999.99 (0.00 means free of charge).';
+        }
+        $until = self::paidUntil($key);
+        $start = ($until !== null && $until !== self::FOREVER && $until >= date('Y-m-d'))
+            ? date('Y-m-d', strtotime($until . ' +1 day'))
+            : date('Y-m-d');
+        $end = $term === 'one_time' ? self::FOREVER : self::periodEnd($start, $term);
+        // Still recorded as an invoice, marked as a manual payment (no Billplz or bank transfer took place).
+        $value = $amount ?? number_format(ModulePricing::listPrice($key, $term) !== null ? ModulePricing::quote($key, $term)['final'] : 0.0, 2, '.', '');
+        $value = number_format((float) $value, 2, '.', '');
+        $note = (float) $value === 0.0 ? 'Free of charge: granted by superadmin' : 'Manual payment: granted by superadmin';
+        // The superadmin's own remark is shown on the invoice, after the standard note.
+        $remark = $remark === null ? '' : trim(preg_replace('/[\x00-\x1F\x7F]/u', ' ', $remark) ?? '');
+        if (mb_strlen($remark) > 160) {
+            return 'The remark is too long (160 characters at most).';
+        }
+        if ($remark !== '') {
+            $note .= ' · Remark: ' . $remark;
+        }
+        Database::query(
+            "INSERT INTO module_invoices (module_key, period, amount, period_start, period_end, status, method, note, requested_by, reviewed_by, reviewed_at, paid_at)
+             VALUES (?, ?, ?, ?, ?, 'paid', 'manual', ?, ?, ?, NOW(), NOW())",
+            [$key, $term, $value, $start, $end, $note, $actorId, $actorId]
+        );
+        Database::query(
+            'INSERT INTO module_subscriptions (module_key, paid_until, period) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE paid_until = VALUES(paid_until), period = VALUES(period)',
+            [$key, $end, $term]
+        );
+        AuditService::log($actorId, 'module.granted', "{$key}: " . ModulePricing::PERIODS[$term] . ", paid until {$end} (granted by superadmin)");
+        self::flushCache();
+        return null;
+    }
+
     /** Invoices waiting for a superadmin decision. */
     public static function waiting(): array
     {

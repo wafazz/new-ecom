@@ -47,7 +47,7 @@ $onCount = count(array_filter($modules, fn($m) => $m['enabled']));
                 $hasPlans = !empty($m['plans']);
                 $ownDesc = $m['own_discount'] !== null ? \App\Services\ModulePricing::describe(['kind' => $m['own_discount']['kind'], 'value' => $m['own_discount']['value']]) : '';
             ?>
-                <article class="mod-card" data-module="<?= e($m['key']) ?>" data-label="<?= e($m['label']) ?>" data-enabled="<?= $m['enabled'] ? '1' : '0' ?>">
+                <article class="mod-card" data-module="<?= e($m['key']) ?>" data-label="<?= e($m['label']) ?>" data-enabled="<?= $m['enabled'] ? '1' : '0' ?>" data-priced="<?= $hasPlans ? '1' : '0' ?>" data-prices="<?= e(json_encode(array_map(fn($p) => number_format($p, 2, '.', ''), $m['plans']), JSON_UNESCAPED_SLASHES)) ?>">
                     <div class="mod-head">
                         <h3 class="mod-name"><?= e($m['label']) ?><?php if ($m['off_by_default']): ?> <small class="muted">· off by default</small><?php endif; ?></h3>
                         <span class="mod-status <?= $m['enabled'] ? 'is-on' : 'is-off' ?>"><?= $m['enabled'] ? 'On' : ($m['waiting'] ? 'Waiting for payment' : 'Off') ?></span>
@@ -57,6 +57,12 @@ $onCount = count(array_filter($modules, fn($m) => $m['enabled']));
                     <form method="post" action="<?= e(url('/superadmin/modules/' . $m['key'])) ?>" class="mod-form">
                         <?= csrf_field() ?>
                         <input type="hidden" name="enabled" value="<?= $m['enabled'] ? '0' : '1' ?>">
+                        <?php if ($hasPlans): ?>
+                        <noscript><label class="mod-pin-fallback">Term (when switching on)
+                            <select name="term"><option value="monthly">Monthly</option><option value="yearly">Yearly</option><option value="one_time">Lifetime</option></select></label>
+                            <label>Amount to record (RM, 0.00 = free of charge)<input name="amount" inputmode="decimal" placeholder="blank = plan price"></label>
+                            <label>Remark on the invoice (optional)<input name="remark" maxlength="160"></label></noscript>
+                        <?php endif; ?>
                         <noscript><label class="mod-pin-fallback">Your PIN <input type="password" name="pin" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" autocomplete="off" required></label></noscript>
                         <button type="submit" class="mod-switch" role="switch"
                                 aria-checked="<?= $m['enabled'] ? 'true' : 'false' ?>"

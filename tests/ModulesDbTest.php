@@ -282,6 +282,16 @@ check('discounts: a global fixed price never raises a module above its list pric
 DB::query("UPDATE module_discounts SET ends_at = ? WHERE scope = 'global'", [date('Y-m-d H:i:s', time() - 60)]);
 check('discounts: an expired global discount gives the list price back', (float) \App\Services\ModulePricing::quote('bundles', 'yearly')['final'] === 120.0);
 DB::query('DELETE FROM module_discounts');
+check('grant: a superadmin can grant a term by hand', \App\Services\ModuleBillingService::grant('bundles', 'monthly', 1) === null && \App\Services\ModuleBillingService::covered('bundles') === true);
+check('grant: the grant is recorded as a paid invoice marked manual', (int) DB::query("SELECT COUNT(*) FROM module_invoices WHERE method = 'manual' AND status = 'paid' AND module_key = 'bundles'")->fetchColumn() >= 1);
+\App\Services\ModuleBillingService::grant('bundles', 'monthly', 1, '0.00');
+check('grant: 0.00 is recorded as free of charge', (int) DB::query("SELECT COUNT(*) FROM module_invoices WHERE method = 'manual' AND amount = 0.00 AND note LIKE 'Free of charge%'")->fetchColumn() >= 1);
+\App\Services\ModuleBillingService::grant('bundles', 'yearly', 1, '50.00', 'Agreed by phone');
+check('grant: the superadmin remark is on the invoice', (int) DB::query("SELECT COUNT(*) FROM module_invoices WHERE note LIKE '%Remark: Agreed by phone%'")->fetchColumn() === 1);
+check('grant: an amount that is not a price is refused', \App\Services\ModuleBillingService::grant('bundles', 'monthly', 1, 'abc') !== null);
+check('grant: an unknown term is refused', \App\Services\ModuleBillingService::grant('bundles', 'weekly', 1) !== null);
+\App\Services\ModuleBillingService::grant('bundles', 'one_time', 1);
+check('grant: lifetime never runs out', \App\Services\ModuleBillingService::paidUntil('bundles') === '9999-12-31');
 check('billing: paying the same invoice twice changes nothing', \App\Services\ModuleBillingService::markPaid((int) $invA['id'], 1, 'again') === false);
 check('billing: a free module never needs an invoice', is_string(\App\Services\ModuleBillingService::invoiceFor('newsletter', 'yearly', $billUser)) || ModulePricing::isFree('newsletter'));
 check('billing: a receipt that is not waiting for review cannot be approved', \App\Services\ModuleBillingService::review((int) $invA['id'], true, '', 1) !== null);
