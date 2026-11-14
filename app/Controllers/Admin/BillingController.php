@@ -23,7 +23,7 @@ final class BillingController extends Controller
             $plans = ModulePricing::plans($key);
             if ($plans === []) {
                 // No price set yet: listed so the admin can see it, marked as coming soon, with no way to pay.
-                $rows[] = ['key' => $key, 'label' => $label, 'coming_soon' => true, 'quotes' => [], 'until' => null, 'subscribed' => null, 'covered' => false, 'open' => null, 'switched_on' => Modules::switchedOn($key)];
+                $rows[] = ['key' => $key, 'label' => $label, 'help' => Modules::LIST[$key][1], 'coming_soon' => true, 'quotes' => [], 'until' => null, 'subscribed' => null, 'covered' => false, 'open' => null, 'switched_on' => Modules::switchedOn($key)];
                 continue;
             }
             $quotes = [];
