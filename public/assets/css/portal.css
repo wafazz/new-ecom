@@ -935,3 +935,49 @@ a.vis-card:hover{transform:translateY(-3px);box-shadow:0 14px 28px -12px rgba(47
   .mod-actions{flex-direction:column;align-items:stretch}
 }
 @media (prefers-reduced-motion:reduce){.mod-settings>summary::after,.mod-seg span{transition:none}}
+
+/* Admin > Module billing: one card per module, plan tiles, responsive */
+.bill-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,320px),1fr));gap:1rem}
+.bill-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:1.1rem 1.1rem 1rem;display:flex;flex-direction:column;gap:.6rem;min-width:0;box-shadow:0 1px 2px rgba(15,23,42,.04);transition:box-shadow .2s ease,border-color .2s ease}
+.bill-card:hover{box-shadow:0 10px 26px -14px rgba(47,91,234,.28)}
+.bill-head{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:.4rem .6rem}
+.bill-head h2{margin:0;font-size:1.05rem;overflow-wrap:anywhere}
+.bill-status{padding:.2rem .7rem;border-radius:999px;font-size:.8rem;font-weight:600;border:1px solid var(--border-strong);color:var(--muted)}
+.bill-status.is-paid{background:var(--accent-soft);color:var(--accent);border-color:var(--accent)}
+.bill-status.is-review{background:var(--warn-bg,#fff7e6);color:var(--warn-fg,#92400e);border-color:var(--warn,#f59e0b)}
+.bill-sub{margin:0;font-size:.9rem}
+.bill-note{margin:0;padding:.5rem .65rem;border-radius:10px;background:var(--warn-bg,#fff7e6);font-size:.88rem}
+.bill-note.is-bad{background:var(--bad-bg,#fdecec);color:var(--bad-fg,#b00020)}
+.bill-form{display:flex;flex-direction:column;gap:.7rem;margin:0}
+.bill-plans{border:0;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,130px),1fr));gap:.5rem;min-width:0}
+.bill-plans legend{font-size:.85rem;color:var(--muted);padding:0;margin-bottom:.4rem}
+.bill-plan{position:relative;display:grid;gap:.15rem;padding:.7rem .75rem;border:1.5px solid var(--border-strong);border-radius:14px;cursor:pointer;min-height:44px;background:var(--surface);transition:border-color .15s ease,background .15s ease,box-shadow .15s ease;min-width:0}
+.bill-plan:hover{border-color:var(--accent)}
+.bill-plan input{position:absolute;opacity:0;width:1px;height:1px;pointer-events:none}
+.bill-plan input:checked~.bill-plan-name{color:var(--accent)}
+.bill-plan input:checked~.bill-price strong{color:var(--accent)}
+.bill-plan input:focus-visible~.bill-tick{outline:2px solid var(--accent);outline-offset:2px}
+.bill-plan:has(input:checked){border-color:var(--accent);background:var(--accent-soft);box-shadow:0 0 0 1px var(--accent) inset}
+.bill-plan-name{font-size:.85rem;font-weight:600;color:var(--muted)}
+.bill-price{font-size:.95rem;line-height:1.3;overflow-wrap:anywhere}
+.bill-disc{display:block;color:var(--muted);font-size:.78rem}
+.bill-tick{position:absolute;top:.5rem;right:.55rem;width:16px;height:16px;border-radius:50%;border:1.5px solid var(--border-strong)}
+.bill-plan input:checked~.bill-tick{background:var(--accent);border-color:var(--accent);box-shadow:inset 0 0 0 3px var(--surface)}
+.bill-actions{display:flex;flex-wrap:wrap;align-items:center;gap:.5rem .75rem}
+.bill-pay{min-height:46px;flex:1 1 180px}
+.bill-pay[disabled]{opacity:.5;cursor:not-allowed}
+.bill-receipt{border-top:1px dashed var(--border-strong);padding-top:.6rem}
+.bill-receipt>summary{cursor:pointer;min-height:44px;display:flex;align-items:center;font-weight:600;list-style:none}
+.bill-receipt>summary::-webkit-details-marker{display:none}
+.bill-receipt[open]>summary{color:var(--accent)}
+.bill-receipt p{margin:.4rem 0}
+.bill-file{display:grid;gap:.3rem;font-size:.88rem;color:var(--muted)}
+.bill-file input[type=file]{min-height:44px;font:inherit;font-size:16px;color:var(--text)}
+.bill-filename{min-height:1.2em;font-size:.88rem}
+@media (max-width:560px){
+  .bill-grid{grid-template-columns:minmax(0,1fr)}
+  .bill-card{padding:.9rem}
+  .bill-plans{grid-template-columns:minmax(0,1fr)}
+  .bill-actions .btn,.bill-receipt .btn{width:100%}
+}
+@media (prefers-reduced-motion:reduce){.bill-card,.bill-plan{transition:none}}
