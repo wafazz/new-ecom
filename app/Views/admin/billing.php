@@ -72,7 +72,14 @@ $periods = \App\Services\ModulePricing::PERIODS;
                                     <?php if ($q['kind'] !== null): ?>
                                         <s><?= e($money($q['list'])) ?></s> <strong><?= e($money($q['final'])) ?></strong>
                                         <small class="bill-disc"><?= e(\App\Services\ModulePricing::describe(['kind' => $q['kind'], 'value' => $q['value']])) ?></small>
-                                        <span class="bill-disc-timer" data-end-ms="<?= (int) (strtotime((string) $q['ends_at']) * 1000) ?>" role="timer">--</span>
+                                        <div class="flip-clock is-discount is-mini" data-end-ms="<?= (int) (strtotime((string) $q['ends_at']) * 1000) ?>" data-ended-text="Offer ended" role="timer" aria-label="Time left on this discount">
+                                            <div class="flip-units" data-units>
+                                                <?php foreach (['Days', 'Hours', 'Min', 'Sec'] as $unit): ?>
+                                                    <div class="flip-unit"><div class="flip-tile"><span class="flip-num">00</span></div><span class="flip-label"><?= e($unit) ?></span></div>
+                                                <?php endforeach; ?>
+                                            </div>
+                                            <small class="flip-end">Discount ends <?= e(date('d M Y, H:i', strtotime((string) $q['ends_at']))) ?></small>
+                                        </div>
                                     <?php else: ?>
                                         <strong><?= e($money($q['list'])) ?></strong>
                                     <?php endif; ?>
@@ -108,7 +115,9 @@ $periods = \App\Services\ModulePricing::PERIODS;
         <?= csrf_field() ?>
         <div class="bill-basket-info">
             <strong data-basket-summary>Select modules to pay together.</strong>
+            <ul class="bill-basket-list" data-basket-list aria-label="Selected modules"></ul>
             <span class="muted" data-basket-msg role="status" aria-live="polite"></span>
+            <div class="bill-basket-total" aria-live="polite"><span>Total to pay</span><strong data-basket-total>RM 0.00</strong></div>
         </div>
         <div class="bill-basket-actions">
             <button class="btn bill-pay" type="submit" formaction="<?= e(url('/admin/billing/pay-selected')) ?>" data-basket-pay data-ready="<?= $billplzReady ? '1' : '0' ?>" disabled>Pay selected by Billplz</button>

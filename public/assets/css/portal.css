@@ -1028,3 +1028,22 @@ a.vis-card:hover{transform:translateY(-3px);box-shadow:0 14px 28px -12px rgba(47
 .flip-clock.is-ended .flip-num{color:#fca5a5}
 @media (max-width:560px){.flip-units{gap:.3rem}.flip-tile{max-width:none}}
 @media (prefers-reduced-motion:reduce){.flip-num.is-turn{animation:none}}
+
+/* Discount countdown: flip clock in red, compact (billing plan tiles) */
+.flip-clock.is-mini{padding:.5rem .5rem .45rem;gap:.35rem;margin-top:.3rem;border-radius:12px}
+.flip-clock.is-mini .flip-units{gap:.25rem}
+.flip-clock.is-mini .flip-tile{max-width:44px;border-radius:8px}
+.flip-clock.is-mini .flip-num{font-size:clamp(1rem,3.4vw,1.35rem)}
+.flip-clock.is-mini .flip-label{font-size:.56rem;letter-spacing:.08em}
+.flip-clock.is-discount{background:radial-gradient(120% 120% at 50% 0%,#3b1616 0%,#1a0d0d 70%)}
+.flip-clock.is-discount .flip-num,.flip-clock.is-discount.is-soon .flip-num{color:#fca5a5}
+.flip-clock.is-discount .flip-label{color:#f87171}
+.flip-clock.is-discount .flip-end{color:#fca5a5}
+.flip-clock.is-discount.is-ended .flip-num{color:#fca5a5}
+.bill-basket-list{list-style:none;margin:.3rem 0 0;padding:0;display:grid;gap:.2rem;font-size:.88rem;color:var(--muted)}
+.bill-basket-list li{display:flex;justify-content:space-between;gap:.8rem;min-width:0;overflow-wrap:anywhere}
+.bill-basket-amt{font-weight:600;color:var(--text);white-space:nowrap}
+.bill-basket-total{display:grid;gap:0;text-align:right;min-width:9rem}
+.bill-basket-total span{font-size:.8rem;color:var(--muted)}
+.bill-basket-total strong{font-size:1.5rem;font-variant-numeric:tabular-nums;color:var(--accent)}
+@media (max-width:560px){.bill-basket-total{text-align:left}}
