@@ -185,6 +185,33 @@
     return Promise.resolve(window.confirm('Switch off ' + name + '? ' + text));
   }
 
+
+  // Inline discount timers: "Ends in 2d 03:10:05", then "Ended". Used for the discount end times in this page.
+  function fmtLeft(ms) {
+    var s = Math.floor(ms / 1000);
+    var d = Math.floor(s / 86400);
+    var h = Math.floor((s % 86400) / 3600);
+    var m = Math.floor((s % 3600) / 60);
+    var x = s % 60;
+    function p(n) { return n < 10 ? '0' + n : '' + n; }
+    return (d > 0 ? d + 'd ' : '') + p(h) + ':' + p(m) + ':' + p(x);
+  }
+  var inlineTimers = Array.prototype.slice.call(document.querySelectorAll('.mod-timer, .bill-disc-timer'));
+  function tickInline() {
+    var live = 0;
+    inlineTimers.forEach(function (t) {
+      var left = Number(t.dataset.endMs) - Date.now();
+      if (left <= 0) { t.textContent = 'Ended'; t.classList.add('is-ended'); return; }
+      live++;
+      t.textContent = 'Ends in ' + fmtLeft(left);
+    });
+    return live;
+  }
+  if (inlineTimers.length) {
+    tickInline();
+    var inlineHandle = setInterval(function () { if (tickInline() === 0) clearInterval(inlineHandle); }, 1000);
+  }
+
   // ---- Pricing and discounts (inside each card): live prices, save only when changed, quick end dates ----
   function fmt(n) { return 'RM' + n.toFixed(2); }
   function finalOf(list, kind, value) {

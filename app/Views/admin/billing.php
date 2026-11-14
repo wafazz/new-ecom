@@ -28,6 +28,18 @@ $periods = \App\Services\ModulePricing::PERIODS;
                     </span>
                 </header>
 
+                <?php if ($status === 'paid' && $r['until'] !== null && $r['until'] !== '9999-12-31'):
+                    $endMs = strtotime((string) $r['until'] . ' 23:59:59') * 1000;
+                ?>
+                    <div class="bill-count" data-end-ms="<?= (int) $endMs ?>" role="timer" aria-label="Time left on this plan">
+                        <span class="bill-count-label">Time left</span>
+                        <span class="bill-count-value" data-count>--</span>
+                        <small class="muted bill-count-end">Ends <?= e(date('d M Y, H:i', $endMs / 1000)) ?></small>
+                    </div>
+                <?php elseif ($status === 'paid'): ?>
+                    <div class="bill-count is-lifetime" role="status"><span class="bill-count-label">No end date</span></div>
+                <?php endif; ?>
+
                 <?php if ($status === 'paid' && $r['subscribed'] !== null): ?>
                     <p class="muted bill-sub">Current plan: <?= e($periods[$r['subscribed']]) ?></p>
                 <?php elseif ($status === 'unpaid'): ?>
@@ -52,6 +64,7 @@ $periods = \App\Services\ModulePricing::PERIODS;
                                     <?php if ($q['kind'] !== null): ?>
                                         <s><?= e($money($q['list'])) ?></s> <strong><?= e($money($q['final'])) ?></strong>
                                         <small class="bill-disc"><?= e(\App\Services\ModulePricing::describe(['kind' => $q['kind'], 'value' => $q['value']])) ?></small>
+                                        <span class="bill-disc-timer" data-end-ms="<?= (int) (strtotime((string) $q['ends_at']) * 1000) ?>" role="timer">--</span>
                                     <?php else: ?>
                                         <strong><?= e($money($q['list'])) ?></strong>
                                     <?php endif; ?>

@@ -981,3 +981,18 @@ a.vis-card:hover{transform:translateY(-3px);box-shadow:0 14px 28px -12px rgba(47
   .bill-actions .btn,.bill-receipt .btn{width:100%}
 }
 @media (prefers-reduced-motion:reduce){.bill-card,.bill-plan{transition:none}}
+
+/* Admin > Module billing: live countdown per paid card */
+.bill-count{display:grid;grid-template-columns:auto 1fr;align-items:baseline;gap:.2rem .6rem;padding:.6rem .75rem;border-radius:12px;background:var(--accent-soft);color:var(--accent)}
+.bill-count-label{font-size:.82rem;font-weight:600}
+.bill-count-value{justify-self:end;font-variant-numeric:tabular-nums;font-size:1.05rem;font-weight:700;letter-spacing:.01em;text-align:right}
+.bill-count-end{grid-column:1 / -1;color:var(--muted)}
+.bill-count.is-soon{background:var(--warn-bg,#fff7e6);color:var(--warn-fg,#92400e)}
+.bill-count.is-ended{background:var(--bad-bg,#fdecec);color:var(--bad-fg,#b00020)}
+.bill-count.is-lifetime{background:var(--surface);color:var(--muted);border:1px dashed var(--border-strong)}
+@media (prefers-reduced-motion:reduce){.bill-count-value{transition:none}}
+
+/* Discount end countdowns (superadmin Modules page and admin billing plan tiles) */
+.mod-timer,.bill-disc-timer{font-variant-numeric:tabular-nums;font-weight:600;color:var(--accent);white-space:nowrap}
+.bill-disc-timer{display:block;font-size:.78rem}
+.mod-timer.is-ended,.bill-disc-timer.is-ended{color:var(--bad-fg,#b00020)}
