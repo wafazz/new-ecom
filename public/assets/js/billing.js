@@ -24,7 +24,7 @@
     if (left <= 0) {
       c._cells.forEach(function (n) { setCell(n, '00'); });
       c.classList.add('is-ended');
-      if (c._end) c._end.textContent = 'Ended · pay to renew';
+      if (c._end) c._end.textContent = c.dataset.endedText || 'Ended · pay to renew';
       return false;
     }
     var s = Math.floor(left / 1000);
@@ -82,6 +82,8 @@
   var basket = document.getElementById('bill-basket');
   if (basket) {
     var summary = basket.querySelector('[data-basket-summary]');
+    var list = basket.querySelector('[data-basket-list]');
+    var totalEl = basket.querySelector('[data-basket-total]');
     var msg = basket.querySelector('[data-basket-msg]');
     var payBtn = basket.querySelector('[data-basket-pay]');
     var recBtn = basket.querySelector('[data-basket-receipt]');
@@ -96,10 +98,26 @@
     function refresh() {
       var picks = picked();
       var total = 0;
-      picks.forEach(function (p) { var r = planOf(p); if (r) total += Number(r.dataset.final || 0); });
-      summary.textContent = picks.length
-        ? picks.length + ' selected · RM ' + total.toFixed(2) + ' in total'
-        : 'Select modules to pay together.';
+      list.innerHTML = '';
+      picks.forEach(function (p) {
+        var r = planOf(p);
+        if (!r) return;
+        var amount = Number(r.dataset.final || 0);
+        total += amount;
+        var li = document.createElement('li');
+        var name = cardOf(p).querySelector('.bill-head h2');
+        var plan = r.parentNode.querySelector('.bill-plan-name');
+        li.appendChild(document.createTextNode((name ? name.textContent : p.value) + ' · ' + (plan ? plan.textContent : r.value)));
+        var amt = document.createElement('span');
+        amt.className = 'bill-basket-amt';
+        amt.textContent = 'RM ' + amount.toFixed(2);
+        li.appendChild(amt);
+        list.appendChild(li);
+      });
+      totalEl.textContent = 'RM ' + total.toFixed(2);
+      summary.textContent = picks.length === 0
+        ? 'Select modules to pay together.'
+        : (picks.length === 1 ? '1 module selected' : picks.length + ' modules selected');
       msg.textContent = '';
       if (payBtn) payBtn.disabled = !(picks.length && payBtn.dataset.ready === '1');
       if (recBtn) recBtn.disabled = !picks.length;
