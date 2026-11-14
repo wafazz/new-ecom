@@ -150,6 +150,34 @@ final class BillplzGateway
         return ['id' => $id, 'url' => $url];
     }
 
+    /**
+     * A bill for a module invoice (not an order). $inv: name, email, amount (decimal RM), description, reference,
+     * callback (absolute URL), redirect (absolute URL). @return array{id:string, url:string}
+     */
+    public static function createInvoiceBill(array $inv, array $creds): array
+    {
+        $fields = [
+            'collection_id' => $creds['collection_id'],
+            'email' => $inv['email'],
+            'name' => mb_substr((string) $inv['name'], 0, 255),
+            'amount' => PricingService::cents((string) $inv['amount']),
+            'callback_url' => $inv['callback'],
+            'redirect_url' => $inv['redirect'],
+            'description' => mb_substr((string) $inv['description'], 0, 200),
+            'reference_1_label' => 'Invoice',
+            'reference_1' => mb_substr((string) $inv['reference'], 0, 120),
+            'deliver' => 'false',
+        ];
+        $r = self::call('POST', '/v3/bills', $creds, $fields);
+        $id = $r['json']['id'] ?? null;
+        $url = $r['json']['url'] ?? null;
+        if (!in_array($r['code'], [200, 201], true) || !is_string($id) || !is_string($url) || !preg_match('/^[A-Za-z0-9_\-]{4,40}$/', $id) || !self::safeUrl($url)) {
+            self::log("create module invoice bill failed for {$inv['reference']}: HTTP {$r['code']}");
+            throw new \RuntimeException($r['code'] === 0 ? 'Could not reach Billplz. Please try again.' : 'Billplz could not create the payment. Please try again or upload a receipt.');
+        }
+        return ['id' => $id, 'url' => $url];
+    }
+
     /** Authoritative bill state straight from Billplz (null on any failure). */
     public static function fetchBill(string $billId, array $creds): ?array
     {
