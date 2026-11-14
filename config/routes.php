@@ -326,6 +326,16 @@ return function (Router $r): void {
             $r->post('/bulk-pricing/{id}/undo', 'Admin/BulkPricingController@undo', ['module:bulk_pricing']);
         });
 
+        // Stock count sheets (admin and superadmin)
+        $r->group('/admin', ['auth:admin'], function (Router $r): void {
+            $r->get('/stock-counts', 'Admin/StockCountController@index', ['module:stock_counts']);
+            $r->post('/stock-counts', 'Admin/StockCountController@create', ['module:stock_counts']);
+            $r->get('/stock-counts/{id}', 'Admin/StockCountController@sheet', ['module:stock_counts']);
+            $r->post('/stock-counts/{id}/counts', 'Admin/StockCountController@save', ['module:stock_counts']);
+            $r->get('/stock-counts/{id}/review', 'Admin/StockCountController@review', ['module:stock_counts']);
+            $r->post('/stock-counts/{id}/apply', 'Admin/StockCountController@apply', ['module:stock_counts']);
+        });
+
         // Accounting export (admin and superadmin, read-only)
         $r->group('/admin', ['auth:admin'], function (Router $r): void {
             $r->get('/accounting', 'Admin/AccountingController@index', ['module:accounting_export']);

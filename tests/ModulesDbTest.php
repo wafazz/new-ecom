@@ -341,6 +341,19 @@ check('accounting: an order journal balances (debits equal credits)', $accTotals
 check('accounting: the order journal debits the amount received (98.00)', abs(array_sum(array_column(array_filter($accLines, fn($l) => $l['ref'] === 'ACC-1'), 'debit')) - 98.0) < 0.005);
 check('accounting: a cancelled order is left out', !in_array('ACC-2', array_column($accLines, 'ref'), true));
 
+// Stock counts: a count is taken blind, differences are applied once as corrections.
+$cnt = Product::insert(['weight_kg' => '1.000', 'width_cm' => '10', 'length_cm' => '10', 'height_cm' => '10',
+    'name' => 'Count Mug', 'slug' => 'count-mug', 'sku' => 'CNT001', 'category_id' => null, 'brand_id' => null,
+    'base_price' => '5', 'company_base_price' => '10', 'retail_price' => '10.00', 'discount_price' => null, 'stock' => 5, 'status' => 'active']);
+$countId = \App\Services\StockCountService::create('Test shelf', null, 1);
+$countLine = (int) DB::query("SELECT id FROM stock_count_lines WHERE count_id = ? AND product_id = ?", [$countId, $cnt])->fetchColumn();
+check('stock count: the sheet lists the product with its system quantity', $countLine > 0 && (int) DB::query('SELECT system_qty FROM stock_count_lines WHERE id = ?', [$countLine])->fetchColumn() === 5);
+\App\Services\StockCountService::saveCounts($countId, [$countLine => '7']);
+check('stock count: a counted difference is listed for review', count(\App\Services\StockCountService::differences($countId)) === 1);
+$applied = \App\Services\StockCountService::apply($countId, 1);
+check('stock count: applying writes the counted figure to stock', $applied['applied'] === 1 && (int) DB::query('SELECT stock FROM products WHERE id = ?', [$cnt])->fetchColumn() === 7);
+check('stock count: applying again changes nothing', \App\Services\StockCountService::apply($countId, 1)['applied'] === 0 && (int) DB::query('SELECT stock FROM products WHERE id = ?', [$cnt])->fetchColumn() === 7);
+
 // Newsletter: a sign-up only counts once its confirmation link is used, and the link works once.
 DB::query('DELETE FROM newsletter_subscribers');
 $nlToken = bin2hex(random_bytes(32));
