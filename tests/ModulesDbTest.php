@@ -420,6 +420,29 @@ check('purchase orders: the order is part-received', (string) DB::query('SELECT 
 \App\Services\PurchaseOrderService::receive($poId, [$poItem => '6'], 1);
 check('purchase orders: the rest arrives and the order is received, with stock matching the total', (string) DB::query('SELECT status FROM purchase_orders WHERE id = ?', [$poId])->fetchColumn() === 'received' && (int) DB::query('SELECT stock FROM products WHERE id = ?', [$poProd])->fetchColumn() === 11);
 
+// Subscriptions: a due cycle places one order; the same day places none; an unpaid cycle pauses it until paid.
+$subUser = User::create('member', 'Sub Buyer', 'sub@example.test', 'long-password-1');
+DB::query("INSERT INTO addresses (user_id, name, phone, line1, city, state, postcode, is_default) VALUES (?, 'Sub Buyer', '0123456789', 'Line 1', 'City', 'Selangor', '43000', 1)", [$subUser]);
+$subAddr = (int) DB::connection()->lastInsertId();
+$subProd = Product::insert(['weight_kg' => '1.000', 'width_cm' => '10', 'length_cm' => '10', 'height_cm' => '10',
+    'name' => 'Sub Tea', 'slug' => 'sub-tea', 'sku' => 'SUB001', 'category_id' => null, 'brand_id' => null,
+    'base_price' => '5', 'company_base_price' => '10', 'retail_price' => '10.00', 'discount_price' => null, 'stock' => 50, 'status' => 'active']);
+Modules::set('subscriptions', true);
+check('subscriptions: a member can subscribe to a product', \App\Services\SubscriptionService::create($subUser, $subProd, $subAddr, 'monthly', 'cod', $subUser) === null);
+$subRes = \App\Services\SubscriptionService::runDue();
+check('subscriptions: the first due cycle places one order', $subRes['created'] >= 1 && (int) DB::query('SELECT COUNT(*) FROM subscription_runs r JOIN subscriptions s ON s.id = r.subscription_id WHERE s.user_id = ? AND r.order_id IS NOT NULL', [$subUser])->fetchColumn() === 1);
+$subId = (int) DB::query('SELECT id FROM subscriptions WHERE user_id = ?', [$subUser])->fetchColumn();
+check('subscriptions: the next due date moves on by a month', (string) DB::query('SELECT next_due FROM subscriptions WHERE id = ?', [$subId])->fetchColumn() > date('Y-m-d'));
+\App\Services\SubscriptionService::runDue();
+check('subscriptions: the same cycle is never placed twice', (int) DB::query('SELECT COUNT(*) FROM subscription_runs WHERE subscription_id = ?', [$subId])->fetchColumn() === 1);
+DB::query('UPDATE subscriptions SET next_due = CURDATE() WHERE id = ?', [$subId]);
+$pausedRes = \App\Services\SubscriptionService::runDue();
+check('subscriptions: an unpaid cycle pauses the subscription and places nothing', $pausedRes['paused'] >= 1 && (string) DB::query('SELECT status FROM subscriptions WHERE id = ?', [$subId])->fetchColumn() === 'paused');
+DB::query("UPDATE orders o JOIN subscription_runs r ON r.order_id = o.id SET o.payment_status = 'paid', o.status = 'completed' WHERE r.subscription_id = ?", [$subId]);
+$resumeRes = \App\Services\SubscriptionService::runDue();
+check('subscriptions: paying the held cycle resumes it', $resumeRes['resumed'] >= 1 && (string) DB::query('SELECT status FROM subscriptions WHERE id = ?', [$subId])->fetchColumn() === 'active');
+Modules::set('subscriptions', false);
+
 // Newsletter: a sign-up only counts once its confirmation link is used, and the link works once.
 DB::query('DELETE FROM newsletter_subscribers');
 $nlToken = bin2hex(random_bytes(32));

@@ -26,6 +26,7 @@ $accountingMenu = Modules::enabled('accounting_export');
 $countsMenu = Modules::enabled('stock_counts');
 $preorderMenu = Modules::enabled('preorders');
 $poMenu = Modules::enabled('purchase_orders');
+$subscriptionsMenu = Modules::enabled('subscriptions');
 $canOrders = $isAdminRole || ($role === 'staff' && Auth::can('orders.view'));
 $orderCounts = $canOrders ? Database::query('SELECT status, COUNT(*) FROM orders GROUP BY status')->fetchAll(\PDO::FETCH_KEY_PAIR) : [];
 $pendingOrders = (int) ($orderCounts['pending'] ?? 0);
@@ -67,7 +68,7 @@ $groups = match ($role) {
     ]),
     default => [
         'Overview' => [['/member', 'Overview', 'home', 0]],
-        'Shopping' => [['/member/orders', 'Orders', 'cart', 0], ['/member/wishlist', 'Wishlist', 'heart', 0], ['/member/addresses', 'Addresses', 'pin', 0]],
+        'Shopping' => [['/member/orders', 'Orders', 'cart', 0], ['/member/wishlist', 'Wishlist', 'heart', 0], ['/member/addresses', 'Addresses', 'pin', 0]] + ($subscriptionsMenu ? [['/member/subscriptions', 'Subscriptions', 'truck', 0]] : []),
         'Earn' => $affiliatesOn ? [['/member/affiliate', 'Affiliate', 'link', 0]] : [],
         'Account' => [['/member/profile', 'Profile', 'user', 0], ['/member/password', 'Password', 'lock', 0]],
     ],

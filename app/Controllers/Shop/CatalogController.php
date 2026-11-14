@@ -121,6 +121,11 @@ final class CatalogController extends Controller
             'notifyEmail' => (string) ($me['email'] ?? ''),
             'breaks' => \App\Services\Modules::enabled('quantity_breaks') ? \App\Services\PriceBreakService::breaksFor($pid) : [],
             'preorder' => \App\Services\Modules::enabled('preorders') ? \App\Services\PreorderService::info($pid) : null,
+            'subscribe' => $me !== null && $me['role'] === 'member' && \App\Services\Modules::enabled('subscriptions') && $variants === [] ? [
+                'addresses' => \App\Core\Database::query('SELECT id, label, line1, city FROM addresses WHERE user_id = ? ORDER BY is_default DESC, id', [(int) $me['id']])->fetchAll(),
+                'methods' => array_keys(\App\Services\Payment\Payments::checkoutMethods()),
+                'cadences' => \App\Services\SubscriptionService::CADENCES,
+            ] : null,
             'memberPrice' => \App\Services\MemberPriceService::visibleFor($me !== null && $me['role'] === 'member' ? (int) $me['id'] : null, $pid, \App\Services\PricingService::cents((string) $base['price'])),
             'scripts' => ['product-page.js', 'copy-link.js', 'flash-sales.js'],
         ]);

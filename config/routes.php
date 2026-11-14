@@ -30,6 +30,7 @@ return function (Router $r): void {
         $r->get('/products/{slug}', 'Shop/CatalogController@show');
         $r->post('/products/{slug}/notify', 'Shop/StockAlertController@store', ['module:back_in_stock']);
         $r->post('/products/{slug}/price-alert', 'Shop/PriceAlertController@store', ['module:price_alerts']);
+        $r->post('/products/{slug}/subscribe', 'Member/SubscriptionController@create', ['auth:member', 'module:subscriptions']);
         $r->post('/products/{slug}/reviews', 'Shop/ReviewController@store', ['auth:member']);
         $r->post('/wishlist/toggle', 'Shop/WishlistController@toggle', ['auth:member']);
         $r->get('/payments/billplz/return', 'Shop/BillplzController@back');
@@ -408,6 +409,8 @@ return function (Router $r): void {
             $r->post('/orders/{orderNo}/pay', 'Member/OrderController@pay');
             $r->get('/affiliate', 'Member/AffiliateController@show', ['module:affiliates']);
             $r->post('/affiliate/withdraw', 'Member/AffiliateController@withdraw', ['module:affiliates']);
+            $r->get('/subscriptions', 'Member/SubscriptionController@index', ['module:subscriptions']);
+            $r->post('/subscriptions/{id}/{action}', 'Member/SubscriptionController@change', ['module:subscriptions']);
             $r->get('/addresses', 'Member/AddressController@index');
             $r->post('/addresses', 'Member/AddressController@store');
             $r->get('/addresses/{id}/edit', 'Member/AddressController@edit');
