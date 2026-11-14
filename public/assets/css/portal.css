@@ -1019,15 +1019,22 @@ a.vis-card:hover{transform:translateY(-3px);box-shadow:0 14px 28px -12px rgba(47
 .flip-tile{position:relative;width:100%;max-width:74px;aspect-ratio:0.8/1;container-type:inline-size;display:grid;place-items:center;border-radius:12px;background:linear-gradient(#3c3c40 0%,#26262a 49%,#1d1d21 51%,#2a2a2e 100%);box-shadow:0 6px 14px -6px rgba(0,0,0,.7),inset 0 1px 0 rgba(255,255,255,.08);overflow:hidden;perspective:300px}
 .flip-tile::after{content:"";position:absolute;left:0;right:0;top:50%;height:2px;background:#0b0b0d;box-shadow:0 1px 0 rgba(255,255,255,.08);transform:translateY(-1px)}
 .flip-num{font-weight:700;font-size:clamp(1.9rem,6.2vw,2.8rem);font-size:44cqw;line-height:1;letter-spacing:.02em;font-variant-numeric:tabular-nums;color:#e6e6ea;text-shadow:0 1px 0 rgba(0,0,0,.6);transform-origin:50% 50%;backface-visibility:hidden}
-.flip-num.is-turn{animation:flip-turn .5s cubic-bezier(.2,.7,.2,1)}
-@keyframes flip-turn{0%{transform:rotateX(-88deg);opacity:.2}100%{transform:rotateX(0);opacity:1}}
+/* Page-flip leaves: the top half of the old digits folds down; the bottom half of the new digits rises */
+.flip-leaf{position:absolute;left:0;right:0;height:50%;overflow:hidden;backface-visibility:hidden;background:linear-gradient(#3c3c40,#26262a);z-index:2;pointer-events:none}
+.flip-leaf.top{top:0;border-radius:12px 12px 0 0;transform-origin:50% 100%;animation:flip-top .38s cubic-bezier(.45,0,.55,1) forwards}
+.flip-leaf.bottom{bottom:0;border-radius:0 0 12px 12px;transform-origin:50% 0%;transform:rotateX(90deg);animation:flip-bottom .38s cubic-bezier(.45,0,.55,1) .38s forwards}
+.flip-face{position:absolute;left:0;right:0;display:grid;place-items:center;font-weight:700;line-height:1;height:200%;font-variant-numeric:tabular-nums}
+.flip-leaf.top .flip-face{top:0}
+.flip-leaf.bottom .flip-face{top:-100%}
+@keyframes flip-top{0%{transform:rotateX(0)}100%{transform:rotateX(-90deg)}}
+@keyframes flip-bottom{0%{transform:rotateX(90deg)}100%{transform:rotateX(0)}}
 .flip-label{font-size:.68rem;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:#d4a017}
 .flip-end{font-size:.78rem;text-align:center}
 .flip-clock.is-soon .flip-num{color:#f5c26b}
 .flip-clock.is-ended{background:radial-gradient(120% 120% at 50% 0%,#3b1d1d 0%,#1a1212 70%)}
 .flip-clock.is-ended .flip-num{color:#fca5a5}
 @media (max-width:560px){.flip-units{gap:.3rem}.flip-tile{max-width:none}}
-@media (prefers-reduced-motion:reduce){.flip-num.is-turn{animation:none}}
+@media (prefers-reduced-motion:reduce){.flip-leaf{display:none}}
 
 /* Discount countdown: flip clock in red, compact (billing plan tiles) */
 .flip-clock.is-mini{padding:.5rem .5rem .45rem;gap:.35rem;margin-top:.3rem;border-radius:12px}

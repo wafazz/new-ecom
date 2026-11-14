@@ -11,12 +11,41 @@
     c._end = c.querySelector('.flip-end');
     c._endText = c._end ? c._end.textContent : '';
   });
+  // A page-flip: the top half of the old digits folds down, and the bottom half of the new digits rises into place.
+  var reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  function flipTo(num, text) {
+    var tile = num.parentNode;
+    var size = getComputedStyle(num).fontSize;
+    var color = getComputedStyle(num).color;
+    var old = num.textContent;
+    num.textContent = text;
+    var top = document.createElement('div');
+    top.className = 'flip-leaf top';
+    var topFace = document.createElement('span');
+    topFace.className = 'flip-face';
+    topFace.textContent = old;
+    topFace.style.fontSize = size;
+    topFace.style.color = color;
+    top.appendChild(topFace);
+    var bottom = document.createElement('div');
+    bottom.className = 'flip-leaf bottom';
+    var bottomFace = document.createElement('span');
+    bottomFace.className = 'flip-face';
+    bottomFace.textContent = text;
+    bottomFace.style.fontSize = size;
+    bottomFace.style.color = color;
+    bottom.appendChild(bottomFace);
+    tile.appendChild(top);
+    tile.appendChild(bottom);
+    var done = 0;
+    function cleanup() { if (++done === 2) { top.remove(); bottom.remove(); } }
+    top.addEventListener('animationend', cleanup);
+    bottom.addEventListener('animationend', cleanup);
+  }
   function setCell(num, text) {
     if (num.textContent === text) return;
-    num.textContent = text;
-    num.classList.remove('is-turn');
-    void num.offsetWidth; // restart the flip animation
-    num.classList.add('is-turn');
+    if (reduceMotion) { num.textContent = text; return; }
+    flipTo(num, text);
   }
   function paintClock(c) {
     var left = Number(c.dataset.endMs) - Date.now();
