@@ -9,6 +9,10 @@ $home = Auth::HOME[$role];
 
 // Sidebar badges: work waiting for a person (admin sees orders + commissions, staff only orders they may view).
 $isAdminRole = in_array($role, Auth::ADMIN_ROLES, true);
+$flashMenu = Modules::enabled('flash_sales');
+$vouchersMenu = Modules::enabled('vouchers');
+$movementMenu = Modules::enabled('stock_movements');
+$affiliatesOn = Modules::enabled('affiliates');
 $canOrders = $isAdminRole || ($role === 'staff' && Auth::can('orders.view'));
 $orderCounts = $canOrders ? Database::query('SELECT status, COUNT(*) FROM orders GROUP BY status')->fetchAll(\PDO::FETCH_KEY_PAIR) : [];
 $pendingOrders = (int) ($orderCounts['pending'] ?? 0);
@@ -23,10 +27,6 @@ $orderSub = function (string $portal) use ($orderCounts): array {
 $pendingCommissions = $isAdminRole && $affiliatesOn ? (int) Database::query("SELECT COUNT(*) FROM affiliate_commissions WHERE status = 'pending'")->fetchColumn() : 0;
 
 // [group => [[href, label, icon, badge]]]
-$flashMenu = Modules::enabled('flash_sales');
-$vouchersMenu = Modules::enabled('vouchers');
-$movementMenu = Modules::enabled('stock_movements');
-$affiliatesOn = Modules::enabled('affiliates');
 $groups = match ($role) {
     'admin', 'superadmin' => [
         'Overview' => [['/admin', 'Dashboard', 'home', 0]],
