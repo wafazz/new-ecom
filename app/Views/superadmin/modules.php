@@ -79,7 +79,7 @@ $onCount = count(array_filter($modules, fn($m) => $m['enabled']));
                                     $cur = isset($m['plans'][$pk]) ? number_format($m['plans'][$pk], 2, '.', '') : '';
                                     $q = $m['quotes'][$pk] ?? null;
                                     $dKind = $q['kind'] ?? '';
-                                    $dVal = $q['kind'] !== null ? (string) $q['value'] : '';
+                                    $dVal = $q !== null && $q['kind'] !== null ? (string) $q['value'] : '';
                                 ?>
                                     <label class="mod-plan">
                                         <span class="mod-plan-name"><?= e($pl) ?></span>
