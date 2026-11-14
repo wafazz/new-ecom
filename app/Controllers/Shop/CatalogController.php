@@ -114,7 +114,7 @@ final class CatalogController extends Controller
             'metaDescription' => mb_substr(trim(preg_replace('/\s+/', ' ', strip_tags(\App\Services\RichText::clean($product['description'])))), 0, 155),
             'metaImage' => ($images[0]['path'] ?? null),
             // A signed-in member gets a copy-ready affiliate link for this product.
-            'affiliateLink' => $me !== null && $me['role'] === 'member'
+            'affiliateLink' => $me !== null && $me['role'] === 'member' && \App\Services\Modules::enabled('affiliates')
                 ? \App\Services\AffiliateService::productLink(\App\Services\AffiliateService::ensureCode((int) $me['id']), (string) $product['slug'])
                 : null,
             'scripts' => ['product-page.js', 'copy-link.js', 'flash-sales.js'],

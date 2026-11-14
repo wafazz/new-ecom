@@ -155,7 +155,7 @@ final class DashboardService
             $wait = (int) $one("SELECT COUNT(*) c FROM orders WHERE status IN ('pending','processing') AND payment_method <> 'cod' AND payment_status = 'unpaid'")['c'];
             $push('unpaid', 'Waiting for payment', $wait, 'bank transfers and online payments', $base . '/orders?status=pending', 'info');
         }
-        if ($who === 'admin') {
+        if ($who === 'admin' && Modules::enabled('affiliates')) {
             $c = (int) $one("SELECT COUNT(*) c FROM affiliate_commissions WHERE status = 'pending'")['c'];
             $push('commissions', 'Affiliate commissions to approve', $c, null, '/admin/commissions?status=pending');
         }
@@ -235,7 +235,7 @@ final class DashboardService
 
         $code = (string) Database::query('SELECT affiliate_code FROM users WHERE id = ?', [$userId])->fetchColumn();
         $aff = null;
-        if ($code !== '') {
+        if ($code !== '' && Modules::enabled('affiliates')) {
             $clicks = array_column(Database::query('SELECT DATE(clicked_at) d, COUNT(*) n FROM affiliate_clicks WHERE affiliate_id = ? AND clicked_at >= (CURDATE() - INTERVAL 29 DAY) GROUP BY DATE(clicked_at)', [$userId])->fetchAll(), 'n', 'd');
             $series = [];
             for ($i = 29; $i >= 0; $i--) {

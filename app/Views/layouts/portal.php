@@ -20,18 +20,19 @@ $orderSub = function (string $portal) use ($orderCounts): array {
     }
     return $kids;
 };
-$pendingCommissions = $isAdminRole ? (int) Database::query("SELECT COUNT(*) FROM affiliate_commissions WHERE status = 'pending'")->fetchColumn() : 0;
+$pendingCommissions = $isAdminRole && $affiliatesOn ? (int) Database::query("SELECT COUNT(*) FROM affiliate_commissions WHERE status = 'pending'")->fetchColumn() : 0;
 
 // [group => [[href, label, icon, badge]]]
 $flashMenu = Modules::enabled('flash_sales');
 $vouchersMenu = Modules::enabled('vouchers');
 $movementMenu = Modules::enabled('stock_movements');
+$affiliatesOn = Modules::enabled('affiliates');
 $groups = match ($role) {
     'admin', 'superadmin' => [
         'Overview' => [['/admin', 'Dashboard', 'home', 0]],
         'Catalog' => [['/admin/products', 'Products', 'box', 0], ['/admin/categories', 'Categories', 'tag', 0], ['/admin/brands', 'Brands', 'tag', 0], ...($flashMenu ? [['/admin/flash-sales', 'Flash sales', 'coin', 0]] : []), ['/admin/reviews', 'Reviews', 'heart', 0]],
         'Inventory' => [['/admin/stock', 'Stock Control', 'stack', 0], ...($movementMenu ? [['/admin/stock/movements', 'Stock Movement', 'swap', 0]] : [])],
-        'Sales' => [['/admin/orders', 'Orders', 'cart', $pendingOrders, $orderSub('/admin')], ['/admin/affiliates', 'Affiliates', 'link', 0], ['/admin/commissions', 'Commissions', 'coin', $pendingCommissions], ['/admin/withdrawals', 'Withdrawals', 'coin', 0], ...($vouchersMenu ? [['/admin/vouchers', 'Vouchers', 'coin', 0]] : [])],
+        'Sales' => [['/admin/orders', 'Orders', 'cart', $pendingOrders, $orderSub('/admin')], ...($affiliatesOn ? [['/admin/affiliates', 'Affiliates', 'link', 0], ['/admin/commissions', 'Commissions', 'coin', $pendingCommissions], ['/admin/withdrawals', 'Withdrawals', 'coin', 0]] : []), ...($vouchersMenu ? [['/admin/vouchers', 'Vouchers', 'coin', 0]] : [])],
         'Administration' => [['/admin/staff', 'Staff', 'users', 0], ['/admin/visitors', 'Visitors', 'pin', 0], ['/admin/shipping-rates', 'Shipping rates', 'truck', 0], ['/admin/invoice', 'Invoice details', 'stack', 0], ['/admin/backup', 'Backup', 'lock', 0], ['/admin/email/announce', 'Announcements', 'heart', 0], ['/admin/payments', 'Payments', 'card', 0], ['/admin/api', 'API Management', 'link', 0, [['/admin/whatsapp', 'WhatsApp', '', 0], ['/admin/email', 'Email', '', 0], ['/admin/payments/billplz', 'Billplz', '', 0], ['/admin/shipping/ninjavan', 'NinjaVan', '', 0], ['/admin/shipping/jnt-express', 'J&T Express', '', 0]]], ['/admin/settings', 'Settings', 'gear', 0]],
         'Account' => [['/admin/profile', 'Profile', 'user', 0], ['/admin/password', 'Password', 'lock', 0]],
     ] + ($role === 'superadmin' ? [
@@ -54,7 +55,7 @@ $groups = match ($role) {
     default => [
         'Overview' => [['/member', 'Overview', 'home', 0]],
         'Shopping' => [['/member/orders', 'Orders', 'cart', 0], ['/member/wishlist', 'Wishlist', 'heart', 0], ['/member/addresses', 'Addresses', 'pin', 0]],
-        'Earn' => [['/member/affiliate', 'Affiliate', 'link', 0]],
+        'Earn' => $affiliatesOn ? [['/member/affiliate', 'Affiliate', 'link', 0]] : [],
         'Account' => [['/member/profile', 'Profile', 'user', 0], ['/member/password', 'Password', 'lock', 0]],
     ],
 };

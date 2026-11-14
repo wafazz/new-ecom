@@ -224,16 +224,16 @@ return function (Router $r): void {
             $r->post('/settings', 'Admin/SettingsController@update');
             $r->post('/settings/logo', 'Admin/SettingsController@logo');
             $r->post('/settings/logo/remove', 'Admin/SettingsController@removeLogo');
-            $r->get('/withdrawals', 'Admin/WithdrawalController@index');
-            $r->post('/withdrawals/{id}/paid', 'Admin/WithdrawalController@paid');
-            $r->post('/withdrawals/{id}/reject', 'Admin/WithdrawalController@reject');
-            $r->get('/affiliates', 'Admin/AffiliateController@index');
-            $r->get('/affiliates/{id}', 'Admin/AffiliateController@show');
-            $r->get('/commissions', 'Admin/AffiliateController@commissions');
-            $r->post('/commissions/recalculate', 'Admin/AffiliateController@recalculate');
-            $r->post('/commissions/{id}/recalculate', 'Admin/AffiliateController@recalculateOne');
-            $r->post('/commissions/{id}/approve', 'Admin/AffiliateController@approve');
-            $r->post('/commissions/{id}/reject', 'Admin/AffiliateController@reject');
+            $r->get('/withdrawals', 'Admin/WithdrawalController@index', ['module:affiliates']);
+            $r->post('/withdrawals/{id}/paid', 'Admin/WithdrawalController@paid', ['module:affiliates']);
+            $r->post('/withdrawals/{id}/reject', 'Admin/WithdrawalController@reject', ['module:affiliates']);
+            $r->get('/affiliates', 'Admin/AffiliateController@index', ['module:affiliates']);
+            $r->get('/affiliates/{id}', 'Admin/AffiliateController@show', ['module:affiliates']);
+            $r->get('/commissions', 'Admin/AffiliateController@commissions', ['module:affiliates']);
+            $r->post('/commissions/recalculate', 'Admin/AffiliateController@recalculate', ['module:affiliates']);
+            $r->post('/commissions/{id}/recalculate', 'Admin/AffiliateController@recalculateOne', ['module:affiliates']);
+            $r->post('/commissions/{id}/approve', 'Admin/AffiliateController@approve', ['module:affiliates']);
+            $r->post('/commissions/{id}/reject', 'Admin/AffiliateController@reject', ['module:affiliates']);
         });
 
         // Superadmin area: module switches only. Admins cannot reach these routes.
@@ -259,8 +259,8 @@ return function (Router $r): void {
             $r->post('/orders/{orderNo}/receipt', 'Member/OrderController@receipt');
             $r->get('/orders/{orderNo}/receipt/{id}', 'Member/OrderController@receiptFile');
             $r->post('/orders/{orderNo}/pay', 'Member/OrderController@pay');
-            $r->get('/affiliate', 'Member/AffiliateController@show');
-            $r->post('/affiliate/withdraw', 'Member/AffiliateController@withdraw');
+            $r->get('/affiliate', 'Member/AffiliateController@show', ['module:affiliates']);
+            $r->post('/affiliate/withdraw', 'Member/AffiliateController@withdraw', ['module:affiliates']);
             $r->get('/addresses', 'Member/AddressController@index');
             $r->post('/addresses', 'Member/AddressController@store');
             $r->get('/addresses/{id}/edit', 'Member/AddressController@edit');

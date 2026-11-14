@@ -63,5 +63,13 @@ check('switched off: a stock change is still recorded', $after === $before + 1);
 check('switched off: the stock level still changes', (int) DB::query('SELECT stock FROM products WHERE id = ?', [$tote])->fetchColumn() === 18);
 Modules::set('stock_movements', true);
 
+// Affiliates: a referral code is only recognised while the module is on (clicks, cookies and checkout attribution use it).
+$affId = User::create('member', 'Ana Referrer', 'ana@example.test', 'long-password-1');
+$refCode = \App\Services\AffiliateService::ensureCode($affId);
+check('affiliates are on by default: the code is recognised', \App\Services\AffiliateService::findByCode($refCode) !== null);
+Modules::set('affiliates', false);
+check('switched off: the referral code is ignored', \App\Services\AffiliateService::findByCode($refCode) === null);
+Modules::set('affiliates', true);
+
 $all = Modules::all();
 check('the module list has every registered module', count($all) === count(Modules::LIST));

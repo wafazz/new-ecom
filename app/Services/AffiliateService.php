@@ -54,6 +54,10 @@ final class AffiliateService
     /** An active member who owns this code, or null. */
     public static function findByCode(?string $code): ?array
     {
+        // Switched off: a referral code is ignored everywhere (no click, no cookie, no attribution at checkout).
+        if (!Modules::enabled('affiliates')) {
+            return null;
+        }
         $code = $code === null ? null : self::normalise($code);
         if ($code === null) {
             return null;
@@ -209,7 +213,7 @@ final class AffiliateService
     /** Call inside the order-completion transaction. Idempotent: one row per order. */
     public static function recordCommission(array $order, array $items): void
     {
-        if ($order['affiliate_id'] === null) {
+        if ($order['affiliate_id'] === null || !Modules::enabled('affiliates')) {
             return;
         }
         $c = self::calculate($items, PricingService::cents((string) ($order['discount_total'] ?? '0')));
