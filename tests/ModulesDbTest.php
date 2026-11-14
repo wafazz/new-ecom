@@ -320,6 +320,17 @@ check('abandoned carts: no reminder once the member has ordered since', !in_arra
 check('abandoned carts: a bad restore link is refused', \App\Services\AbandonedCartService::restore($acUser, str_repeat('b', 64)) === null);
 DB::query('DELETE FROM carts WHERE id = ?', [$acCart]); // leave no cart behind for later tests (the seed test expects none)
 
+// Price-drop alerts: a target must be below today's price; a price change queues a check.
+$pa = Product::insert(['weight_kg' => '1.000', 'width_cm' => '10', 'length_cm' => '10', 'height_cm' => '10',
+    'name' => 'Drop Tee', 'slug' => 'drop-tee', 'sku' => 'DRP001', 'category_id' => null, 'brand_id' => null,
+    'base_price' => '5', 'company_base_price' => '10', 'retail_price' => '100.00', 'discount_price' => null, 'stock' => 5, 'status' => 'active']);
+check('price alerts: a target at or above today\'s price is refused', \App\Services\PriceAlertService::store($pa, '100.00', 'drop@example.test', null) === 'at_or_below');
+check('price alerts: a lower target is saved', \App\Services\PriceAlertService::store($pa, '80.00', 'drop@example.test', null) === 'saved');
+check('price alerts: a bad address is refused', \App\Services\PriceAlertService::store($pa, '80.00', 'nope', null) === 'invalid');
+DB::query('DELETE FROM jobs');
+Product::update($pa, ['retail_price' => '75.00']);
+check('price alerts: a price change queues a price check', (int) DB::query("SELECT COUNT(*) FROM jobs WHERE type = 'price.drop'")->fetchColumn() === 1);
+
 // Newsletter: a sign-up only counts once its confirmation link is used, and the link works once.
 DB::query('DELETE FROM newsletter_subscribers');
 $nlToken = bin2hex(random_bytes(32));

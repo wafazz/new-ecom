@@ -130,6 +130,19 @@ $wishInit = $wish === true;
         </form>
         <?php endif; ?>
 
+        <?php if (\App\Services\Modules::enabled('price_alerts')): ?>
+        <details class="price-alert">
+            <summary>Tell me when the price drops</summary>
+            <form method="post" action="<?= e(url('/products/' . $product['slug'] . '/price-alert')) ?>" class="notify-form">
+                <?= csrf_field() ?>
+                <p class="muted">Now RM<?= e(number_format((float) $base['price'], 2, '.', '')) ?>. We'll email you when it reaches your price.</p>
+                <label>Price (RM) <input name="target" inputmode="decimal" required placeholder="below RM<?= e(number_format((float) $base['price'], 2, '.', '')) ?>"></label>
+                <label>Email <input type="email" name="email" required maxlength="190" value="<?= e($notifyEmail ?? '') ?>" autocomplete="email"></label>
+                <button class="s-btn secondary" type="submit">Tell me</button>
+            </form>
+        </details>
+        <?php endif; ?>
+
         <?php if (!empty($affiliateLink)): ?>
         <div class="aff-copy" style="margin:.9rem 0;padding:.75rem .9rem;border:1px dashed var(--border-strong, #c8cdd6);border-radius:12px">
             <small class="muted">Your affiliate link for this product. Share it, and you earn commission on any sale made through it.</small>

@@ -31,13 +31,14 @@ final class Modules
         'bundles' => ['Bundles', 'Products made of other products, sold at one price. Off stops new bundle sales and hides the bundle list. Orders already placed are still returned to stock correctly.'],
         'tax' => ['SST on orders', 'SST worked out on tax-inclusive prices and shown at checkout, on orders and on invoices, with a monthly SST report. Off shows no SST and stores none on new orders. Existing orders keep their SST.'],
         'abandoned_cart_emails' => ['Abandoned cart emails', 'A reminder email with a restore link, for signed-in members who leave items in their cart. Off stops the reminders and the restore link. Snapshots already saved are kept.'],
+        'price_alerts' => ['Price-drop alerts', 'A "tell me when it drops to RM X" sign-up on products, and the email when the price reaches the target. Off hides the sign-up and stops new alerts. Waiting alerts are kept.'],
         'stock_movements' => ['Stock movement log', 'The Stock Movement page and the Movement links on Stock Control. Off hides the page only: stock is still changed and every change is still recorded.'],
         'vouchers' => ['Discount coupons', 'Discount codes shoppers enter at checkout, and the Vouchers menu. Off stops every code at once; orders that already used a code keep their discount.'],
     ];
 
     /** Every module is off until a superadmin turns it on. */
     public const OFF_BY_DEFAULT = [
-        'flash_sales', 'vouchers', 'affiliates', 'digital_products', 'stock_movements',
+        'flash_sales', 'vouchers', 'affiliates', 'digital_products', 'stock_movements', 'price_alerts',
         'abandoned_cart_emails', 'back_in_stock', 'product_csv', 'bulk_pricing', 'returns', 'loyalty', 'gift_cards',
         'bundles', 'newsletter', 'sales_reports', 'support', 'tax',
     ];
