@@ -125,7 +125,7 @@ final class ProductCsvService
                     $prices++;
                 }
                 if ($r['stock'] !== null && $r['stock'] !== (int) $t['old_stock']) {
-                    StockService::adjust((int) $t['product_id'], $t['variant_id'], 'set', (string) $r['stock'], 'manual', 'CSV import', $actorId);
+                    StockService::adjust((int) $t['product_id'], $t['variant_id'], 'set', (string) $r['stock'], 'correction', 'CSV import', $actorId);
                     $stock++;
                 }
             }
