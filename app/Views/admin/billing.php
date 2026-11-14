@@ -45,7 +45,7 @@ $periods = \App\Services\ModulePricing::PERIODS;
                     <span class="bill-status is-soon">Coming soon</span>
                 </header>
                 <p class="bill-about"><?= e($r['help'] ?? '') ?></p>
-                <p class="bill-sub muted">No price has been set for this module yet, so it cannot be bought here. Plans will appear once the superadmin sets them.</p>
+                <p class="bill-sub muted">Coming soon. You cannot purchase this module until it is available.</p>
             </article>
         <?php
                 continue;
