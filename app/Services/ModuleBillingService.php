@@ -102,31 +102,47 @@ final class ModuleBillingService
         return Database::query('SELECT * FROM module_invoices WHERE id = ?', [(int) Database::connection()->lastInsertId()])->fetch();
     }
 
-    /**
-     * Starts a Billplz payment for an invoice. @return string|null error message, or null when the bill was created
-     * and the admin should be sent to $url (returned by reference through $redirect).
-     */
+    /** Starts a Billplz payment for one invoice. @param-out string|null $redirect the Billplz page to send the admin to */
     public static function startBillplz(int $invoiceId, array $payer, ?string &$redirect): ?string
+    {
+        return self::startBillplzMany([$invoiceId], $payer, $redirect);
+    }
+
+    /**
+     * One Billplz bill for several unpaid invoices (their amounts added up). Each invoice gets the bill id, so the
+     * callback can mark them all paid.
+     * @param array<int,int> $invoiceIds
+     */
+    public static function startBillplzMany(array $invoiceIds, array $payer, ?string &$redirect): ?string
     {
         $creds = PlatformSettings::billplzCredentials();
         if ($creds === null) {
             return 'Payment is not set up yet. The superadmin needs to add the Billplz details, or you can upload a bank receipt.';
         }
-        $inv = Database::query("SELECT * FROM module_invoices WHERE id = ? AND status = 'unpaid'", [$invoiceId])->fetch();
-        if (!$inv) {
-            return 'This invoice is not waiting for payment.';
+        $ids = array_values(array_unique(array_map('intval', $invoiceIds)));
+        if ($ids === []) {
+            return 'Choose at least one module and plan.';
         }
+        $in = implode(',', array_fill(0, count($ids), '?'));
+        $rows = Database::query("SELECT * FROM module_invoices WHERE id IN ({$in}) AND status = 'unpaid'", $ids)->fetchAll();
+        if (count($rows) !== count($ids)) {
+            return 'Some of these invoices are no longer waiting for payment. Choose them again.';
+        }
+        $cents = array_sum(array_map(fn($r) => PricingService::cents((string) $r['amount']), $rows));
+        $labels = array_map(fn($r) => Modules::LIST[$r['module_key']][0] . ' (' . ModulePricing::PERIODS[$r['period']] . ')', $rows);
+        $reference = count($rows) === 1 ? 'INV-' . $rows[0]['id'] : 'GRP-' . ($rows[0]['group_ref'] ?? $rows[0]['id']);
+        $me = $payer;
         try {
             $bill = BillplzGateway::createInvoiceBill([
-                'name' => $payer['name'], 'email' => $payer['email'], 'amount' => $inv['amount'],
-                'description' => 'Module: ' . Modules::LIST[$inv['module_key']][0] . ' (' . ModulePricing::PERIODS[$inv['period']] . ')',
-                'reference' => 'INV-' . $inv['id'],
+                'name' => $me['name'], 'email' => $me['email'], 'amount' => number_format($cents / 100, 2, '.', ''),
+                'description' => mb_substr(implode(', ', $labels), 0, 200),
+                'reference' => $reference,
                 'callback' => url('/billing/billplz/callback'), 'redirect' => url('/billing/billplz/return'),
             ], $creds);
         } catch (\RuntimeException $e) {
             return $e->getMessage();
         }
-        Database::query("UPDATE module_invoices SET method = 'billplz', billplz_bill_id = ?, billplz_url = ? WHERE id = ?", [$bill['id'], $bill['url'], $inv['id']]);
+        Database::query("UPDATE module_invoices SET method = 'billplz', billplz_bill_id = ?, billplz_url = ? WHERE id IN ({$in})", array_merge([$bill['id'], $bill['url']], $ids));
         $redirect = $bill['url'];
         return null;
     }
@@ -142,15 +158,18 @@ final class ModuleBillingService
             return false;
         }
         $billId = (string) ($post['id'] ?? '');
-        $inv = Database::query('SELECT * FROM module_invoices WHERE billplz_bill_id = ?', [$billId])->fetch();
-        if (!$inv) {
+        $invs = Database::query('SELECT * FROM module_invoices WHERE billplz_bill_id = ?', [$billId])->fetchAll();
+        if ($invs === []) {
             return false;
         }
+        $due = array_sum(array_map(fn($i) => PricingService::cents((string) $i['amount']), $invs));
         $bill = BillplzGateway::fetchBill($billId, $creds);
-        if ($bill === null || ($bill['state'] ?? '') !== 'paid' || (int) ($bill['amount'] ?? -1) !== PricingService::cents((string) $inv['amount'])) {
+        if ($bill === null || ($bill['state'] ?? '') !== 'paid' || (int) ($bill['amount'] ?? -1) !== $due) {
             return false;
         }
-        self::markPaid((int) $inv['id'], null, 'Paid through Billplz');
+        foreach ($invs as $inv) {
+            self::markPaid((int) $inv['id'], null, 'Paid through Billplz');
+        }
         return true;
     }
 
@@ -183,9 +202,20 @@ final class ModuleBillingService
     /** Stores an uploaded transfer receipt for an invoice and sends it to the superadmin for review. @return string|null error */
     public static function attachReceipt(int $invoiceId, array $file, int $requestedBy): ?string
     {
-        $inv = Database::query("SELECT * FROM module_invoices WHERE id = ? AND status = 'unpaid'", [$invoiceId])->fetch();
-        if (!$inv) {
-            return 'This invoice is not waiting for a receipt.';
+        return self::attachReceiptMany([$invoiceId], $file, $requestedBy);
+    }
+
+    /** One receipt file for several unpaid invoices (one transfer covering several modules). @param array<int,int> $invoiceIds */
+    public static function attachReceiptMany(array $invoiceIds, array $file, int $requestedBy): ?string
+    {
+        $ids = array_values(array_unique(array_map('intval', $invoiceIds)));
+        if ($ids === []) {
+            return 'Choose at least one module and plan.';
+        }
+        $in = implode(',', array_fill(0, count($ids), '?'));
+        $count = (int) Database::query("SELECT COUNT(*) FROM module_invoices WHERE id IN ({$in}) AND status = 'unpaid'", $ids)->fetchColumn();
+        if ($count !== count($ids)) {
+            return 'Some of these invoices are not waiting for a receipt. Choose them again.';
         }
         if (($file['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK || !is_uploaded_file((string) $file['tmp_name'])) {
             return 'Choose a receipt file to upload.';
@@ -205,7 +235,7 @@ final class ModuleBillingService
         if (!move_uploaded_file((string) $file['tmp_name'], $dir . '/' . $name)) {
             return 'Could not store the receipt. Please try again.';
         }
-        Database::query("UPDATE module_invoices SET method = 'bank_receipt', receipt_path = ?, status = 'pending_review', requested_by = ? WHERE id = ?", [$name, $requestedBy, $invoiceId]);
+        Database::query("UPDATE module_invoices SET method = 'bank_receipt', receipt_path = ?, status = 'pending_review', requested_by = ? WHERE id IN ({$in})", array_merge([$name, $requestedBy], $ids));
         return null;
     }
 

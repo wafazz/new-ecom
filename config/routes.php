@@ -253,6 +253,8 @@ return function (Router $r): void {
             $r->get('/billing', 'Admin/BillingController@index');
             $r->post('/billing/{key}/pay', 'Admin/BillingController@pay');
             $r->post('/billing/{key}/receipt', 'Admin/BillingController@receipt');
+            $r->post('/billing/pay-selected', 'Admin/BillingController@paySelected');
+            $r->post('/billing/receipt-selected', 'Admin/BillingController@receiptSelected');
         });
         $r->get('/billing/billplz/return', 'Shop/BillingCallbackController@back');
 

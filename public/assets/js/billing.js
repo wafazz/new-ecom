@@ -3,44 +3,46 @@
 (function () {
   'use strict';
 
-  // The end time comes from the server as a timestamp, so the countdown is right in any timezone.
-  var timers = Array.prototype.slice.call(document.querySelectorAll('.bill-count[data-end-ms]'));
+  // Flip-clock countdown for each paid card. The end time comes from the server as a timestamp (any timezone).
   function pad(n) { return n < 10 ? '0' + n : '' + n; }
-  function paint(box) {
-    var end = Number(box.dataset.endMs);
-    var left = end - Date.now();
-    var value = box.querySelector('[data-count]');
-    var label = box.querySelector('.bill-count-label');
-    box.classList.remove('is-soon', 'is-ended');
+  var clocks = Array.prototype.slice.call(document.querySelectorAll('.flip-clock[data-end-ms]'));
+  clocks.forEach(function (c) {
+    c._cells = Array.prototype.slice.call(c.querySelectorAll('.flip-num'));
+    c._end = c.querySelector('.flip-end');
+    c._endText = c._end ? c._end.textContent : '';
+  });
+  function setCell(num, text) {
+    if (num.textContent === text) return;
+    num.textContent = text;
+    num.classList.remove('is-turn');
+    void num.offsetWidth; // restart the flip animation
+    num.classList.add('is-turn');
+  }
+  function paintClock(c) {
+    var left = Number(c.dataset.endMs) - Date.now();
+    c.classList.remove('is-soon', 'is-ended');
     if (left <= 0) {
-      box.classList.add('is-ended');
-      label.textContent = 'Ended';
-      value.textContent = 'Pay to renew';
+      c._cells.forEach(function (n) { setCell(n, '00'); });
+      c.classList.add('is-ended');
+      if (c._end) c._end.textContent = 'Ended · pay to renew';
       return false;
     }
     var s = Math.floor(left / 1000);
-    var d = Math.floor(s / 86400);
-    var h = Math.floor((s % 86400) / 3600);
-    var m = Math.floor((s % 3600) / 60);
-    var sec = s % 60;
-    label.textContent = 'Time left';
-    value.textContent = (d > 0 ? d + 'd ' : '') + pad(h) + ':' + pad(m) + ':' + pad(sec);
-    if (left < 7 * 86400000) { box.classList.add('is-soon'); }
+    var parts = [Math.floor(s / 86400), Math.floor((s % 86400) / 3600), Math.floor((s % 3600) / 60), s % 60];
+    c._cells.forEach(function (n, i) { setCell(n, pad(parts[i])); });
+    if (left < 7 * 86400000) c.classList.add('is-soon');
+    if (c._end) c._end.textContent = c._endText;
     return true;
   }
-  function tick() {
-    timers.forEach(function (box) {
-      if (!paint(box)) { box.dataset.done = '1'; }
-    });
+  function tickClocks() {
+    var live = 0;
+    clocks.forEach(function (c) { if (c.dataset.done !== '1') { if (paintClock(c)) live++; else c.dataset.done = '1'; } });
+    return live;
   }
-  if (timers.length) {
-    tick();
-    var handle = setInterval(function () {
-      tick();
-      if (timers.every(function (b) { return b.dataset.done === '1'; })) { clearInterval(handle); }
-    }, 1000);
+  if (clocks.length) {
+    tickClocks();
+    var clockHandle = setInterval(function () { if (tickClocks() === 0) clearInterval(clockHandle); }, 1000);
   }
-
 
   // Inline discount timers: "Ends in 2d 03:10:05", then "Ended". Used for the discount end times in this page.
   function fmtLeft(ms) {
@@ -75,4 +77,55 @@
       out.textContent = f ? 'Selected: ' + f.name : '';
     });
   });
+
+  // ---- Pay several modules together: the basket --------------------------------------------------------------
+  var basket = document.getElementById('bill-basket');
+  if (basket) {
+    var summary = basket.querySelector('[data-basket-summary]');
+    var msg = basket.querySelector('[data-basket-msg]');
+    var payBtn = basket.querySelector('[data-basket-pay]');
+    var recBtn = basket.querySelector('[data-basket-receipt]');
+    var cardOf = function (el) { return el.closest('.bill-card'); };
+    var picked = function () {
+      return Array.prototype.filter.call(document.querySelectorAll('[data-pick]'), function (c) { return c.checked; });
+    };
+    var planOf = function (pick) {
+      var r = cardOf(pick).querySelector('input[name=period]:checked');
+      return r || null;
+    };
+    function refresh() {
+      var picks = picked();
+      var total = 0;
+      picks.forEach(function (p) { var r = planOf(p); if (r) total += Number(r.dataset.final || 0); });
+      summary.textContent = picks.length
+        ? picks.length + ' selected · RM ' + total.toFixed(2) + ' in total'
+        : 'Select modules to pay together.';
+      msg.textContent = '';
+      if (payBtn) payBtn.disabled = !(picks.length && payBtn.dataset.ready === '1');
+      if (recBtn) recBtn.disabled = !picks.length;
+    }
+    document.addEventListener('change', function (e) {
+      if (e.target.matches && (e.target.matches('[data-pick]') || e.target.matches('input[name=period]'))) refresh();
+    });
+    basket.addEventListener('submit', function (e) {
+      basket.querySelectorAll('input[data-item]').forEach(function (n) { n.remove(); });
+      var picks = picked();
+      if (!picks.length) {
+        e.preventDefault();
+        msg.textContent = 'Choose at least one module.';
+        return;
+      }
+      picks.forEach(function (p) {
+        var r = planOf(p);
+        if (!r) return;
+        var h = document.createElement('input');
+        h.type = 'hidden';
+        h.name = 'items[]';
+        h.value = p.value + ':' + r.value;
+        h.dataset.item = '1';
+        basket.appendChild(h);
+      });
+    });
+    refresh();
+  }
 })();

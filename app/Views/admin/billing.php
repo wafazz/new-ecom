@@ -28,13 +28,21 @@ $periods = \App\Services\ModulePricing::PERIODS;
                     </span>
                 </header>
 
+                <label class="bill-pick">
+                    <input type="checkbox" form="bill-basket" name="pick[]" value="<?= e($r['key']) ?>" data-pick="<?= e($r['key']) ?>">
+                    <span>Add to payment</span>
+                </label>
+
                 <?php if ($status === 'paid' && $r['until'] !== null && $r['until'] !== '9999-12-31'):
                     $endMs = strtotime((string) $r['until'] . ' 23:59:59') * 1000;
                 ?>
-                    <div class="bill-count" data-end-ms="<?= (int) $endMs ?>" role="timer" aria-label="Time left on this plan">
-                        <span class="bill-count-label">Time left</span>
-                        <span class="bill-count-value" data-count>--</span>
-                        <small class="muted bill-count-end">Ends <?= e(date('d M Y, H:i', $endMs / 1000)) ?></small>
+                    <div class="flip-clock" data-end-ms="<?= (int) $endMs ?>" role="timer" aria-label="Time left on this plan">
+                        <div class="flip-units" data-units>
+                            <?php foreach (['Days', 'Hours', 'Minutes', 'Seconds'] as $unit): ?>
+                                <div class="flip-unit"><div class="flip-tile"><span class="flip-num">00</span></div><span class="flip-label"><?= e($unit) ?></span></div>
+                            <?php endforeach; ?>
+                        </div>
+                        <small class="flip-end muted">Ends <?= e(date('d M Y, H:i', $endMs / 1000)) ?></small>
                     </div>
                 <?php elseif ($status === 'paid'): ?>
                     <div class="bill-count is-lifetime" role="status"><span class="bill-count-label">No end date</span></div>
@@ -58,7 +66,7 @@ $periods = \App\Services\ModulePricing::PERIODS;
                         <legend>Choose a plan</legend>
                         <?php foreach ($r['quotes'] as $pk => $q): ?>
                             <label class="bill-plan">
-                                <input type="radio" name="period" value="<?= e($pk) ?>" <?= $pk === $first ? 'checked' : '' ?>>
+                                <input type="radio" name="period" value="<?= e($pk) ?>" data-final="<?= e(number_format($q['final'], 2, '.', '')) ?>" <?= $pk === $first ? 'checked' : '' ?>>
                                 <span class="bill-plan-name"><?= e($periods[$pk]) ?></span>
                                 <span class="bill-price">
                                     <?php if ($q['kind'] !== null): ?>
@@ -95,4 +103,21 @@ $periods = \App\Services\ModulePricing::PERIODS;
             </article>
         <?php endforeach; ?>
     </div>
+
+    <form id="bill-basket" class="bill-basket" method="post" enctype="multipart/form-data" data-basket aria-label="Pay selected modules together">
+        <?= csrf_field() ?>
+        <div class="bill-basket-info">
+            <strong data-basket-summary>Select modules to pay together.</strong>
+            <span class="muted" data-basket-msg role="status" aria-live="polite"></span>
+        </div>
+        <div class="bill-basket-actions">
+            <button class="btn bill-pay" type="submit" formaction="<?= e(url('/admin/billing/pay-selected')) ?>" data-basket-pay data-ready="<?= $billplzReady ? '1' : '0' ?>" disabled>Pay selected by Billplz</button>
+            <?php if ($bank !== null): ?>
+                <label class="bill-file"><span>One receipt for all selected (JPG, PNG or PDF)</span>
+                    <input type="file" name="receipt" accept="image/jpeg,image/png,application/pdf" data-file-input></label>
+                <p class="muted bill-filename" data-file-name aria-live="polite"></p>
+                <button class="btn secondary" type="submit" formaction="<?= e(url('/admin/billing/receipt-selected')) ?>" data-basket-receipt disabled>Upload one receipt for selected</button>
+            <?php endif; ?>
+        </div>
+    </form>
 </div>
