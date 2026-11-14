@@ -235,6 +235,7 @@ check('abandoned carts: an idle cart is due a reminder', in_array($acCart, array
 DB::query("INSERT INTO orders (order_no, user_id, customer_name, customer_email, customer_phone, ship_line1, ship_city, ship_state, ship_postcode, subtotal, total, payment_method, status) VALUES ('AC-1', ?, 'Cart Forgetter', 'cart@example.test', '0123', 'Line 1', 'City', 'Selangor', '43000', 10.00, 10.00, 'cod', 'pending')", [$acUser]);
 check('abandoned carts: no reminder once the member has ordered since', !in_array($acCart, array_map('intval', array_column(\App\Services\AbandonedCartService::due(7200), 'cart_id')), true));
 check('abandoned carts: a bad restore link is refused', \App\Services\AbandonedCartService::restore($acUser, str_repeat('b', 64)) === null);
+DB::query('DELETE FROM carts WHERE id = ?', [$acCart]); // leave no cart behind for later tests (the seed test expects none)
 
 // Newsletter: a sign-up only counts once its confirmation link is used, and the link works once.
 DB::query('DELETE FROM newsletter_subscribers');
