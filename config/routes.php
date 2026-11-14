@@ -4,6 +4,8 @@ use App\Core\Router;
 return function (Router $r): void {
     // Billplz webhook: server-to-server, authenticated by its X-Signature (so deliberately outside the CSRF group).
     $r->post('/payments/billplz/callback', 'Shop/BillplzController@callback');
+    // Module invoices: Billplz -> us (signature-checked, no session or CSRF).
+    $r->post('/billing/billplz/callback', 'Shop/BillingCallbackController@callback');
     $r->post('/shipping/ninjavan/webhook', 'Shop/NinjaVanWebhookController@receive');
     // Read-only sales totals for CodexLure: bearer token, no session or CSRF, so outside the CSRF group.
     $r->get('/api/v1/sales-summary', 'Api/SalesSummaryController@index');
@@ -246,10 +248,26 @@ return function (Router $r): void {
             $r->post('/commissions/{id}/reject', 'Admin/AffiliateController@reject', ['module:affiliates']);
         });
 
+        // Module billing (admin and superadmin): pay or upload a receipt
+        $r->group('/admin', ['auth:admin'], function (Router $r): void {
+            $r->get('/billing', 'Admin/BillingController@index');
+            $r->post('/billing/{key}/pay', 'Admin/BillingController@pay');
+            $r->post('/billing/{key}/receipt', 'Admin/BillingController@receipt');
+        });
+        $r->get('/billing/billplz/return', 'Shop/BillingCallbackController@back');
+
         // Superadmin area: module switches only. Admins cannot reach these routes.
         $r->group('/superadmin', ['auth:superadmin'], function (Router $r): void {
             $r->get('/modules', 'Superadmin/ModulesController@index');
             $r->post('/modules/{key}', 'Superadmin/ModulesController@toggle');
+            $r->post('/modules/{key}/price', 'Superadmin/ModulesController@price');
+            $r->post('/discounts', 'Superadmin/ModulesController@discount');
+            $r->get('/billing', 'Superadmin/ModulesController@billing');
+            $r->get('/invoices', 'Superadmin/InvoiceController@index');
+            $r->get('/invoices/{id}/receipt', 'Superadmin/InvoiceController@receipt');
+            $r->post('/invoices/{id}/approve', 'Superadmin/InvoiceController@approve');
+            $r->post('/invoices/{id}/reject', 'Superadmin/InvoiceController@reject');
+            $r->post('/billing', 'Superadmin/ModulesController@saveBilling');
         });
 
         // SST (admin and superadmin)

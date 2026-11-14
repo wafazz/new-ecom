@@ -87,6 +87,7 @@
 
   list.addEventListener('submit', function (e) {
     var form = e.target;
+    if (form.classList.contains('mod-price')) return; // price forms post normally (no switch)
     var card = form.closest('[data-module]');
     if (!card || card.classList.contains('is-busy')) { e.preventDefault(); return; }
     e.preventDefault();
