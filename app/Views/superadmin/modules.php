@@ -1,40 +1,53 @@
 <?php
-/** Expects $modules (Modules::all()) and $audit (AuditService::recent('module.')). */
+/** Expects $modules (Modules::all()), $audit (rows: when, who, what) and $scripts for modules.js. */
+$onCount = count(array_filter($modules, fn($m) => $m['enabled']));
 ?>
-<div class="msg-page">
+<div class="msg-page mod-page" data-modules>
     <header class="msg-head">
         <div>
             <h1>Modules</h1>
             <p class="muted">Switch whole features on or off for the shop. Only superadmins can see this page. Admins run the back office but cannot change these switches.</p>
         </div>
+        <p class="mod-summary" data-count aria-live="polite"><?= $onCount ?> of <?= count($modules) ?> on</p>
     </header>
 
     <section class="msg-card">
         <h2>Feature switches</h2>
-        <?php foreach ($modules as $m): ?>
-            <form method="post" action="<?= e(url('/superadmin/modules/' . $m['key'])) ?>" class="module-row" data-busy-form>
-                <?= csrf_field() ?>
-                <div>
-                    <strong><?= e($m['label']) ?></strong>
-                    <span class="pill"><?= $m['enabled'] ? 'On' : 'Off' ?></span>
-                    <p class="muted"><?= e($m['help']) ?></p>
-                </div>
-                <input type="hidden" name="enabled" value="<?= $m['enabled'] ? '0' : '1' ?>">
-                <button class="btn" type="submit"><?= $m['enabled'] ? 'Switch off' : 'Switch on' ?></button>
-            </form>
-        <?php endforeach; ?>
+        <div class="mod-grid" data-module-list>
+            <?php foreach ($modules as $m): ?>
+                <article class="mod-card" data-module="<?= e($m['key']) ?>" data-label="<?= e($m['label']) ?>" data-enabled="<?= $m['enabled'] ? '1' : '0' ?>">
+                    <div class="mod-head">
+                        <h3 class="mod-name"><?= e($m['label']) ?></h3>
+                        <span class="mod-status <?= $m['enabled'] ? 'is-on' : 'is-off' ?>"><?= $m['enabled'] ? 'On' : 'Off' ?></span>
+                    </div>
+                    <p class="muted mod-help"><?= e($m['help']) ?></p>
+                    <form method="post" action="<?= e(url('/superadmin/modules/' . $m['key'])) ?>" class="mod-form">
+                        <?= csrf_field() ?>
+                        <input type="hidden" name="enabled" value="<?= $m['enabled'] ? '0' : '1' ?>">
+                        <button type="submit" class="mod-switch" role="switch"
+                                aria-checked="<?= $m['enabled'] ? 'true' : 'false' ?>"
+                                aria-label="<?= e($m['label']) ?>: <?= $m['enabled'] ? 'on, switch off' : 'off, switch on' ?>">
+                            <span class="mod-track" aria-hidden="true"><span class="mod-knob"></span></span>
+                            <span class="mod-switch-text"><?= $m['enabled'] ? 'Switch off' : 'Switch on' ?></span>
+                        </button>
+                    </form>
+                </article>
+            <?php endforeach; ?>
+        </div>
     </section>
 
     <section class="msg-card">
         <h2>Recent changes</h2>
-        <?php if ($audit === []): ?>
-            <p class="muted">No module changes yet.</p>
-        <?php else: ?>
-            <ul class="perm-chips">
-                <?php foreach ($audit as $a): ?>
-                    <li><?= e($a['created_at']) ?> · <?= e($a['actor'] ?? 'unknown') ?> · <?= e($a['action']) ?> <?= e((string) $a['detail']) ?></li>
-                <?php endforeach; ?>
-            </ul>
-        <?php endif; ?>
+        <div data-audit>
+            <?php if ($audit === []): ?>
+                <p class="muted">No module changes yet.</p>
+            <?php else: ?>
+                <ol class="mod-log">
+                    <?php foreach ($audit as $a): ?>
+                        <li><span class="mod-log-what"><?= e($a['what']) ?></span> <span class="muted"><?= e($a['who']) ?> · <?= e($a['when']) ?></span></li>
+                    <?php endforeach; ?>
+                </ol>
+            <?php endif; ?>
+        </div>
     </section>
 </div>
