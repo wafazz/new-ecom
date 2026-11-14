@@ -35,18 +35,31 @@ final class ModulePricing
         return null;
     }
 
-    public const MIN_DISCOUNT = 1;
-    public const MAX_DISCOUNT = 99;
+    public const MIN_PERCENT = 1;
+    public const MAX_PERCENT = 99;
+    public const MAX_FIXED = 99999.99;
     public const MAX_DISCOUNT_DAYS = 730;
+    public const KINDS = ['percent' => 'Percentage off', 'fixed' => 'Fixed price (RM)'];
 
-    /** @return string|null error message, or null when valid. $nowTs is passed in so the check is testable. */
-    public static function validateDiscount(string $scope, string $percent, string $endsAt, int $nowTs): ?string
+    /**
+     * @return string|null error message, or null when valid. $nowTs is passed in so the check is testable.
+     * A percentage is 1 to 99. A fixed price is RM0.01 to RM99999.99.
+     */
+    public static function validateDiscount(string $scope, string $kind, string $value, string $endsAt, int $nowTs): ?string
     {
         if ($scope !== 'global' && !isset(Modules::LIST[$scope])) {
             return 'Unknown module.';
         }
-        if (!preg_match('/^\d{1,2}(\.\d{1,2})?$/', $percent) || (float) $percent < self::MIN_DISCOUNT || (float) $percent > self::MAX_DISCOUNT) {
-            return 'Enter a discount from ' . self::MIN_DISCOUNT . '% to ' . self::MAX_DISCOUNT . '%.';
+        if ($kind === 'percent') {
+            if (!preg_match('/^\d{1,2}(\.\d{1,2})?$/', $value) || (float) $value < self::MIN_PERCENT || (float) $value > self::MAX_PERCENT) {
+                return 'Enter a percentage from ' . self::MIN_PERCENT . ' to ' . self::MAX_PERCENT . '.';
+            }
+        } elseif ($kind === 'fixed') {
+            if (!preg_match('/^\d{1,5}(\.\d{1,2})?$/', $value) || (float) $value < 0.01 || (float) $value > self::MAX_FIXED) {
+                return 'Enter a fixed price from RM0.01 to RM99,999.99.';
+            }
+        } else {
+            return 'Choose a percentage or a fixed price.';
         }
         $d = \DateTimeImmutable::createFromFormat('Y-m-d\TH:i', $endsAt);
         if ($d === false || $d->format('Y-m-d\TH:i') !== $endsAt) {
@@ -62,18 +75,20 @@ final class ModulePricing
     }
 
     /** Saves a discount for "global" or one module, replacing the one already there. @return string|null error */
-    public static function setDiscount(string $scope, string $percent, string $endsAt, int $actorId): ?string
+    public static function setDiscount(string $scope, string $kind, string $value, string $endsAt, int $actorId): ?string
     {
-        $error = self::validateDiscount($scope, $percent, $endsAt, time());
+        $error = self::validateDiscount($scope, $kind, $value, $endsAt, time());
         if ($error !== null) {
             return $error;
         }
         $end = \DateTimeImmutable::createFromFormat('Y-m-d\TH:i', $endsAt)->format('Y-m-d H:i:s');
+        $v = number_format((float) $value, 2, '.', '');
         Database::query(
-            'INSERT INTO module_discounts (scope, percent, ends_at, created_by) VALUES (?, ?, ?, ?) ON DUPLICATE KEY UPDATE percent = VALUES(percent), ends_at = VALUES(ends_at), created_by = VALUES(created_by)',
-            [$scope, number_format((float) $percent, 2, '.', ''), $end, $actorId]
+            'INSERT INTO module_discounts (scope, kind, value, percent, ends_at, created_by) VALUES (?, ?, ?, ?, ?, ?)
+             ON DUPLICATE KEY UPDATE kind = VALUES(kind), value = VALUES(value), percent = VALUES(percent), ends_at = VALUES(ends_at), created_by = VALUES(created_by)',
+            [$scope, $kind, $v, $kind === 'percent' ? $v : null, $end, $actorId]
         );
-        AuditService::log($actorId, 'module.discount', ($scope === 'global' ? 'all modules' : $scope) . ": {$percent}% until {$end}");
+        AuditService::log($actorId, 'module.discount', ($scope === 'global' ? 'all modules' : $scope) . ': ' . self::describe(['kind' => $kind, 'value' => (float) $v]) . " until {$end}");
         ModuleBillingService::flushCache();
         return null;
     }
@@ -85,37 +100,52 @@ final class ModulePricing
         ModuleBillingService::flushCache();
     }
 
+    /** The price a module drops to under a discount. A fixed price never goes above the normal price. */
+    public static function finalFor(float $list, string $kind, float $value): float
+    {
+        return $kind === 'fixed' ? round(min($list, $value), 2) : round($list * (1 - $value / 100), 2);
+    }
+
+    /** "20% off" or "RM50 fixed price", for display. */
+    public static function describe(array $d): string
+    {
+        return $d['kind'] === 'fixed'
+            ? 'RM' . number_format((float) $d['value'], 2) . ' fixed price'
+            : rtrim(rtrim(number_format((float) $d['value'], 2, '.', ''), '0'), '.') . '% off';
+    }
+
     /** The discount that applies to a module now: its own if active, else the global one, else null. */
     public static function activeDiscount(string $key): ?array
     {
         $r = Database::query(
-            'SELECT scope, percent, ends_at FROM module_discounts WHERE scope IN (?, ?) AND ends_at > ? ORDER BY (scope = ?) DESC LIMIT 1',
+            'SELECT scope, kind, value, ends_at FROM module_discounts WHERE scope IN (?, ?) AND ends_at > ? ORDER BY (scope = ?) DESC LIMIT 1',
             [$key, 'global', date('Y-m-d H:i:s'), $key]
         )->fetch();
-        return $r ? ['scope' => (string) $r['scope'], 'percent' => (float) $r['percent'], 'ends_at' => (string) $r['ends_at']] : null;
+        return $r ? ['scope' => (string) $r['scope'], 'kind' => (string) $r['kind'], 'value' => (float) $r['value'], 'ends_at' => (string) $r['ends_at']] : null;
     }
 
     /** The discount row for one scope, active or not (for the superadmin page). */
     public static function discountRow(string $scope): ?array
     {
-        $r = Database::query('SELECT percent, ends_at FROM module_discounts WHERE scope = ?', [$scope])->fetch();
-        return $r ? ['percent' => (float) $r['percent'], 'ends_at' => (string) $r['ends_at'], 'active' => (string) $r['ends_at'] > date('Y-m-d H:i:s')] : null;
+        $r = Database::query('SELECT kind, value, ends_at FROM module_discounts WHERE scope = ?', [$scope])->fetch();
+        return $r ? ['kind' => (string) $r['kind'], 'value' => (float) $r['value'], 'ends_at' => (string) $r['ends_at'], 'active' => (string) $r['ends_at'] > date('Y-m-d H:i:s')] : null;
     }
 
     /**
      * What a module costs now: the list price, the discount that applies, and the final amount.
-     * @return array{period:string, list:float, percent:float, final:float, ends_at:?string, scope:?string}
+     * @return array{period:string, list:float, final:float, kind:?string, value:float, ends_at:?string, scope:?string}
      */
     public static function quote(string $key): array
     {
         $price = self::price($key);
         $d = self::activeDiscount($key);
-        $final = $d === null ? $price['amount'] : round($price['amount'] * (1 - $d['percent'] / 100), 2);
+        $final = $d === null ? $price['amount'] : self::finalFor($price['amount'], $d['kind'], $d['value']);
         return [
             'period' => $price['period'],
             'list' => $price['amount'],
-            'percent' => $d['percent'] ?? 0.0,
             'final' => max(0.0, (float) $final),
+            'kind' => $d['kind'] ?? null,
+            'value' => $d['value'] ?? 0.0,
             'ends_at' => $d['ends_at'] ?? null,
             'scope' => $d['scope'] ?? null,
         ];

@@ -76,7 +76,7 @@ final class ModulesController extends Controller
             ModulePricing::clearDiscount($scope, $actor);
             $this->success('/superadmin/modules', 'Discount removed.');
         }
-        $error = ModulePricing::setDiscount($scope, trim($request->str('percent')), trim($request->str('ends_at')), $actor);
+        $error = ModulePricing::setDiscount($scope, $request->str('kind'), trim($request->str('value')), trim($request->str('ends_at')), $actor);
         if ($error !== null) {
             $this->backWithErrors('/superadmin/modules', ['form' => $error]);
         }

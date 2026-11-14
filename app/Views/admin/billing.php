@@ -18,7 +18,7 @@ $periodLabel = fn(string $p): string => ['one_time' => 'one-time', 'monthly' => 
     <?php foreach ($rows as $r): ?>
         <section class="msg-card">
             <h2><?= e($r['label']) ?></h2>
-            <p class="muted"><?php if ($r['price']['percent'] > 0): ?><s><?= e($money($r['price']['list'])) ?></s> <strong><?= e($money($r['price']['final'])) ?></strong> (<?= e(rtrim(rtrim(number_format($r['price']['percent'], 2, '.', ''), '0'), '.')) ?>% off until <?= e(date('d M Y, H:i', strtotime((string) $r['price']['ends_at']))) ?>)<?php else: ?><?= e($money($r['price']['list'])) ?><?php endif; ?> <?= e($periodLabel($r['price']['period'])) ?>
+            <p class="muted"><?php if ($r['price']['kind'] !== null): ?><s><?= e($money($r['price']['list'])) ?></s> <strong><?= e($money($r['price']['final'])) ?></strong> (<?= e(\App\Services\ModulePricing::describe(['kind' => $r['price']['kind'], 'value' => $r['price']['value']])) ?> until <?= e(date('d M Y, H:i', strtotime((string) $r['price']['ends_at']))) ?>)<?php else: ?><?= e($money($r['price']['list'])) ?><?php endif; ?> <?= e($periodLabel($r['price']['period'])) ?>
                 · <?php if ($r['covered']): ?><strong>Paid up<?= $r['until'] !== null && $r['until'] !== '9999-12-31' ? ' until ' . e($r['until']) : '' ?></strong><?php else: ?><strong>Not paid</strong> — the module stays off until payment is confirmed<?php endif; ?></p>
 
             <?php if ($r['open'] !== null && $r['open']['status'] === 'pending_review'): ?>

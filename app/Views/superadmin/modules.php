@@ -13,16 +13,17 @@ $onCount = count(array_filter($modules, fn($m) => $m['enabled']));
 
     <section class="msg-card">
         <h2>Discounts on module prices</h2>
-        <p class="muted">A discount takes a percentage off the price of every paid module, until the end time. A module's own discount (below) takes priority over this one while both are active. A discount applies to invoices created while it runs; invoices already issued keep their price.</p>
+        <p class="muted">A discount sets every paid module to a percentage off, or to a fixed price, until the end time. A module's own discount (below) takes priority over this one while both are active. A fixed price never raises a price. A discount applies to invoices created while it runs; invoices already issued keep their price.</p>
         <?php if (!empty($global) && $global['active']): ?>
-            <p><strong>All modules: <?= e(rtrim(rtrim(number_format($global['percent'], 2, '.', ''), '0'), '.')) ?>% off until <?= e(date('d M Y, H:i', strtotime($global['ends_at']))) ?></strong></p>
+            <p><strong>All modules: <?= e(\App\Services\ModulePricing::describe($global)) ?> until <?= e(date('d M Y, H:i', strtotime($global['ends_at']))) ?></strong></p>
         <?php else: ?>
             <p class="muted">No discount on all modules.</p>
         <?php endif; ?>
         <form method="post" action="<?= e(url('/superadmin/discounts')) ?>" class="mod-price">
             <?= csrf_field() ?>
             <input type="hidden" name="scope" value="global">
-            <label>Percent off <input name="percent" inputmode="decimal" placeholder="for example 20" required></label>
+            <label>Type <select name="kind"><option value="percent">Percentage off</option><option value="fixed">Fixed price (RM)</option></select></label>
+            <label>Value <input name="value" inputmode="decimal" placeholder="20 or 50.00" required></label>
             <label>Ends on <input type="datetime-local" name="ends_at" required></label>
             <button class="btn sm" type="submit">Set discount on all</button>
         </form>
@@ -42,7 +43,7 @@ $onCount = count(array_filter($modules, fn($m) => $m['enabled']));
                     </div>
                     <p class="muted mod-help"><?= e($m['help']) ?></p>
                     <?php if ($m['quote']['list'] > 0): ?>
-                        <p class="muted">Price: <?= $m['quote']['percent'] > 0 ? '<s>RM' . e(number_format($m['quote']['list'], 2)) . '</s> <strong>RM' . e(number_format($m['quote']['final'], 2)) . '</strong> (' . e(rtrim(rtrim(number_format($m['quote']['percent'], 2, '.', ''), '0'), '.')) . '% off until ' . e(date('d M Y, H:i', strtotime((string) $m['quote']['ends_at']))) . ')' : '<strong>RM' . e(number_format($m['quote']['list'], 2)) . '</strong>' ?> <?= e(\App\Services\ModulePricing::PERIODS[$m['quote']['period']]) ?></p>
+                        <p class="muted">Price: <?= $m['quote']['kind'] !== null ? '<s>RM' . e(number_format($m['quote']['list'], 2)) . '</s> <strong>RM' . e(number_format($m['quote']['final'], 2)) . '</strong> (' . e(\App\Services\ModulePricing::describe(['kind' => $m['quote']['kind'], 'value' => $m['quote']['value']])) . ' until ' . e(date('d M Y, H:i', strtotime((string) $m['quote']['ends_at']))) . ')' : '<strong>RM' . e(number_format($m['quote']['list'], 2)) . '</strong>' ?> <?= e(\App\Services\ModulePricing::PERIODS[$m['quote']['period']]) ?></p>
                     <?php endif; ?>
                     <form method="post" action="<?= e(url('/superadmin/modules/' . $m['key'] . '/price')) ?>" class="mod-price" data-no-busy>
                         <?= csrf_field() ?>
@@ -60,7 +61,8 @@ $onCount = count(array_filter($modules, fn($m) => $m['enabled']));
                     <form method="post" action="<?= e(url('/superadmin/discounts')) ?>" class="mod-price">
                         <?= csrf_field() ?>
                         <input type="hidden" name="scope" value="<?= e($m['key']) ?>">
-                        <label>This module: percent off <input name="percent" inputmode="decimal" placeholder="none" aria-label="Discount for <?= e($m['label']) ?>"></label>
+                        <label>This module: <select name="kind" aria-label="Discount type for <?= e($m['label']) ?>"><option value="percent">Percentage off</option><option value="fixed">Fixed price (RM)</option></select></label>
+                        <label>Value <input name="value" inputmode="decimal" placeholder="none" aria-label="Discount value for <?= e($m['label']) ?>"></label>
                         <label>Ends on <input type="datetime-local" name="ends_at" aria-label="Discount end for <?= e($m['label']) ?>"></label>
                         <button class="btn secondary sm" type="submit">Set discount</button>
                     </form>
