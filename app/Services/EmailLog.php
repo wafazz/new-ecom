@@ -19,6 +19,7 @@ final class EmailLog
         'voucher' => 'Voucher code',
         'newsletter' => 'Newsletter confirmation',
         'stock_alert' => 'Back in stock',
+        'module_billing' => 'Module renewal',
         'test' => 'Test email',
     ];
 

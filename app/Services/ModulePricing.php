@@ -48,6 +48,7 @@ final class ModulePricing
             [$key, $period, number_format((float) $amount, 2, '.', '')]
         );
         AuditService::log($actorId, 'module.price', "{$key}: " . self::PERIODS[$period] . ' RM' . number_format((float) $amount, 2));
+        ModuleBillingService::flushCache();
         return null;
     }
 }

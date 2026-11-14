@@ -246,6 +246,14 @@ check('billing: an unpaid priced module gets an invoice', is_array($invA) && $in
 check('billing: the same open invoice is reused, not doubled', (int) DB::query('SELECT COUNT(*) FROM module_invoices')->fetchColumn() === 1 && \App\Services\ModuleBillingService::invoiceFor('bundles', $billUser)['id'] === $invA['id']);
 check('billing: a module is not covered until its invoice is paid', \App\Services\ModuleBillingService::covered('bundles') === false);
 check('billing: paying extends the paid-until date', \App\Services\ModuleBillingService::markPaid((int) $invA['id'], 1, 'test') === true && \App\Services\ModuleBillingService::covered('bundles') === true);
+Modules::set('bundles', true);
+check('billing: a switched-on module that is paid up is on', Modules::enabled('bundles') === true);
+DB::query("UPDATE module_subscriptions SET paid_until = ? WHERE module_key = 'bundles'", [date('Y-m-d', strtotime('-1 day'))]);
+\App\Services\ModuleBillingService::flushCache();
+check('billing: a module whose paid period has passed switches off by itself', Modules::enabled('bundles') === false && Modules::waitingForPayment('bundles') === true);
+DB::query("UPDATE module_subscriptions SET paid_until = ? WHERE module_key = 'bundles'", [date('Y-m-d', strtotime('+1 year'))]);
+\App\Services\ModuleBillingService::flushCache();
+check('billing: paying again switches it back on', Modules::enabled('bundles') === true);
 check('billing: paying the same invoice twice changes nothing', \App\Services\ModuleBillingService::markPaid((int) $invA['id'], 1, 'again') === false);
 check('billing: a free module never needs an invoice', is_string(\App\Services\ModuleBillingService::invoiceFor('newsletter', $billUser)) || ModulePricing::isFree('newsletter'));
 check('billing: a receipt that is not waiting for review cannot be approved', \App\Services\ModuleBillingService::review((int) $invA['id'], true, '', 1) !== null);

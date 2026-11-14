@@ -92,7 +92,8 @@ A switched-off module returns 404 on its pages, hides its menu items, and stops 
 6. Cron, daily: `php bin/prune-carts.php` (removes stale guest carts and expired throttle/click rows). Also `php bin/retention.php` (deletes old email and WhatsApp logs, audit rows, daily visitor counts and app.log entries; see **Personal data** below).
 7. Cron, hourly: `php bin/expire-unpaid.php` (cancels unpaid online-payment orders after `UNPAID_HOLD_HOURS`, default 24, and restocks them).
 8. Cron, **every 10 minutes**: `php bin/abandoned-carts.php` saves member carts and sends the abandoned-cart reminders (only when that module is on).
-9. Cron, **every minute**: `php bin/worker.php` sends the queued emails and WhatsApp messages. Without it, nothing queued is sent. See **Background jobs** below.
+9. Cron, **daily**: `php bin/module-billing.php` emails admins 7 days before a monthly or yearly module renews.
+10. Cron, **every minute**: `php bin/worker.php` sends the queued emails and WhatsApp messages. Without it, nothing queued is sent. See **Background jobs** below.
 8. NinjaVan: register `APP_URL/shipping/ninjavan/webhook` in the Ninja Dashboard for tracking updates, and ask NinjaVan support to enable the waybill API for your account. Billplz needs to reach `APP_URL/payments/billplz/callback`, so APP_URL must be a public https address (a local URL cannot receive payment confirmations). Try it in Sandbox mode first.
 9. Backups: schedule `php bin/backup.php` daily and keep a copy off the server (see **Backups** below).
 10. Rate limits (login, checkout, register, track) key on the connecting IP (`REMOTE_ADDR`). Behind a reverse proxy or CDN every visitor shares the proxy's IP, so limits would hit everyone at once: terminate TLS on the web server itself, or add trusted-proxy handling before going behind one.

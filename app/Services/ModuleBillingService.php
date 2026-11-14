@@ -24,14 +24,26 @@ final class ModuleBillingService
         return $d === false || $d === null ? null : (string) $d;
     }
 
+    /** @var array<string,bool> covered() per module for this request; cleared by flushCache() */
+    private static array $covered = [];
+
     /** Free modules are always covered. A priced module is covered while its paid-until date has not passed. */
     public static function covered(string $key): bool
     {
-        if (ModulePricing::isFree($key)) {
-            return true;
+        if (!array_key_exists($key, self::$covered)) {
+            if (ModulePricing::isFree($key)) {
+                self::$covered[$key] = true;
+            } else {
+                $until = self::paidUntil($key);
+                self::$covered[$key] = $until !== null && $until >= date('Y-m-d');
+            }
         }
-        $until = self::paidUntil($key);
-        return $until !== null && $until >= date('Y-m-d');
+        return self::$covered[$key];
+    }
+
+    public static function flushCache(): void
+    {
+        self::$covered = [];
     }
 
     /** The end of a period that starts on $start (Y-m-d). */
@@ -140,6 +152,7 @@ final class ModuleBillingService
             );
             AuditService::log($actorId, 'module.paid', "invoice {$invoiceId}: {$inv['module_key']} until {$inv['period_end']}");
             $pdo->commit();
+            self::flushCache();
             return true;
         } catch (\Throwable $e) {
             $pdo->rollBack();
@@ -185,6 +198,44 @@ final class ModuleBillingService
         }
         $ok = self::markPaid($invoiceId, $actorId, 'Receipt approved');
         return $ok ? null : 'That invoice is not waiting for review.';
+    }
+
+    /**
+     * Emails the shop's admins 7 days before a monthly or yearly period ends, with the invoice for the next period.
+     * One reminder per period. @return int reminders sent
+     */
+    public static function remindDue(): int
+    {
+        $sent = 0;
+        foreach (array_keys(Modules::LIST) as $key) {
+            if (ModulePricing::isFree($key) || ModulePricing::price($key)['period'] === 'one_time') {
+                continue;
+            }
+            $until = self::paidUntil($key);
+            if ($until === null || $until === self::FOREVER || $until < date('Y-m-d') || $until > date('Y-m-d', strtotime('+7 days'))) {
+                continue;
+            }
+            $already = Database::query("SELECT COUNT(*) FROM module_invoices WHERE module_key = ? AND reminder_sent_at IS NOT NULL AND period_start = ?", [$key, date('Y-m-d', strtotime($until . ' +1 day'))])->fetchColumn();
+            if ((int) $already > 0) {
+                continue;
+            }
+            $inv = self::invoiceFor($key, 0);
+            if (is_string($inv)) {
+                continue;
+            }
+            $shop = (string) config('app.name');
+            $label = Modules::LIST[$key][0];
+            $text = "{$label} at {$shop} is paid up until {$until}. It will switch off on that date unless it is paid again.\n\n"
+                . "Renew it in the admin portal under Module billing: " . url('/admin/billing') . "\n\nAmount due: RM" . number_format((float) $inv['amount'], 2) . ' (' . ModulePricing::PERIODS[$inv['period']] . ').';
+            foreach (Database::query("SELECT email FROM users WHERE role = 'admin' AND status = 'active'")->fetchAll(\PDO::FETCH_COLUMN) as $to) {
+                $r = MailService::send((string) $to, "{$label} renews soon", $text, 'module_billing');
+                if ($r['ok']) {
+                    $sent++;
+                }
+            }
+            Database::query('UPDATE module_invoices SET reminder_sent_at = NOW() WHERE id = ?', [(int) $inv['id']]);
+        }
+        return $sent;
     }
 
     /** Invoices waiting for a superadmin decision. */

@@ -48,7 +48,18 @@ final class Modules
             return false; // an unknown key is never switched on by accident
         }
         $default = in_array($key, self::OFF_BY_DEFAULT, true) ? '0' : '1';
-        return Setting::get('module.' . $key, $default) === '1';
+        if (Setting::get('module.' . $key, $default) !== '1') {
+            return false;
+        }
+        // Switched on, but a priced module runs only while it is paid up (it switches off at lapse, on again when paid).
+        return ModuleBillingService::covered($key);
+    }
+
+    /** Switched on by a superadmin but not paid up: shown on the Modules page as waiting for payment. */
+    public static function waitingForPayment(string $key): bool
+    {
+        return Setting::get('module.' . $key, in_array($key, self::OFF_BY_DEFAULT, true) ? '0' : '1') === '1'
+            && !ModuleBillingService::covered($key);
     }
 
     /** Whether a module is off until switched on (shown on the Modules page). */
@@ -63,6 +74,7 @@ final class Modules
             throw new \InvalidArgumentException('Unknown module: ' . $key);
         }
         Setting::set('module.' . $key, $on ? '1' : '0');
+        ModuleBillingService::flushCache();
     }
 
     /** @return array<int,array{key:string,label:string,help:string,enabled:bool}> */
@@ -70,7 +82,7 @@ final class Modules
     {
         $out = [];
         foreach (self::LIST as $key => [$label, $help]) {
-            $out[] = ['key' => $key, 'label' => $label, 'help' => $help, 'enabled' => self::enabled($key), 'off_by_default' => self::offByDefault($key)];
+            $out[] = ['key' => $key, 'label' => $label, 'help' => $help, 'enabled' => self::enabled($key), 'off_by_default' => self::offByDefault($key), 'waiting' => self::waitingForPayment($key)];
         }
         return $out;
     }
