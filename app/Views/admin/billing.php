@@ -38,7 +38,7 @@ $periods = \App\Services\ModulePricing::PERIODS;
                 ?>
                     <div class="flip-clock" data-end-ms="<?= (int) $endMs ?>" role="timer" aria-label="Time left on this plan">
                         <div class="flip-units" data-units>
-                            <?php foreach (['Days', 'Hours', 'Minutes', 'Seconds'] as $unit): ?>
+                            <?php foreach (['D', 'H', 'M', 'S'] as $unit): ?>
                                 <div class="flip-unit"><div class="flip-tile"><span class="flip-num">00</span></div><span class="flip-label"><?= e($unit) ?></span></div>
                             <?php endforeach; ?>
                         </div>
@@ -74,7 +74,7 @@ $periods = \App\Services\ModulePricing::PERIODS;
                                         <small class="bill-disc"><?= e(\App\Services\ModulePricing::describe(['kind' => $q['kind'], 'value' => $q['value']])) ?></small>
                                         <div class="flip-clock is-discount is-mini" data-end-ms="<?= (int) (strtotime((string) $q['ends_at']) * 1000) ?>" data-ended-text="Offer ended" role="timer" aria-label="Time left on this discount">
                                             <div class="flip-units" data-units>
-                                                <?php foreach (['Days', 'Hours', 'Min', 'Sec'] as $unit): ?>
+                                                <?php foreach (['D', 'H', 'M', 'S'] as $unit): ?>
                                                     <div class="flip-unit"><div class="flip-tile"><span class="flip-num">00</span></div><span class="flip-label"><?= e($unit) ?></span></div>
                                                 <?php endforeach; ?>
                                             </div>
