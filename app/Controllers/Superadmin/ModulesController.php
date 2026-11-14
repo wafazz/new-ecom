@@ -20,11 +20,14 @@ final class ModulesController extends Controller
         $modules = Modules::all();
         foreach ($modules as &$m) {
             $m['price'] = ModulePricing::price($m['key']);
+            $m['quote'] = ModulePricing::quote($m['key']);
+            $m['own_discount'] = ModulePricing::discountRow($m['key']);
         }
         unset($m);
         $this->view('superadmin/modules', [
             'title' => 'Modules',
             'modules' => $modules,
+            'global' => ModulePricing::discountRow('global'),
             'audit' => $this->auditRows(),
             'scripts' => ['modules.js'],
         ], 'portal');
@@ -56,9 +59,28 @@ final class ModulesController extends Controller
         }
         $error = ModulePricing::set($key, $request->str('period'), trim($request->str('amount')), (int) Auth::user()['id']);
         if ($error !== null) {
-            $this->backWithErrors('/superadmin/modules', ['price_' . $key => $error]);
+            $this->backWithErrors('/superadmin/modules', ['form' => $error]);
         }
         $this->success('/superadmin/modules', Modules::LIST[$key][0] . ' price saved.');
+    }
+
+    /** A discount on all priced modules ('global') or on one module. Clear it with clear=1. */
+    public function discount(Request $request): void
+    {
+        $scope = $request->str('scope');
+        if ($scope !== 'global' && !isset(Modules::LIST[$scope])) {
+            Response::abort(404);
+        }
+        $actor = (int) Auth::user()['id'];
+        if ($request->str('clear') === '1') {
+            ModulePricing::clearDiscount($scope, $actor);
+            $this->success('/superadmin/modules', 'Discount removed.');
+        }
+        $error = ModulePricing::setDiscount($scope, trim($request->str('percent')), trim($request->str('ends_at')), $actor);
+        if ($error !== null) {
+            $this->backWithErrors('/superadmin/modules', ['form' => $error]);
+        }
+        $this->success('/superadmin/modules', 'Discount saved. It ends at the time you chose.');
     }
 
     /** Payment setup page: Billplz and bank details for module payments. */

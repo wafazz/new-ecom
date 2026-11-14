@@ -69,7 +69,7 @@ final class ModuleBillingService
         if ($open) {
             return $open;
         }
-        $price = ModulePricing::price($key);
+        $price = ModulePricing::quote($key); // the price now, with any discount; the invoice keeps it
         $until = self::paidUntil($key);
         $start = ($until !== null && $until >= date('Y-m-d') && $until !== self::FOREVER)
             ? date('Y-m-d', strtotime($until . ' +1 day'))
@@ -77,7 +77,7 @@ final class ModuleBillingService
         $end = self::periodEnd($start, $price['period']);
         Database::query(
             "INSERT INTO module_invoices (module_key, period, amount, period_start, period_end, status, requested_by) VALUES (?, ?, ?, ?, ?, 'unpaid', ?)",
-            [$key, $price['period'], number_format($price['amount'], 2, '.', ''), $start, $end, $requestedBy]
+            [$key, $price['period'], number_format($price['final'], 2, '.', ''), $start, $end, $requestedBy]
         );
         return Database::query('SELECT * FROM module_invoices WHERE id = ?', [(int) Database::connection()->lastInsertId()])->fetch();
     }

@@ -20,8 +20,8 @@ final class BillingController extends Controller
     {
         $rows = [];
         foreach (Modules::LIST as $key => [$label]) {
-            $price = ModulePricing::price($key);
-            if ($price['amount'] <= 0) {
+            $price = ModulePricing::quote($key);
+            if ($price['list'] <= 0) {
                 continue;
             }
             $until = ModuleBillingService::paidUntil($key);

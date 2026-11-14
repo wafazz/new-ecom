@@ -18,6 +18,10 @@ check('payments: a price has at most two decimals', \App\Services\ModulePricing:
 check('billing: a monthly period ends the day before the same day next month', \App\Services\ModuleBillingService::periodEnd('2026-01-01', 'monthly') === '2026-01-31');
 check('billing: a yearly period ends a year later, minus a day', \App\Services\ModuleBillingService::periodEnd('2026-01-01', 'yearly') === '2026-12-31');
 check('billing: a one-time purchase never runs out', \App\Services\ModuleBillingService::periodEnd('2026-01-01', 'one_time') === '9999-12-31');
+check('discounts: a percentage must be from 1 to 99', \App\Services\ModulePricing::validateDiscount('global', '0', '2099-01-01T00:00', 1000) !== null && \App\Services\ModulePricing::validateDiscount('global', '100', '2099-01-01T00:00', 1000) !== null);
+check('discounts: the end time must be in the future', \App\Services\ModulePricing::validateDiscount('global', '10', '2020-01-01T00:00', time()) !== null);
+check('discounts: a valid one for all modules is accepted', \App\Services\ModulePricing::validateDiscount('global', '15', date('Y-m-d\TH:i', time() + 86400), time()) === null);
+check('discounts: an unknown module is refused', \App\Services\ModulePricing::validateDiscount('no_such_module', '10', date('Y-m-d\TH:i', time() + 86400), time()) !== null);
 check('payments: a collection ID with spaces is refused before anything is saved', isset(\App\Services\PlatformSettings::save(['billplz_mode' => 'sandbox', 'billplz_collection_id' => 'bad id'], 1)['billplz_collection_id']));
 check('an unknown module is never on', Modules::enabled('no_such_module') === false);
 
@@ -254,6 +258,17 @@ check('billing: a module whose paid period has passed switches off by itself', M
 DB::query("UPDATE module_subscriptions SET paid_until = ? WHERE module_key = 'bundles'", [date('Y-m-d', strtotime('+1 year'))]);
 \App\Services\ModuleBillingService::flushCache();
 check('billing: paying again switches it back on', Modules::enabled('bundles') === true);
+DB::query('DELETE FROM module_discounts');
+check('discounts: with no discount the list price applies', (float) \App\Services\ModulePricing::quote('bundles')['final'] === 120.0);
+\App\Services\ModulePricing::setDiscount('global', '10', date('Y-m-d\TH:i', time() + 86400), 1);
+check('discounts: a global discount applies to every priced module', (float) \App\Services\ModulePricing::quote('bundles')['final'] === 108.0);
+\App\Services\ModulePricing::setDiscount('bundles', '25', date('Y-m-d\TH:i', time() + 86400), 1);
+check('discounts: a module discount overrides the global one', (float) \App\Services\ModulePricing::quote('bundles')['final'] === 90.0);
+DB::query("UPDATE module_discounts SET ends_at = ? WHERE scope = 'bundles'", [date('Y-m-d H:i:s', time() - 60)]);
+check('discounts: an expired module discount falls back to the global one', (float) \App\Services\ModulePricing::quote('bundles')['final'] === 108.0);
+DB::query("UPDATE module_discounts SET ends_at = ? WHERE scope = 'global'", [date('Y-m-d H:i:s', time() - 60)]);
+check('discounts: an expired global discount gives the list price back', (float) \App\Services\ModulePricing::quote('bundles')['final'] === 120.0);
+DB::query('DELETE FROM module_discounts');
 check('billing: paying the same invoice twice changes nothing', \App\Services\ModuleBillingService::markPaid((int) $invA['id'], 1, 'again') === false);
 check('billing: a free module never needs an invoice', is_string(\App\Services\ModuleBillingService::invoiceFor('newsletter', $billUser)) || ModulePricing::isFree('newsletter'));
 check('billing: a receipt that is not waiting for review cannot be approved', \App\Services\ModuleBillingService::review((int) $invA['id'], true, '', 1) !== null);
