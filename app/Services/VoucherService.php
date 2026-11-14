@@ -27,8 +27,12 @@ final class VoucherService
      */
     public static function quote(string $code, int $subtotalCents): array
     {
-        $v = self::find($code);
         $refuse = fn(string $message) => ['ok' => false, 'message' => $message, 'discount' => 0, 'voucher' => null];
+        // A switched-off coupons module refuses every code, including ones already kept in a shopper's session.
+        if (!Modules::enabled('vouchers')) {
+            return $refuse('Discount codes are not available right now.');
+        }
+        $v = self::find($code);
         if ($v === null) {
             return $refuse('That code is not valid.');
         }

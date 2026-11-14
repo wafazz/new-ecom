@@ -27,7 +27,7 @@ $levelBadge = function (int $out, int $low, int $n, int $stock): string {
         <h1>Stock control</h1>
         <p class="muted">Stock is changed only on this page. Orders take stock off automatically and cancelled orders put it back; every change is written to the history.</p>
     </div>
-    <a class="btn secondary" href="<?= e(url($base . '/stock/movements')) ?>">Stock movement</a>
+    <?php if (\App\Services\Modules::enabled('stock_movements')): ?><a class="btn secondary" href="<?= e(url($base . '/stock/movements')) ?>">Stock movement</a><?php endif; ?>
 </header>
 
 <div class="tiles stock-tiles">
@@ -96,7 +96,7 @@ $levelBadge = function (int $out, int $low, int $n, int $stock): string {
             <td><?php if ($lv === 'out'): ?><span class="badge st-cancelled">Out of stock</span><?php elseif ($lv === 'low'): ?><span class="badge st-pending">Low</span><?php else: ?><span class="badge active">In stock</span><?php endif; ?></td>
             <td class="act">
                 <button type="button" class="btn sm" data-adjust aria-label="Adjust stock of <?= e($title) ?>" hidden>Adjust</button>
-                <a class="btn secondary sm" href="<?= e(url($base . '/stock/movements?product=' . $pid)) ?>">Movement</a>
+                <?php if (\App\Services\Modules::enabled('stock_movements')): ?><a class="btn secondary sm" href="<?= e(url($base . '/stock/movements?product=' . $pid)) ?>">Movement</a><?php endif; ?>
             </td>
         </tr>
     </tbody>
@@ -117,7 +117,7 @@ $levelBadge = function (int $out, int $low, int $n, int $stock): string {
             <td><?= e($g['brand_name'] ?? '—') ?></td>
             <td class="num"><span class="stock-fixed" data-level="<?= $tl ?>" title="Total of all variations"><?= number_format($g['stock']) ?></span><br><small class="muted">total</small></td>
             <td><?= $levelBadge((int) $g['out'], (int) $g['low'], (int) $g['variations'], (int) $g['stock']) ?></td>
-            <td class="act"><a class="btn secondary sm" href="<?= e(url($base . '/stock/movements?product=' . $pid)) ?>">Movement</a></td>
+            <td class="act"><?php if (\App\Services\Modules::enabled('stock_movements')): ?><a class="btn secondary sm" href="<?= e(url($base . '/stock/movements?product=' . $pid)) ?>">Movement</a><?php endif; ?></td>
         </tr>
         <?php foreach ($g['units'] as $it):
             $s = (int) $it['stock']; $lv = $level($s); $vid = (int) $it['variant_id'];
@@ -130,7 +130,7 @@ $levelBadge = function (int $out, int $low, int $n, int $stock): string {
             <td><?php if ($lv === 'out'): ?><span class="badge st-cancelled">Out of stock</span><?php elseif ($lv === 'low'): ?><span class="badge st-pending">Low</span><?php else: ?><span class="badge active">In stock</span><?php endif; ?></td>
             <td class="act">
                 <button type="button" class="btn sm" data-adjust aria-label="Adjust stock of <?= e($title) ?>" hidden>Adjust</button>
-                <a class="btn secondary sm" href="<?= e(url($base . '/stock/movements?product=' . $pid . '&variant=' . $vid)) ?>">Movement</a>
+                <?php if (\App\Services\Modules::enabled('stock_movements')): ?><a class="btn secondary sm" href="<?= e(url($base . '/stock/movements?product=' . $pid . '&variant=' . $vid)) ?>">Movement</a><?php endif; ?>
             </td>
         </tr>
         <?php endforeach; ?>

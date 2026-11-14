@@ -18,7 +18,7 @@ abstract class ManageController extends Controller
 
     protected function isAdmin(): bool
     {
-        return Auth::user()['role'] === 'admin';
+        return in_array(Auth::user()['role'], Auth::ADMIN_ROLES, true);
     }
 
     protected function product(string $id): array

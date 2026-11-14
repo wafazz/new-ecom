@@ -210,7 +210,7 @@ final class FlashSaleService
     /** Live offers for the given product ids: [product_id => ['percent','ends_at','name']], the biggest percentage first. */
     public static function offersFor(array $ids): array
     {
-        if ($ids === []) {
+        if ($ids === [] || !Modules::enabled('flash_sales')) {
             return [];
         }
         $now = date('Y-m-d H:i:s');
@@ -235,6 +235,10 @@ final class FlashSaleService
     /** Product ids with a flash offer running now, as a sub-select fragment for storefront queries. @return array{0: string, 1: string[]} */
     public static function liveProductSql(): array
     {
+        // With the module switched off nothing matches, so storefront queries and prices ignore flash sales.
+        if (!Modules::enabled('flash_sales')) {
+            return ['SELECT fi.product_id FROM flash_sale_products fi WHERE 1 = 0', []];
+        }
         $now = date('Y-m-d H:i:s');
         return ['SELECT fi.product_id FROM flash_sale_products fi JOIN flash_sales fs ON fs.id = fi.flash_sale_id
                  WHERE fs.active = 1 AND fs.starts_at <= ? AND fs.ends_at > ?', [$now, $now]];
@@ -252,6 +256,9 @@ final class FlashSaleService
      */
     public static function live(int $limit = 2): array
     {
+        if (!Modules::enabled('flash_sales')) {
+            return [];
+        }
         $now = date('Y-m-d H:i:s');
         $sales = Database::query(
             'SELECT * FROM flash_sales WHERE active = 1 AND starts_at <= ? AND ends_at > ? ORDER BY ends_at ASC, id ASC',
