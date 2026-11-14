@@ -270,6 +270,10 @@ final class OrderService
             if ($it['digital_delivery'] !== null) {
                 continue; // digital items never took stock (license keys are released with the order, see DigitalService)
             }
+            if ((int) ($it['preorder'] ?? 0) === 1) {
+                PreorderService::release((int) $it['product_id'], (int) $it['qty'], $reason, $orderId, $actorId);
+                continue;
+            }
             try {
                 BundleService::adjustLine((int) $it['product_id'], $it['variant_id'] !== null ? (int) $it['variant_id'] : null, (int) $it['qty'], $reason, $orderId, $actorId);
             } catch (\DomainException) {

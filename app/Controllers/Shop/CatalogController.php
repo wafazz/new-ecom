@@ -120,6 +120,7 @@ final class CatalogController extends Controller
             'soldVariants' => array_values(array_filter($variants, fn($v) => (int) $v['stock'] < 1)),
             'notifyEmail' => (string) ($me['email'] ?? ''),
             'breaks' => \App\Services\Modules::enabled('quantity_breaks') ? \App\Services\PriceBreakService::breaksFor($pid) : [],
+            'preorder' => \App\Services\Modules::enabled('preorders') ? \App\Services\PreorderService::info($pid) : null,
             'memberPrice' => \App\Services\MemberPriceService::visibleFor($me !== null && $me['role'] === 'member' ? (int) $me['id'] : null, $pid, \App\Services\PricingService::cents((string) $base['price'])),
             'scripts' => ['product-page.js', 'copy-link.js', 'flash-sales.js'],
         ]);

@@ -384,6 +384,25 @@ Modules::set('member_prices', false);
 check('member prices: switched off, the public price applies', \App\Services\MemberPriceService::priceFor($mpUser, $mpProd, 2000) === 2000);
 Modules::set('member_prices', true);
 
+// Pre-orders: a limit caps the units sold; stock is set on arrival less the units sold; a cancelled line gives its units back.
+$po = Product::insert(['weight_kg' => '1.000', 'width_cm' => '10', 'length_cm' => '10', 'height_cm' => '10',
+    'name' => 'Pre Mug', 'slug' => 'pre-mug', 'sku' => 'PRE001', 'category_id' => null, 'brand_id' => null,
+    'base_price' => '5', 'company_base_price' => '10', 'retail_price' => '10.00', 'discount_price' => null, 'stock' => 0, 'status' => 'active']);
+Modules::set('preorders', true);
+check('pre-orders: opening with a limit is saved', \App\Services\PreorderService::open($po, date('Y-m-d', strtotime('+30 days')), 5, 1) === null);
+check('pre-orders: the sellable units are the limit', \App\Services\PreorderService::sellable($po, 0) === 5);
+\App\Services\PreorderService::reserve($po, 3, 0);
+check('pre-orders: units sold reduce what is left', \App\Services\PreorderService::sellable($po, 0) === 2);
+$overSold = false;
+try { \App\Services\PreorderService::reserve($po, 3, 0); } catch (\DomainException) { $overSold = true; }
+check('pre-orders: the limit cannot be exceeded', $overSold);
+\App\Services\PreorderService::release($po, 1, 'cancel', 0, 1);
+check('pre-orders: a cancelled unit goes back to the limit', \App\Services\PreorderService::sellable($po, 0) === 3);
+check('pre-orders: arriving stock must cover what is sold', \App\Services\PreorderService::arrive($po, 1, 1) !== null);
+check('pre-orders: arrival sets stock to arrived minus sold', \App\Services\PreorderService::arrive($po, 10, 1) === null && (int) DB::query('SELECT stock FROM products WHERE id = ?', [$po])->fetchColumn() === 8);
+check('pre-orders: the pre-order closes on arrival', !\App\Services\PreorderService::isPreorder($po));
+Modules::set('preorders', false);
+
 // Newsletter: a sign-up only counts once its confirmation link is used, and the link works once.
 DB::query('DELETE FROM newsletter_subscribers');
 $nlToken = bin2hex(random_bytes(32));

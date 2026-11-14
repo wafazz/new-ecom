@@ -67,6 +67,9 @@ $wishInit = $wish === true;
             <s id="price-was" <?= $base['on_sale'] ? '' : 'hidden' ?>><?= e(money($base['retail'])) ?></s>
             <span class="save-badge" id="price-save" <?= $discount > 0 ? '' : 'hidden' ?>>Save <?= $discount ?>%</span>
         </p>
+        <?php if (!empty($preorder) && $preorder['left'] > 0): ?>
+            <p class="pdp-preorder"><strong>Pre-order</strong><?= $preorder['expected'] ? ' · ships from ' . e(date('d M Y', strtotime((string) $preorder['expected']))) : '' ?> · <?= (int) $preorder['left'] ?> left to pre-order</p>
+        <?php endif; ?>
         <?php if (!empty($memberPrice)): ?>
             <p class="pdp-member-price">Your member price: <strong>RM<?= e($memberPrice) ?></strong></p>
         <?php endif; ?>

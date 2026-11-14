@@ -144,7 +144,7 @@ final class CartService
             if ($variantId !== null) {
                 return 'That option is not available.';
             }
-            $stock = DigitalService::isDigital($product) ? DigitalService::stock($product) : (int) $product['stock'];
+            $stock = DigitalService::isDigital($product) ? DigitalService::stock($product) : PreorderService::sellable($productId, (int) $product['stock']);
         }
         if ($stock < 1) {
             return 'Sorry, that item is sold out.';
@@ -220,7 +220,7 @@ final class CartService
                 $variant = $r['variant_id'] !== null ? ['retail_price' => $r['v_retail'], 'discount_price' => $r['v_discount']] : null;
                 $price = PricingService::effective($r, $variant);
                 $digital = DigitalService::isDigital($r);
-                $stock = (int) ($r['variant_id'] !== null ? ($r['v_stock'] ?? 0) : $r['p_stock']);
+                $stock = (int) ($r['variant_id'] !== null ? ($r['v_stock'] ?? 0) : PreorderService::sellable((int) $r['product_id'], (int) $r['p_stock']));
                 if ($digital) {
                     $stock = DigitalService::stock(['id' => $r['product_id'], 'digital_delivery' => $r['digital_delivery']]);
                 }

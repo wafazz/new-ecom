@@ -336,6 +336,13 @@ return function (Router $r): void {
             $r->post('/member-prices/price', 'Admin/MemberPriceController@price', ['module:member_prices']);
         });
 
+        // Pre-orders (admin and superadmin)
+        $r->group('/admin', ['auth:admin'], function (Router $r): void {
+            $r->get('/preorders', 'Admin/PreorderController@index', ['module:preorders']);
+            $r->post('/preorders', 'Admin/PreorderController@open', ['module:preorders']);
+            $r->post('/preorders/arrive', 'Admin/PreorderController@arrive', ['module:preorders']);
+        });
+
         // Quantity prices (admin and superadmin)
         $r->group('/admin', ['auth:admin'], function (Router $r): void {
             $r->get('/price-breaks', 'Admin/PriceBreakController@index', ['module:quantity_breaks']);

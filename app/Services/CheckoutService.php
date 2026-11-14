@@ -69,7 +69,7 @@ final class CheckoutService
                 if ($digital && !Modules::enabled('digital_products')) {
                     throw new CheckoutException("\"{$p['name']}\" is a digital product, and digital products are not available right now. Please remove it from your cart.");
                 }
-                $stock = $digital ? DigitalService::stock($p) : (int) ($v['stock'] ?? $p['stock']);
+                $stock = $digital ? DigitalService::stock($p) : (int) ($v['stock'] ?? PreorderService::sellable((int) $p['id'], (int) $p['stock']));
                 // Units held by other carts are not free for this order.
                 $stock = max(0, $stock - CartService::heldByOthers((int) $p['id'], (int) ($l['variant_id'] ?? 0), $cartId));
                 if ($l['qty'] > $stock) {
@@ -201,7 +201,11 @@ final class CheckoutService
                      PricingService::format($it['unit']), PricingService::format($it['retail']), PricingService::format($it['base']), PricingService::format($it['company']),
                      $it['qty'], PricingService::format($it['unit'] * $it['qty']), $affiliateId !== null ? $it['rate'] : null, $it['delivery'], $it['tax_rate'], PricingService::format($it['tax_amount'])]
                 );
-                if ($it['delivery'] === null) {
+                if ($it['delivery'] === null && PreorderService::accepting((int) $it['product_id'])) {
+                    // Pre-order units come from the pre-order limit, not physical stock; the line is marked so cancelling it gives them back correctly.
+                    PreorderService::reserve((int) $it['product_id'], (int) $it['qty'], $orderId);
+                    Database::query('UPDATE order_items SET preorder = 1 WHERE id = ?', [(int) $pdo->lastInsertId()]);
+                } elseif ($it['delivery'] === null) {
                     BundleService::adjustLine((int) $it['product_id'], $it['variant_id'] !== null ? (int) $it['variant_id'] : null, -(int) $it['qty'], 'order', $orderId, $userId); // locks the row, logs the movement
                 } // digital items have no stock to take; license keys are assigned when the order is paid
             }
