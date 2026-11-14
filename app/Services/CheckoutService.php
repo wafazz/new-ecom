@@ -152,19 +152,21 @@ final class CheckoutService
             $shipping = $quote['fee'];
             $token = $userId === null ? bin2hex(random_bytes(16)) : null;
             $orderNo = self::newOrderNo();
+            // SST is part of the price already paid: worked out here from the final discount, stored on the order and each item.
+            $taxTotal = TaxService::split($items, $subtotal, $discount);
 
             Database::query(
                 'INSERT INTO orders (order_no, user_id, customer_name, customer_email, customer_phone, ship_line1, ship_line2, ship_city, ship_state, ship_postcode,
                                      subtotal, shipping_fee, total, payment_method, track_hash, notes, affiliate_id, voucher_id, voucher_code, discount_total,
-                                     shipping_zone, billable_kg, cod_fee)
-                 VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',
+                                     shipping_zone, billable_kg, cod_fee, tax_total)
+                 VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',
                 [
                     $orderNo, $userId, $contact['name'], strtolower($contact['email']), $contact['phone'],
                     $contact['line1'], $contact['line2'] ?: null, $contact['city'], $contact['state'], $contact['postcode'],
                     PricingService::format($subtotal), PricingService::format($shipping), PricingService::format($subtotal - $discount + $shipping),
                     $paymentMethod, $token === null ? null : hash('sha256', $token), $contact['notes'] ?: null, $affiliateId,
                     $voucher === null ? null : (int) $voucher['id'], $voucher === null ? null : $voucher['code'], PricingService::format($discount),
-                    $quote['zone'], $quote['kg'], PricingService::format($quote['cod']),
+                    $quote['zone'], $quote['kg'], PricingService::format($quote['cod']), PricingService::format($taxTotal),
                 ]
             );
             $orderId = (int) $pdo->lastInsertId();
@@ -177,11 +179,11 @@ final class CheckoutService
 
             foreach ($items as $it) {
                 Database::query(
-                    'INSERT INTO order_items (order_id, product_id, variant_id, product_name, variant_label, sku, unit_price, retail_price, base_price, company_base_price, qty, line_total, commission_rate, digital_delivery)
-                     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)',
+                    'INSERT INTO order_items (order_id, product_id, variant_id, product_name, variant_label, sku, unit_price, retail_price, base_price, company_base_price, qty, line_total, commission_rate, digital_delivery, tax_rate, tax_amount)
+                     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',
                     [$orderId, $it['product_id'], $it['variant_id'], $it['name'], $it['label'], $it['sku'],
                      PricingService::format($it['unit']), PricingService::format($it['retail']), PricingService::format($it['base']), PricingService::format($it['company']),
-                     $it['qty'], PricingService::format($it['unit'] * $it['qty']), $affiliateId !== null ? $it['rate'] : null, $it['delivery']]
+                     $it['qty'], PricingService::format($it['unit'] * $it['qty']), $affiliateId !== null ? $it['rate'] : null, $it['delivery'], $it['tax_rate'], PricingService::format($it['tax_amount'])]
                 );
                 if ($it['delivery'] === null) {
                     BundleService::adjustLine((int) $it['product_id'], $it['variant_id'] !== null ? (int) $it['variant_id'] : null, -(int) $it['qty'], 'order', $orderId, $userId); // locks the row, logs the movement

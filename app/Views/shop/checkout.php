@@ -181,6 +181,7 @@ $defaultMethod = isset($methods['cod']) ? 'cod' : (string) array_key_first($meth
     <?php endif; ?>
     <p class="sum-row"><span>Shipping <small class="muted">by weight and zone</small></span><span id="co-shipping"><?= e(money($shipping_cents / 100)) ?></span></p>
     <p class="alert bad" id="co-shipping-error"<?= $shipping_error ? '' : ' hidden' ?>><?= e((string) $shipping_error) ?></p>
+    <?php if (($sst_cents ?? 0) > 0): ?><p class="sum-row muted"><span>Included SST</span><span>RM<?= e(number_format($sst_cents / 100, 2)) ?></span></p><?php endif; ?>
     <p class="sum-row total"><span>Total</span><span id="co-total"><?= e(money($total / 100)) ?></span></p>
     <p><a href="<?= e(url('/cart')) ?>"><?= icon('left', 'i i-sm') ?> Edit cart</a></p>
 </aside>

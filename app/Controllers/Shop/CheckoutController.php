@@ -83,6 +83,7 @@ final class CheckoutController extends Controller
         $discount += (int) ($loyalty['cents'] ?? 0);
         $gift = $this->giftFor($cart, $discount);
         $discount += (int) ($gift['cents'] ?? 0);
+        $sst = \App\Services\TaxService::forCart($cart['items'], (int) $cart['subtotal_cents'], $discount);
 
         $this->view('shop/checkout', [
             'title' => 'Checkout',
@@ -90,6 +91,7 @@ final class CheckoutController extends Controller
             'voucher' => $voucher,
             'loyalty' => $loyalty,
             'gift' => $gift,
+            'sst_cents' => $sst,
             'discount_cents' => $discount,
             'voucher_note' => $voucherNote,
             'shipping_error' => $ship['error'],

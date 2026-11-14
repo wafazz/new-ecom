@@ -194,6 +194,29 @@ check('bundles: the bundle has no stock of its own to change directly', (functio
 check('bundles: a part out of stock makes the bundle unavailable', $stockOf($bpZ) === 0);
 check('bundles: a bundle cannot contain itself', \App\Services\BundleService::setParts($bpZ, [['product_id' => $bpZ, 'qty' => 1]], 1) !== null);
 
+// SST: the rate comes from the product or its category; SST is part of the price, taken from the paid amount.
+$taxCat = (int) DB::query("SELECT id FROM categories LIMIT 1")->fetchColumn();
+if ($taxCat === 0) {
+    DB::query("INSERT INTO categories (name, slug) VALUES ('Tax Test', 'tax-test')");
+    $taxCat = (int) DB::connection()->lastInsertId();
+}
+DB::query('UPDATE categories SET tax_rate = 6.00 WHERE id = ?', [$taxCat]);
+$taxP = Product::insert(['weight_kg' => '1.000', 'width_cm' => '10', 'length_cm' => '10', 'height_cm' => '10',
+    'name' => 'Taxed Mug', 'slug' => 'taxed-mug', 'sku' => 'TAX001', 'category_id' => $taxCat, 'brand_id' => null,
+    'base_price' => '5', 'company_base_price' => '10', 'retail_price' => '106.00', 'discount_price' => null, 'stock' => 5, 'status' => 'active']);
+check('SST: a product takes its category rate', \App\Services\TaxService::rateFor($taxP) === 6.0);
+DB::query('UPDATE products SET tax_rate = 0.00 WHERE id = ?', [$taxP]);
+check('SST: a product rate of 0 overrides its category (zero-rated)', \App\Services\TaxService::rateFor($taxP) === 0.0);
+DB::query('UPDATE products SET tax_rate = NULL WHERE id = ?', [$taxP]);
+$taxItems = [['product_id' => $taxP, 'unit' => 10600, 'qty' => 1]];
+$taxTotal = \App\Services\TaxService::split($taxItems, 10600, 0);
+check('SST: 6% on RM106.00 included is RM6.00', $taxTotal === 600 && $taxItems[0]['tax_amount'] === 600);
+$taxItems2 = [['product_id' => $taxP, 'unit' => 10600, 'qty' => 1]];
+check('SST: a discount reduces the amount SST is taken from', \App\Services\TaxService::split($taxItems2, 10600, 600) === 566);
+Modules::set('tax', false);
+check('SST: switched off, no SST is worked out', \App\Services\TaxService::rateFor($taxP) === 0.0);
+Modules::set('tax', true);
+
 // Newsletter: a sign-up only counts once its confirmation link is used, and the link works once.
 DB::query('DELETE FROM newsletter_subscribers');
 $nlToken = bin2hex(random_bytes(32));

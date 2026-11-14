@@ -251,6 +251,14 @@ return function (Router $r): void {
             $r->post('/modules/{key}', 'Superadmin/ModulesController@toggle');
         });
 
+        // SST (admin and superadmin)
+        $r->group('/admin', ['auth:admin'], function (Router $r): void {
+            $r->get('/tax', 'Admin/TaxController@index', ['module:tax']);
+            $r->get('/tax/export', 'Admin/TaxController@export', ['module:tax']);
+            $r->post('/tax/category/{id}', 'Admin/TaxController@category', ['module:tax']);
+            $r->post('/tax/product', 'Admin/TaxController@product', ['module:tax']);
+        });
+
         // Bundles (admin and superadmin)
         $r->group('/admin', ['auth:admin'], function (Router $r): void {
             $r->get('/bundles', 'Admin/BundleController@index', ['module:bundles']);
