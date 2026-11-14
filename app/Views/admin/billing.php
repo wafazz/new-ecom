@@ -17,6 +17,18 @@ $periods = \App\Services\ModulePricing::PERIODS;
 
     <div class="bill-grid">
         <?php foreach ($rows as $r):
+            if (!empty($r['coming_soon'])):
+        ?>
+            <article class="bill-card bill-card-soon">
+                <header class="bill-head">
+                    <h2><?= e($r['label']) ?></h2>
+                    <span class="bill-status is-soon">Coming soon</span>
+                </header>
+                <p class="bill-sub muted">No price has been set for this module yet, so it cannot be bought here. Plans will appear once the superadmin sets them.</p>
+            </article>
+        <?php
+                continue;
+            endif;
             $first = array_key_first($r['quotes']);
             $status = $r['covered'] ? 'paid' : ($r['open'] !== null && $r['open']['status'] === 'pending_review' ? 'review' : 'unpaid');
             // Payment controls: a lifetime plan needs none; a monthly plan can renew in its last 7 days, a yearly plan in its last 3 weeks.
