@@ -991,3 +991,8 @@ a.vis-card:hover{transform:translateY(-3px);box-shadow:0 14px 28px -12px rgba(47
 .bill-count.is-ended{background:var(--bad-bg,#fdecec);color:var(--bad-fg,#b00020)}
 .bill-count.is-lifetime{background:var(--surface);color:var(--muted);border:1px dashed var(--border-strong)}
 @media (prefers-reduced-motion:reduce){.bill-count-value{transition:none}}
+
+/* Discount end countdowns (superadmin Modules page and admin billing plan tiles) */
+.mod-timer,.bill-disc-timer{font-variant-numeric:tabular-nums;font-weight:600;color:var(--accent);white-space:nowrap}
+.bill-disc-timer{display:block;font-size:.78rem}
+.mod-timer.is-ended,.bill-disc-timer.is-ended{color:var(--bad-fg,#b00020)}

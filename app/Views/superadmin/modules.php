@@ -22,7 +22,7 @@ $onCount = count(array_filter($modules, fn($m) => $m['enabled']));
         <h2>Discounts on module prices</h2>
         <p class="muted">A discount sets every paid module to a percentage off, or to a fixed price, until the end time. A module's own discount (below) takes priority over this one while both are active. A fixed price never raises a price. A discount applies to invoices created while it runs; invoices already issued keep their price.</p>
         <?php if (!empty($global) && $global['active']): ?>
-            <p><strong>All modules: <?= e(\App\Services\ModulePricing::describe($global)) ?> until <?= e(date('d M Y, H:i', strtotime($global['ends_at']))) ?></strong></p>
+            <p><strong>All modules: <?= e(\App\Services\ModulePricing::describe($global)) ?> until <?= e(date('d M Y, H:i', strtotime($global['ends_at']))) ?></strong> <span class="mod-timer" data-end-ms="<?= (int) (strtotime($global['ends_at']) * 1000) ?>" role="timer"></span></p>
         <?php else: ?>
             <p class="muted">No discount on all modules.</p>
         <?php endif; ?>
@@ -101,7 +101,7 @@ $onCount = count(array_filter($modules, fn($m) => $m['enabled']));
                             <div class="mod-discount">
                                 <h4>Discount for this module</h4>
                                 <?php if ($m['own_discount'] !== null): ?>
-                                    <p class="muted">Now: <strong><?= e($ownDesc) ?></strong> until <?= e(date('d M Y, H:i', strtotime((string) $m['own_discount']['ends_at']))) ?><?= $m['own_discount']['active'] ? '' : ' (ended)' ?></p>
+                                    <p class="muted">Now: <strong><?= e($ownDesc) ?></strong> until <?= e(date('d M Y, H:i', strtotime((string) $m['own_discount']['ends_at']))) ?> <span class="mod-timer" data-end-ms="<?= (int) (strtotime((string) $m['own_discount']['ends_at']) * 1000) ?>" role="timer"></span><?= $m['own_discount']['active'] ? '' : ' (ended)' ?></p>
                                     <form method="post" action="<?= e(url('/superadmin/discounts')) ?>" class="mod-plain"><?= csrf_field() ?><input type="hidden" name="scope" value="<?= e($m['key']) ?>"><input type="hidden" name="clear" value="1"><button class="btn secondary sm" type="submit">Remove this discount</button></form>
                                 <?php endif; ?>
                                 <form method="post" action="<?= e(url('/superadmin/discounts')) ?>" class="mod-price mod-discount-form" data-discount-form>

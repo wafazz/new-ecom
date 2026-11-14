@@ -64,6 +64,7 @@ $periods = \App\Services\ModulePricing::PERIODS;
                                     <?php if ($q['kind'] !== null): ?>
                                         <s><?= e($money($q['list'])) ?></s> <strong><?= e($money($q['final'])) ?></strong>
                                         <small class="bill-disc"><?= e(\App\Services\ModulePricing::describe(['kind' => $q['kind'], 'value' => $q['value']])) ?></small>
+                                        <span class="bill-disc-timer" data-end-ms="<?= (int) (strtotime((string) $q['ends_at']) * 1000) ?>" role="timer">--</span>
                                     <?php else: ?>
                                         <strong><?= e($money($q['list'])) ?></strong>
                                     <?php endif; ?>
