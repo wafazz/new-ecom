@@ -284,6 +284,9 @@ check('discounts: an expired global discount gives the list price back', (float)
 DB::query('DELETE FROM module_discounts');
 check('grant: a superadmin can grant a term by hand', \App\Services\ModuleBillingService::grant('bundles', 'monthly', 1) === null && \App\Services\ModuleBillingService::covered('bundles') === true);
 check('grant: the grant is recorded as a paid invoice marked manual', (int) DB::query("SELECT COUNT(*) FROM module_invoices WHERE method = 'manual' AND status = 'paid' AND module_key = 'bundles'")->fetchColumn() >= 1);
+\App\Services\ModuleBillingService::grant('bundles', 'monthly', 1, '0.00');
+check('grant: 0.00 is recorded as free of charge', (int) DB::query("SELECT COUNT(*) FROM module_invoices WHERE method = 'manual' AND amount = 0.00 AND note LIKE 'Free of charge%'")->fetchColumn() >= 1);
+check('grant: an amount that is not a price is refused', \App\Services\ModuleBillingService::grant('bundles', 'monthly', 1, 'abc') !== null);
 check('grant: an unknown term is refused', \App\Services\ModuleBillingService::grant('bundles', 'weekly', 1) !== null);
 \App\Services\ModuleBillingService::grant('bundles', 'one_time', 1);
 check('grant: lifetime never runs out', \App\Services\ModuleBillingService::paidUntil('bundles') === '9999-12-31');

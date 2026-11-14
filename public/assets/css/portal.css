@@ -1055,3 +1055,8 @@ a.vis-card:hover{transform:translateY(-3px);box-shadow:0 14px 28px -12px rgba(47
 .term-name{font-weight:700;font-size:1.02rem}
 .term-sub{font-size:.85rem}
 @media (prefers-reduced-motion:reduce){.term-option{transition:none}}
+.term-option.is-on{border-color:var(--accent);background:var(--accent-soft);box-shadow:0 0 0 1px var(--accent) inset}
+.term-amount{display:grid;gap:.3rem;margin-top:.8rem;text-align:left;font-size:.9rem;color:var(--muted)}
+.term-amount input{min-height:46px;padding:.5rem .7rem;border:1px solid var(--border-strong);border-radius:12px;background:var(--surface);color:var(--text);font:inherit;font-size:16px;font-variant-numeric:tabular-nums}
+.term-amount-hint{font-size:.8rem}
+.term-continue{width:100%;min-height:46px;margin-top:.7rem}
