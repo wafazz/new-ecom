@@ -20,7 +20,7 @@ $periods = \App\Services\ModulePricing::PERIODS;
     $sections = [
         'subscribed' => ['Subscribed', []],
         'priced' => ['Has prices', []],
-        'soon' => ['Not setting price yet', []],
+        'soon' => ['Coming soon', []],
     ];
     foreach ($rows as $row) {
         if (!empty($row['coming_soon'])) {
