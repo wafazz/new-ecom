@@ -63,6 +63,19 @@ check('switched off: a stock change is still recorded', $after === $before + 1);
 check('switched off: the stock level still changes', (int) DB::query('SELECT stock FROM products WHERE id = ?', [$tote])->fetchColumn() === 18);
 Modules::set('stock_movements', true);
 
+// Back in stock: a sign-up on a sold-out product is kept, and refused when the item is already in stock.
+DB::query('DELETE FROM stock_alerts');
+$soldOut = Product::insert(['weight_kg' => '1.000', 'width_cm' => '10', 'length_cm' => '10', 'height_cm' => '10',
+    'name' => 'Sold Out Mug', 'slug' => 'sold-out-mug', 'sku' => 'MUG900', 'category_id' => null, 'brand_id' => null,
+    'base_price' => '5', 'company_base_price' => '10', 'retail_price' => '20.00', 'discount_price' => null, 'stock' => 0, 'status' => 'active']);
+check('back in stock: a sign-up on a sold-out product is saved', \App\Services\StockAlertService::store($soldOut, 0, 'waiter@example.test', null) === 'saved');
+check('back in stock: signing up twice is harmless', \App\Services\StockAlertService::store($soldOut, 0, 'waiter@example.test', null) === 'saved');
+check('back in stock: a bad address is refused', \App\Services\StockAlertService::store($soldOut, 0, 'nope', null) === 'invalid');
+check('back in stock: a waiting alert is recorded', \App\Services\StockAlertService::waiting($soldOut, 0) === true);
+\App\Services\StockService::delta($soldOut, null, 4, 'manual', null, null, 'restock test');
+check('back in stock: a restock queues the alert (waiting until the worker sends it)', \App\Services\StockAlertService::waiting($soldOut, 0) === true);
+check('back in stock: an item already in stock is not put on the list', \App\Services\StockAlertService::store($soldOut, 0, 'other@example.test', null) === 'in_stock');
+
 // Newsletter: a sign-up only counts once its confirmation link is used, and the link works once.
 DB::query('DELETE FROM newsletter_subscribers');
 $nlToken = bin2hex(random_bytes(32));

@@ -117,6 +117,8 @@ final class CatalogController extends Controller
             'affiliateLink' => $me !== null && $me['role'] === 'member' && \App\Services\Modules::enabled('affiliates')
                 ? \App\Services\AffiliateService::productLink(\App\Services\AffiliateService::ensureCode((int) $me['id']), (string) $product['slug'])
                 : null,
+            'soldVariants' => array_values(array_filter($variants, fn($v) => (int) $v['stock'] < 1)),
+            'notifyEmail' => (string) ($me['email'] ?? ''),
             'scripts' => ['product-page.js', 'copy-link.js', 'flash-sales.js'],
         ]);
     }

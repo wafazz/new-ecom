@@ -26,6 +26,7 @@ return function (Router $r): void {
         $r->post('/install/finish', 'InstallController@finish');
         $r->get('/products', 'Shop/CatalogController@index');
         $r->get('/products/{slug}', 'Shop/CatalogController@show');
+        $r->post('/products/{slug}/notify', 'Shop/StockAlertController@store', ['module:back_in_stock']);
         $r->post('/products/{slug}/reviews', 'Shop/ReviewController@store', ['auth:member']);
         $r->post('/wishlist/toggle', 'Shop/WishlistController@toggle', ['auth:member']);
         $r->get('/payments/billplz/return', 'Shop/BillplzController@back');

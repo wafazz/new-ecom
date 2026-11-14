@@ -124,6 +124,10 @@ final class StockService
             }
             if ($after !== $before) {
                 Database::query($variantId !== null ? 'UPDATE product_variants SET stock = ? WHERE id = ?' : 'UPDATE products SET stock = ? WHERE id = ?', [$after, $variantId ?? $productId]);
+                // Stock came back: queue the "back in stock" emails for anyone waiting (sent by the worker, not here).
+                if ($before <= 0 && $after > 0 && StockAlertService::waiting($productId, (int) ($variantId ?? 0))) {
+                    Queue::push('stock.back', ['product_id' => $productId, 'variant_key' => (int) ($variantId ?? 0)]);
+                }
                 self::log($productId, $variantId, $row['sku'] !== null ? (string) $row['sku'] : null, $variantId ? VariantService::label($variantId) : null, $after - $before, $before, $after, $reason, $orderId, $actorId, $note);
             }
             $own && $pdo->commit();
