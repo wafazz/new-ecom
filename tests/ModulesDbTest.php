@@ -283,6 +283,7 @@ DB::query("UPDATE module_discounts SET ends_at = ? WHERE scope = 'global'", [dat
 check('discounts: an expired global discount gives the list price back', (float) \App\Services\ModulePricing::quote('bundles', 'yearly')['final'] === 120.0);
 DB::query('DELETE FROM module_discounts');
 check('grant: a superadmin can grant a term by hand', \App\Services\ModuleBillingService::grant('bundles', 'monthly', 1) === null && \App\Services\ModuleBillingService::covered('bundles') === true);
+check('grant: the grant is recorded as a paid invoice marked manual', (int) DB::query("SELECT COUNT(*) FROM module_invoices WHERE method = 'manual' AND status = 'paid' AND module_key = 'bundles'")->fetchColumn() >= 1);
 check('grant: an unknown term is refused', \App\Services\ModuleBillingService::grant('bundles', 'weekly', 1) !== null);
 \App\Services\ModuleBillingService::grant('bundles', 'one_time', 1);
 check('grant: lifetime never runs out', \App\Services\ModuleBillingService::paidUntil('bundles') === '9999-12-31');

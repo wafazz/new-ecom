@@ -290,8 +290,8 @@ final class ModuleBillingService
     }
 
     /**
-     * A superadmin grants a paid module by hand for a term (monthly, yearly or lifetime), with no invoice. The term starts
-     * after any time already paid. @return string|null error
+     * A superadmin grants a paid module by hand for a term (monthly, yearly or lifetime). The grant is recorded as a paid
+     * invoice with the method 'manual'. The term starts after any time already paid. @return string|null error
      */
     public static function grant(string $key, string $term, int $actorId): ?string
     {
@@ -303,6 +303,13 @@ final class ModuleBillingService
             ? date('Y-m-d', strtotime($until . ' +1 day'))
             : date('Y-m-d');
         $end = $term === 'one_time' ? self::FOREVER : self::periodEnd($start, $term);
+        // Still recorded as an invoice, marked as a manual payment (no Billplz or bank transfer took place).
+        $amount = ModulePricing::listPrice($key, $term) !== null ? ModulePricing::quote($key, $term)['final'] : 0.0;
+        Database::query(
+            "INSERT INTO module_invoices (module_key, period, amount, period_start, period_end, status, method, note, requested_by, reviewed_by, reviewed_at, paid_at)
+             VALUES (?, ?, ?, ?, ?, 'paid', 'manual', 'Manual payment: granted by superadmin', ?, ?, NOW(), NOW())",
+            [$key, $term, number_format($amount, 2, '.', ''), $start, $end, $actorId, $actorId]
+        );
         Database::query(
             'INSERT INTO module_subscriptions (module_key, paid_until, period) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE paid_until = VALUES(paid_until), period = VALUES(period)',
             [$key, $end, $term]
