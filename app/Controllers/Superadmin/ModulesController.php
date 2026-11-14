@@ -8,6 +8,7 @@ use App\Core\Controller;
 use App\Core\Request;
 use App\Core\Response;
 use App\Services\AuditService;
+use App\Services\ModuleBillingService;
 use App\Services\ModulePricing;
 use App\Services\Modules;
 use App\Services\PlatformSettings;
@@ -54,6 +55,16 @@ final class ModulesController extends Controller
             $this->backWithErrors('/superadmin/modules', ['form' => $msg]);
         }
         $on = $request->str('enabled') === '1';
+        // Switching on a paid module needs a term (monthly, yearly or lifetime): the superadmin grants it by hand.
+        if ($on && !ModulePricing::isFree($key)) {
+            $grant = ModuleBillingService::grant($key, $request->str('term'), (int) Auth::user()['id']);
+            if ($grant !== null) {
+                if (Request::wantsJson()) {
+                    Response::json(['ok' => false, 'message' => $grant], 422);
+                }
+                $this->backWithErrors('/superadmin/modules', ['form' => $grant]);
+            }
+        }
         Modules::set($key, $on);
         AuditService::log((int) Auth::user()['id'], 'module.' . ($on ? 'on' : 'off'), $key);
         $label = Modules::LIST[$key][0];

@@ -137,11 +137,55 @@
     });
   }
 
-  /** Sends the switch with the PIN. Resolves { ok, pinWrong, locked, message }. */
-  function post(card, form, pin) {
+  /** Asks for the term when a paid module is switched on. Resolves 'monthly' | 'yearly' | 'one_time', or null. */
+  function termPicker(name) {
+    return new Promise(function (resolve) {
+      var overlay = el('div', 'pin-overlay');
+      var panel = el('div', 'pin-panel term-panel');
+      panel.setAttribute('role', 'dialog');
+      panel.setAttribute('aria-modal', 'true');
+      panel.setAttribute('aria-label', 'Choose a term for ' + name);
+      panel.appendChild(el('h2', 'pin-title', 'Switch on ' + name));
+      panel.appendChild(el('p', 'pin-sub muted', 'How long should it stay on?'));
+      var options = el('div', 'term-options');
+      var done = false;
+      function finish(v) {
+        if (done) return;
+        done = true;
+        document.removeEventListener('keydown', onKey, true);
+        overlay.remove();
+        resolve(v);
+      }
+      [['monthly', 'Monthly', '1 month'], ['yearly', 'Yearly', '1 year'], ['one_time', 'Lifetime', 'No end date']].forEach(function (o) {
+        var b = el('button', 'term-option');
+        b.type = 'button';
+        b.dataset.term = o[0];
+        b.appendChild(el('span', 'term-name', o[1]));
+        b.appendChild(el('span', 'term-sub muted', o[2]));
+        b.addEventListener('click', function () { finish(o[0]); });
+        options.appendChild(b);
+      });
+      panel.appendChild(options);
+      var cancel = el('button', 'pin-cancel', 'Cancel');
+      cancel.type = 'button';
+      cancel.addEventListener('click', function () { finish(null); });
+      panel.appendChild(cancel);
+      function onKey(e) {
+        if (e.key === 'Escape') { e.preventDefault(); finish(null); }
+      }
+      document.addEventListener('keydown', onKey, true);
+      overlay.appendChild(panel);
+      document.body.appendChild(overlay);
+      options.querySelector('.term-option').focus();
+    });
+  }
+
+  /** Sends the switch with the PIN (and the term, when switching a paid module on). Resolves { ok, pinWrong, locked, message }. */
+  function post(card, form, pin, term) {
     setBusy(card, true);
     var fd = new FormData(form);
     fd.set('pin', pin);
+    if (term) fd.set('term', term);
     return fetch(form.action, {
       method: 'POST',
       body: fd,
@@ -168,12 +212,12 @@
   }
 
   /** Asks for the PIN, sends, and asks again after a wrong PIN, until it is right, locked, or cancelled. */
-  function switchWithPin(card, form, title, sub, error) {
+  function switchWithPin(card, form, title, sub, error, term) {
     return pinPad(title, sub, error).then(function (pin) {
       if (pin === null) return;
-      return post(card, form, pin).then(function (res) {
+      return post(card, form, pin, term).then(function (res) {
         if (res.ok) return;
-        if (res.pinWrong) return switchWithPin(card, form, title, sub, 'Wrong PIN. Try again.');
+        if (res.pinWrong) return switchWithPin(card, form, title, sub, 'Wrong PIN. Try again.', term);
         if (window.Portal) window.Portal.toast(res.message, 'error');
       });
     });
@@ -267,11 +311,16 @@
     e.preventDefault();
     var label = card.dataset.label;
     var turningOff = card.dataset.enabled === '1';
+    var priced = card.dataset.priced === '1';
     var go = function () {
-      switchWithPin(card, form,
-        'Enter your PIN',
-        (turningOff ? 'Switch off ' : 'Switch on ') + label,
-        '');
+      var askTerm = !turningOff && priced ? termPicker(label) : Promise.resolve('');
+      askTerm.then(function (term) {
+        if (term === null) return;
+        switchWithPin(card, form,
+          'Enter your PIN',
+          (turningOff ? 'Switch off ' : 'Switch on ') + label + (term ? ' · ' + ({ monthly: 'monthly', yearly: 'yearly', one_time: 'lifetime' })[term] : ''),
+          '', term);
+      });
     };
     if (turningOff) {
       confirmOff(label).then(function (ok) { if (ok) go(); });

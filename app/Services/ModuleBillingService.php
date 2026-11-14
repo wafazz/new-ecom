@@ -289,6 +289,29 @@ final class ModuleBillingService
         return $sent;
     }
 
+    /**
+     * A superadmin grants a paid module by hand for a term (monthly, yearly or lifetime), with no invoice. The term starts
+     * after any time already paid. @return string|null error
+     */
+    public static function grant(string $key, string $term, int $actorId): ?string
+    {
+        if (!in_array($term, ['monthly', 'yearly', 'one_time'], true)) {
+            return 'Choose monthly, yearly or lifetime.';
+        }
+        $until = self::paidUntil($key);
+        $start = ($until !== null && $until !== self::FOREVER && $until >= date('Y-m-d'))
+            ? date('Y-m-d', strtotime($until . ' +1 day'))
+            : date('Y-m-d');
+        $end = $term === 'one_time' ? self::FOREVER : self::periodEnd($start, $term);
+        Database::query(
+            'INSERT INTO module_subscriptions (module_key, paid_until, period) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE paid_until = VALUES(paid_until), period = VALUES(period)',
+            [$key, $end, $term]
+        );
+        AuditService::log($actorId, 'module.granted', "{$key}: " . ModulePricing::PERIODS[$term] . ", paid until {$end} (granted by superadmin)");
+        self::flushCache();
+        return null;
+    }
+
     /** Invoices waiting for a superadmin decision. */
     public static function waiting(): array
     {

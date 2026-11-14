@@ -1047,3 +1047,11 @@ a.vis-card:hover{transform:translateY(-3px);box-shadow:0 14px 28px -12px rgba(47
 .bill-basket-total span{font-size:.8rem;color:var(--muted)}
 .bill-basket-total strong{font-size:1.5rem;font-variant-numeric:tabular-nums;color:var(--accent)}
 @media (max-width:560px){.bill-basket-total{text-align:left}}
+
+/* Superadmin: term picker before PIN when switching a paid module on */
+.term-options{display:grid;gap:.6rem;margin:.9rem 0 .2rem}
+.term-option{display:flex;align-items:center;justify-content:space-between;gap:.6rem;min-height:56px;padding:.8rem 1rem;border:1.5px solid var(--border-strong);border-radius:16px;background:var(--surface);color:var(--text);font:inherit;text-align:left;cursor:pointer;transition:border-color .15s ease,background .15s ease}
+.term-option:hover,.term-option:focus-visible{border-color:var(--accent);background:var(--accent-soft);outline:none}
+.term-name{font-weight:700;font-size:1.02rem}
+.term-sub{font-size:.85rem}
+@media (prefers-reduced-motion:reduce){.term-option{transition:none}}
