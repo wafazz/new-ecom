@@ -41,6 +41,12 @@ body.portal{background:var(--bg);color:var(--text);transition:background-color .
 .nav a{display:flex;align-items:center;gap:.7rem;padding:.5rem .6rem;border-radius:6px;color:var(--text);text-decoration:none;font-size:.9rem;position:relative}
 .nav a:hover{background:var(--surface-2);color:var(--text)}
 .nav a[aria-current=page]{background:var(--accent-soft);color:var(--accent);font-weight:600}
+/* Buy Add-On Module: always highlighted so it stands out among the menu items. */
+.nav a.nav-highlight{background:var(--accent);color:var(--accent-fg);font-weight:600;box-shadow:0 4px 14px -6px var(--accent)}
+.nav a.nav-highlight:hover{background:var(--accent);color:var(--accent-fg);filter:brightness(1.08)}
+.nav a.nav-highlight .ico{stroke:currentColor}
+.nav a.nav-highlight[aria-current=page]{background:var(--accent);color:var(--accent-fg)}
+.nav a.nav-highlight[aria-current=page]::before{background:var(--accent-fg);opacity:.85}
 .nav a[aria-current=page]::before{content:"";position:absolute;left:-.6rem;top:6px;bottom:6px;width:3px;border-radius:0 3px 3px 0;background:var(--accent)}
 .ico{flex:none;width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
 .nav-label{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}

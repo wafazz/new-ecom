@@ -162,7 +162,7 @@ $siteLogo = \App\Services\SiteLogo::url(); // the logo replaces the shop name wh
                     <div class="nav-title"><?= e($group) ?></div>
                     <?php foreach ($items as $item): [$href, $label, $icon, $badge] = $item; $kids = $item[4] ?? []; ?>
                         <?php if ($kids === []): ?>
-                        <a href="<?= e(url($href)) ?>" title="<?= e($label) ?>"<?= $href === $active ? ' aria-current="page"' : '' ?>>
+                        <a href="<?= e(url($href)) ?>" title="<?= e($label) ?>"<?= $href === '/admin/billing' ? ' class="nav-highlight"' : '' ?><?= $href === $active ? ' aria-current="page"' : '' ?>>
                             <?= $svg($icon) ?><span class="nav-label"><?= e($label) ?></span>
                             <?php if ($badge > 0): ?><span class="pill" aria-label="<?= (int) $badge ?> pending"><?= $badge > 99 ? '99+' : (int) $badge ?></span><?php endif; ?>
                         </a>
