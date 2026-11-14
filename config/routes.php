@@ -245,6 +245,15 @@ return function (Router $r): void {
             $r->post('/modules/{key}', 'Superadmin/ModulesController@toggle');
         });
 
+        // Product CSV import and export (admin and superadmin)
+        $r->group('/admin', ['auth:admin'], function (Router $r): void {
+            $r->get('/products/csv', 'Admin/ProductCsvController@index', ['module:product_csv']);
+            $r->get('/products/csv/export', 'Admin/ProductCsvController@export', ['module:product_csv']);
+            $r->post('/products/csv/check', 'Admin/ProductCsvController@check', ['module:product_csv']);
+            $r->post('/products/csv/apply', 'Admin/ProductCsvController@apply', ['module:product_csv']);
+            $r->post('/products/csv/cancel', 'Admin/ProductCsvController@cancel', ['module:product_csv']);
+        });
+
         // Bulk prices (admin and superadmin): preview, apply, undo
         $r->group('/admin', ['auth:admin'], function (Router $r): void {
             $r->get('/bulk-pricing', 'Admin/BulkPricingController@index', ['module:bulk_pricing']);

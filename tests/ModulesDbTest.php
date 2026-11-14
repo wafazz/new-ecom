@@ -100,6 +100,21 @@ $undo2 = \App\Services\BulkPricingService::undo($bp2['batch'], 1);
 check('bulk prices: a price changed again since is left alone by undo', (string) DB::query('SELECT retail_price FROM products WHERE id = ?', [$bpId])->fetchColumn() === '1.00' && $undo2['skipped'] >= 1);
 check('bulk prices: a zero percentage is refused', \App\Services\BulkPricingService::checkPercent(0.0) !== null);
 
+// Product CSV: a bad row is skipped on its own; the good row applies (price and stock).
+$csvId = Product::insert(['weight_kg' => '1.000', 'width_cm' => '10', 'length_cm' => '10', 'height_cm' => '10',
+    'name' => 'Csv Mug', 'slug' => 'csv-mug', 'sku' => 'CSVA1', 'category_id' => null, 'brand_id' => null,
+    'base_price' => '5', 'company_base_price' => '10', 'retail_price' => '10.00', 'discount_price' => null, 'stock' => 5, 'status' => 'active']);
+$file = "\xEF\xBB\xBFsku,retail_price,stock\nCSVA1,12.50,7\nNOPE-SKU,1.00,1\n,,\n";
+$checkedCsv = \App\Services\ProductCsvService::check($file);
+check('product CSV: the good row is ready', $checkedCsv['ok'] === 1);
+check('product CSV: an unknown SKU and an empty row are refused', $checkedCsv['bad'] === 2);
+$applied = \App\Services\ProductCsvService::apply($file, 1);
+$after = DB::query('SELECT retail_price, stock FROM products WHERE id = ?', [$csvId])->fetch();
+check('product CSV: the good row changes the price', (string) $after['retail_price'] === '12.50');
+check('product CSV: the good row changes the stock', (int) $after['stock'] === 7 && $applied['stock'] === 1);
+check('product CSV: the export lists the SKU', in_array('CSVA1', array_column(\App\Services\ProductCsvService::exportRows(), 0), true));
+check('product CSV: a file without headers is refused', \App\Services\ProductCsvService::check("CSVA1,1,1\n")['fatal'] !== null);
+
 // Newsletter: a sign-up only counts once its confirmation link is used, and the link works once.
 DB::query('DELETE FROM newsletter_subscribers');
 $nlToken = bin2hex(random_bytes(32));

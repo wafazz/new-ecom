@@ -22,6 +22,7 @@ final class Modules
         'back_in_stock' => ['Back-in-stock alerts', 'A "tell me when it\'s back" sign-up on sold-out products, and the emails sent on restock. Off hides the sign-up and stops new alerts. Waiting alerts are kept.'],
         'sales_reports' => ['Sales reports', 'The Sales reports page with CSV download, for admins. Off hides it and its menu item. Order data is not changed.'],
         'bulk_pricing' => ['Bulk price editor', 'Change many regular prices by a percentage, with a preview and undo, for admins. Off hides the page. Prices already changed are kept.'],
+        'product_csv' => ['Product import and export', 'Export all prices and stock as a spreadsheet, or upload one to change them by SKU. Off hides the page. Nothing is changed by the switch.'],
         'stock_movements' => ['Stock movement log', 'The Stock Movement page and the Movement links on Stock Control. Off hides the page only: stock is still changed and every change is still recorded.'],
         'vouchers' => ['Discount coupons', 'Discount codes shoppers enter at checkout, and the Vouchers menu. Off stops every code at once; orders that already used a code keep their discount.'],
     ];
