@@ -262,6 +262,8 @@ return function (Router $r): void {
             $r->post('/modules/{key}', 'Superadmin/ModulesController@toggle');
             $r->post('/modules/{key}/price', 'Superadmin/ModulesController@price');
             $r->post('/discounts', 'Superadmin/ModulesController@discount');
+            $r->get('/security', 'Superadmin/ModulesController@security');
+            $r->post('/security', 'Superadmin/ModulesController@changePin');
             $r->get('/billing', 'Superadmin/ModulesController@billing');
             $r->get('/invoices', 'Superadmin/InvoiceController@index');
             $r->get('/invoices/{id}/receipt', 'Superadmin/InvoiceController@receipt');

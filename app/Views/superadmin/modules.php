@@ -11,6 +11,13 @@ $onCount = count(array_filter($modules, fn($m) => $m['enabled']));
         <p class="mod-summary" data-count aria-live="polite"><?= $onCount ?> of <?= count($modules) ?> on</p>
     </header>
 
+    <?php if (empty($pinCustom)): ?>
+        <section class="msg-card pin-nudge" role="status">
+            <h2>Change your PIN</h2>
+            <p>You are using the default PIN, 123456. Anyone who knows it can switch modules. <a href="<?= e(url('/superadmin/security')) ?>">Set your own 6-digit PIN now</a>.</p>
+        </section>
+    <?php endif; ?>
+
     <section class="msg-card">
         <h2>Discounts on module prices</h2>
         <p class="muted">A discount sets every paid module to a percentage off, or to a fixed price, until the end time. A module's own discount (below) takes priority over this one while both are active. A fixed price never raises a price. A discount applies to invoices created while it runs; invoices already issued keep their price.</p>
@@ -73,6 +80,7 @@ $onCount = count(array_filter($modules, fn($m) => $m['enabled']));
                     <form method="post" action="<?= e(url('/superadmin/modules/' . $m['key'])) ?>" class="mod-form">
                         <?= csrf_field() ?>
                         <input type="hidden" name="enabled" value="<?= $m['enabled'] ? '0' : '1' ?>">
+                        <noscript><label class="mod-pin-fallback">Your PIN <input type="password" name="pin" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" autocomplete="off" required></label></noscript>
                         <button type="submit" class="mod-switch" role="switch"
                                 aria-checked="<?= $m['enabled'] ? 'true' : 'false' ?>"
                                 aria-label="<?= e($m['label']) ?>: <?= $m['enabled'] ? 'on, switch off' : 'off, switch on' ?>">
