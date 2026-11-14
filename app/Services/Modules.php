@@ -21,6 +21,7 @@ final class Modules
         'newsletter' => ['Newsletter sign-up', 'Sign-up boxes in the footer and at checkout, and the Newsletter list for admins. Off hides them and stops new sign-ups. Subscribers already on the list are kept.'],
         'back_in_stock' => ['Back-in-stock alerts', 'A "tell me when it\'s back" sign-up on sold-out products, and the emails sent on restock. Off hides the sign-up and stops new alerts. Waiting alerts are kept.'],
         'sales_reports' => ['Sales reports', 'The Sales reports page with CSV download, for admins. Off hides it and its menu item. Order data is not changed.'],
+        'bulk_pricing' => ['Bulk price editor', 'Change many regular prices by a percentage, with a preview and undo, for admins. Off hides the page. Prices already changed are kept.'],
         'stock_movements' => ['Stock movement log', 'The Stock Movement page and the Movement links on Stock Control. Off hides the page only: stock is still changed and every change is still recorded.'],
         'vouchers' => ['Discount coupons', 'Discount codes shoppers enter at checkout, and the Vouchers menu. Off stops every code at once; orders that already used a code keep their discount.'],
     ];

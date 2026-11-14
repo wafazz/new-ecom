@@ -245,6 +245,14 @@ return function (Router $r): void {
             $r->post('/modules/{key}', 'Superadmin/ModulesController@toggle');
         });
 
+        // Bulk prices (admin and superadmin): preview, apply, undo
+        $r->group('/admin', ['auth:admin'], function (Router $r): void {
+            $r->get('/bulk-pricing', 'Admin/BulkPricingController@index', ['module:bulk_pricing']);
+            $r->post('/bulk-pricing/preview', 'Admin/BulkPricingController@preview', ['module:bulk_pricing']);
+            $r->post('/bulk-pricing', 'Admin/BulkPricingController@apply', ['module:bulk_pricing']);
+            $r->post('/bulk-pricing/{id}/undo', 'Admin/BulkPricingController@undo', ['module:bulk_pricing']);
+        });
+
         // Sales reports (admin and superadmin, read-only)
         $r->group('/admin', ['auth:admin'], function (Router $r): void {
             $r->get('/reports', 'Admin/ReportController@index', ['module:sales_reports']);

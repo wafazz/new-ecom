@@ -85,6 +85,21 @@ $rep = \App\Services\SalesReportService::summary($today, $today);
 check('sales report: cancelled orders are not counted', $rep['orders'] === 1 && abs($rep['sales'] - 40.0) < 0.001);
 check('sales report: payment split matches the total', abs(array_sum(array_column(\App\Services\SalesReportService::byPayment($today, $today), 'sales')) - 40.0) < 0.001);
 
+// Bulk prices: a percentage change moves the regular price, an undo restores it, and a later edit is not overwritten.
+$bpId = Product::insert(['weight_kg' => '1.000', 'width_cm' => '10', 'length_cm' => '10', 'height_cm' => '10',
+    'name' => 'Bulk Tee', 'slug' => 'bulk-tee', 'sku' => 'BLK001', 'category_id' => null, 'brand_id' => null,
+    'base_price' => '5', 'company_base_price' => '10', 'retail_price' => '100.00', 'discount_price' => null, 'stock' => 5, 'status' => 'active']);
+$bpScope = ['type' => 'all', 'id' => 0];
+$bp = \App\Services\BulkPricingService::apply($bpScope, -10.0, 1);
+check('bulk prices: a -10% change moves the regular price', (string) DB::query('SELECT retail_price FROM products WHERE id = ?', [$bpId])->fetchColumn() === '90.00');
+$undo = \App\Services\BulkPricingService::undo($bp['batch'], 1);
+check('bulk prices: undo restores the old price', (string) DB::query('SELECT retail_price FROM products WHERE id = ?', [$bpId])->fetchColumn() === '100.00' && $undo['restored'] >= 1);
+$bp2 = \App\Services\BulkPricingService::apply($bpScope, 20.0, 1);
+DB::query('UPDATE products SET retail_price = 1.00 WHERE id = ?', [$bpId]);
+$undo2 = \App\Services\BulkPricingService::undo($bp2['batch'], 1);
+check('bulk prices: a price changed again since is left alone by undo', (string) DB::query('SELECT retail_price FROM products WHERE id = ?', [$bpId])->fetchColumn() === '1.00' && $undo2['skipped'] >= 1);
+check('bulk prices: a zero percentage is refused', \App\Services\BulkPricingService::checkPercent(0.0) !== null);
+
 // Newsletter: a sign-up only counts once its confirmation link is used, and the link works once.
 DB::query('DELETE FROM newsletter_subscribers');
 $nlToken = bin2hex(random_bytes(32));
