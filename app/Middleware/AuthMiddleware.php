@@ -7,7 +7,7 @@ use App\Core\Auth;
 use App\Core\Request;
 use App\Core\Response;
 
-/** `auth:admin` — must be logged in with exactly that role. */
+/** `auth:admin` — admin or superadmin; `auth:staff` / `auth:member` / `auth:superadmin` — exactly that role. */
 final class AuthMiddleware
 {
     public function handle(Request $request, ?string $role = null): void
@@ -19,7 +19,9 @@ final class AuthMiddleware
             }
             redirect(Auth::LOGIN[$role] ?? '/login');
         }
-        if ($role !== null && $user['role'] !== $role) {
+        // The admin portal also admits a superadmin; every other portal is exact.
+        $allowed = $role === 'admin' ? Auth::ADMIN_ROLES : [$role];
+        if ($role !== null && !in_array($user['role'], $allowed, true)) {
             Response::abort(403);
         }
     }

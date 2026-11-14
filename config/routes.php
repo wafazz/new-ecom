@@ -61,6 +61,8 @@ return function (Router $r): void {
             $r->post('/admin/login', 'Auth/AdminLoginController@login');
             $r->get('/staff/login', 'Auth/StaffLoginController@show');
             $r->post('/staff/login', 'Auth/StaffLoginController@login');
+            $r->get('/superadmin/login', 'Auth/SuperadminLoginController@show');
+            $r->post('/superadmin/login', 'Auth/SuperadminLoginController@login');
             $r->get('/forgot-password', 'Auth/PasswordResetController@show');
             $r->post('/forgot-password', 'Auth/PasswordResetController@send');
             $r->get('/reset-password/{token}', 'Auth/PasswordResetController@form');
@@ -88,14 +90,14 @@ return function (Router $r): void {
             $r->post('/brands/{id}', 'Manage/BrandController@update');
             $r->post('/brands/{id}/delete', 'Manage/BrandController@destroy');
             // Flash sales. The router takes the first match, so "preview" stays above the {id} routes.
-            $r->get('/flash-sales', 'Manage/FlashSaleController@index');
-            $r->get('/flash-sales/create', 'Manage/FlashSaleController@create');
-            $r->post('/flash-sales', 'Manage/FlashSaleController@store');
-            $r->post('/flash-sales/preview', 'Manage/FlashSaleController@preview');
-            $r->get('/flash-sales/{id}/edit', 'Manage/FlashSaleController@edit');
-            $r->post('/flash-sales/{id}', 'Manage/FlashSaleController@update');
-            $r->post('/flash-sales/{id}/active', 'Manage/FlashSaleController@toggle');
-            $r->post('/flash-sales/{id}/delete', 'Manage/FlashSaleController@destroy');
+            $r->get('/flash-sales', 'Manage/FlashSaleController@index', ['module:flash_sales']);
+            $r->get('/flash-sales/create', 'Manage/FlashSaleController@create', ['module:flash_sales']);
+            $r->post('/flash-sales', 'Manage/FlashSaleController@store', ['module:flash_sales']);
+            $r->post('/flash-sales/preview', 'Manage/FlashSaleController@preview', ['module:flash_sales']);
+            $r->get('/flash-sales/{id}/edit', 'Manage/FlashSaleController@edit', ['module:flash_sales']);
+            $r->post('/flash-sales/{id}', 'Manage/FlashSaleController@update', ['module:flash_sales']);
+            $r->post('/flash-sales/{id}/active', 'Manage/FlashSaleController@toggle', ['module:flash_sales']);
+            $r->post('/flash-sales/{id}/delete', 'Manage/FlashSaleController@destroy', ['module:flash_sales']);
             // Product reviews moderation (same permission as products).
             $r->get('/reviews', 'Manage/ReviewController@index');
             $r->post('/reviews/{id}/status', 'Manage/ReviewController@status');
@@ -144,8 +146,8 @@ return function (Router $r): void {
         // Stock Control Management: admin always passes, staff need stock.manage.
         $stock = function (Router $r): void {
             $r->get('/stock', 'Manage/StockController@index', ['permission:stock.manage']);
-            $r->get('/stock/movements', 'Manage/StockController@movements', ['permission:stock.manage']);
-            $r->get('/stock/history', 'Manage/StockController@history', ['permission:stock.manage']);
+            $r->get('/stock/movements', 'Manage/StockController@movements', ['permission:stock.manage', 'module:stock_movements']);
+            $r->get('/stock/history', 'Manage/StockController@history', ['permission:stock.manage', 'module:stock_movements']);
             $r->post('/stock/adjust', 'Manage/StockController@adjust', ['permission:stock.manage']);
         };
         $r->group('/admin', ['auth:admin'], $stock);
@@ -192,11 +194,11 @@ return function (Router $r): void {
             $r->post('/staff/{id}/toggle', 'Admin/StaffController@toggle');
             $r->get('/staff/{id}/edit', 'Admin/StaffController@edit');
             $r->post('/staff/{id}/permissions', 'Admin/StaffController@permissions');
-            $r->get('/vouchers', 'Admin/VoucherController@index');
-            $r->post('/vouchers', 'Admin/VoucherController@store');
-            $r->post('/vouchers/{id}/active', 'Admin/VoucherController@toggle');
-            $r->post('/vouchers/{id}/delete', 'Admin/VoucherController@delete');
-            $r->post('/vouchers/{id}/email', 'Admin/VoucherController@email');
+            $r->get('/vouchers', 'Admin/VoucherController@index', ['module:vouchers']);
+            $r->post('/vouchers', 'Admin/VoucherController@store', ['module:vouchers']);
+            $r->post('/vouchers/{id}/active', 'Admin/VoucherController@toggle', ['module:vouchers']);
+            $r->post('/vouchers/{id}/delete', 'Admin/VoucherController@delete', ['module:vouchers']);
+            $r->post('/vouchers/{id}/email', 'Admin/VoucherController@email', ['module:vouchers']);
             $r->get('/shipping-rates', 'Admin/ShippingRatesController@edit');
             $r->post('/shipping-rates', 'Admin/ShippingRatesController@update');
             $r->get('/invoice', 'Admin/InvoiceSettingsController@edit');
@@ -232,6 +234,12 @@ return function (Router $r): void {
             $r->post('/commissions/{id}/recalculate', 'Admin/AffiliateController@recalculateOne');
             $r->post('/commissions/{id}/approve', 'Admin/AffiliateController@approve');
             $r->post('/commissions/{id}/reject', 'Admin/AffiliateController@reject');
+        });
+
+        // Superadmin area: module switches only. Admins cannot reach these routes.
+        $r->group('/superadmin', ['auth:superadmin'], function (Router $r): void {
+            $r->get('/modules', 'Superadmin/ModulesController@index');
+            $r->post('/modules/{key}', 'Superadmin/ModulesController@toggle');
         });
 
         // Staff portal

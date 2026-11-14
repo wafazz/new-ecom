@@ -1,0 +1,67 @@
+<?php
+// Superadmin role and module switches. The first part needs no database; the second runs only on `*_test` databases.
+use App\Core\Auth;
+use App\Core\Database as DB;
+use App\Models\Product;
+use App\Models\User;
+use App\Services\FlashSaleService as F;
+use App\Services\Modules;
+use App\Services\StockService;
+
+check('superadmin lands on the admin portal', Auth::HOME['superadmin'] === '/admin');
+check('superadmin signs in on its own page', Auth::LOGIN['superadmin'] === '/superadmin/login');
+check('admin and superadmin both count as admin roles', Auth::ADMIN_ROLES === ['admin', 'superadmin']);
+check('plain admin is not given the superadmin login', Auth::LOGIN['admin'] === '/admin/login');
+check('flash sales is a known module', isset(Modules::LIST['flash_sales']));
+check('an unknown module is never on', Modules::enabled('no_such_module') === false);
+
+if (!str_ends_with((string) env('DB_NAME', ''), '_test')) {
+    echo "  skip  (set DB_NAME=<name>_test to run the module DB tests)\n";
+    return;
+}
+reset_test_db();
+
+check('a superadmin account can be stored', User::create('superadmin', 'Root', 'root@example.test', 'long-password-1') > 0);
+check('the role is saved as superadmin', (string) DB::query("SELECT role FROM users WHERE email = 'root@example.test'")->fetchColumn() === 'superadmin');
+
+$tote = Product::insert(['weight_kg' => '1.000', 'width_cm' => '10', 'length_cm' => '10', 'height_cm' => '10',
+    'name' => 'Linen Tote', 'slug' => 'linen-tote', 'sku' => 'TOTE01', 'category_id' => null, 'brand_id' => null,
+    'base_price' => '5', 'company_base_price' => '10', 'retail_price' => '50.00', 'discount_price' => null, 'stock' => 20, 'status' => 'active']);
+$now = time();
+F::save(null, ['name' => 'Now', 'starts_at' => date('Y-m-d H:i:s', $now - 3600), 'ends_at' => date('Y-m-d H:i:s', $now + 3600)], [$tote => '20.00']);
+
+check('modules are on by default', Modules::enabled('flash_sales') === true);
+check('a running sale shows while the module is on', count(F::live()) === 1 && F::hasLive());
+check('a running sale prices the product while the module is on', F::offersFor([$tote])[$tote]['percent'] === '20.00');
+
+Modules::set('flash_sales', false);
+check('switching the module off turns it off', Modules::enabled('flash_sales') === false);
+check('switched off: no storefront sale blocks', F::live() === [] && F::hasLive() === false);
+check('switched off: no flash offers for prices', F::offersFor([$tote]) === []);
+$attached = F::attach([['id' => $tote]]);
+check('switched off: the product is not priced as a flash sale', $attached[0]['flash_percent'] === null);
+check('switched off: the sale itself is kept, not deleted', (int) DB::query('SELECT COUNT(*) FROM flash_sales')->fetchColumn() === 1);
+
+Modules::set('flash_sales', true);
+check('switching it back on restores the sale', count(F::live()) === 1 && F::hasLive());
+
+// Discount coupons: the same switch stops codes at checkout, including ones kept in a shopper's session.
+DB::query("INSERT INTO vouchers (code, type, value, min_subtotal, active) VALUES ('SAVE10', 'percent', '10.00', '0.00', 1)");
+check('coupons are on by default', \App\Services\VoucherService::quote('SAVE10', 10000)['ok'] === true);
+Modules::set('vouchers', false);
+$off = \App\Services\VoucherService::quote('SAVE10', 10000);
+check('switched off: a valid code is refused', $off['ok'] === false && $off['discount'] === 0);
+Modules::set('vouchers', true);
+check('switched back on: the code works again', \App\Services\VoucherService::quote('SAVE10', 10000)['ok'] === true);
+
+// Stock movement: switching the log page off must not stop stock changes being recorded.
+$before = (int) DB::query('SELECT COUNT(*) FROM stock_movements WHERE product_id = ?', [$tote])->fetchColumn();
+Modules::set('stock_movements', false);
+StockService::delta((int) $tote, null, -2, 'manual', null, null, 'module test');
+$after = (int) DB::query('SELECT COUNT(*) FROM stock_movements WHERE product_id = ?', [$tote])->fetchColumn();
+check('switched off: a stock change is still recorded', $after === $before + 1);
+check('switched off: the stock level still changes', (int) DB::query('SELECT stock FROM products WHERE id = ?', [$tote])->fetchColumn() === 18);
+Modules::set('stock_movements', true);
+
+$all = Modules::all();
+check('the module list has every registered module', count($all) === count(Modules::LIST));

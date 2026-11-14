@@ -1,13 +1,15 @@
 <?php
 use App\Core\Auth;
 use App\Core\Database;
+use App\Services\Modules;
 
 $me = Auth::user();
 $role = $me['role'];
 $home = Auth::HOME[$role];
 
 // Sidebar badges: work waiting for a person (admin sees orders + commissions, staff only orders they may view).
-$canOrders = $role === 'admin' || ($role === 'staff' && Auth::can('orders.view'));
+$isAdminRole = in_array($role, Auth::ADMIN_ROLES, true);
+$canOrders = $isAdminRole || ($role === 'staff' && Auth::can('orders.view'));
 $orderCounts = $canOrders ? Database::query('SELECT status, COUNT(*) FROM orders GROUP BY status')->fetchAll(\PDO::FETCH_KEY_PAIR) : [];
 $pendingOrders = (int) ($orderCounts['pending'] ?? 0);
 // Orders sub-menu: All + one entry per status, each with its live count. [href, label, status key, count]
@@ -18,22 +20,27 @@ $orderSub = function (string $portal) use ($orderCounts): array {
     }
     return $kids;
 };
-$pendingCommissions = $role === 'admin' ? (int) Database::query("SELECT COUNT(*) FROM affiliate_commissions WHERE status = 'pending'")->fetchColumn() : 0;
+$pendingCommissions = $isAdminRole ? (int) Database::query("SELECT COUNT(*) FROM affiliate_commissions WHERE status = 'pending'")->fetchColumn() : 0;
 
 // [group => [[href, label, icon, badge]]]
+$flashMenu = Modules::enabled('flash_sales');
+$vouchersMenu = Modules::enabled('vouchers');
+$movementMenu = Modules::enabled('stock_movements');
 $groups = match ($role) {
-    'admin' => [
+    'admin', 'superadmin' => [
         'Overview' => [['/admin', 'Dashboard', 'home', 0]],
-        'Catalog' => [['/admin/products', 'Products', 'box', 0], ['/admin/categories', 'Categories', 'tag', 0], ['/admin/brands', 'Brands', 'tag', 0], ['/admin/flash-sales', 'Flash sales', 'coin', 0], ['/admin/reviews', 'Reviews', 'heart', 0]],
-        'Inventory' => [['/admin/stock', 'Stock Control', 'stack', 0], ['/admin/stock/movements', 'Stock Movement', 'swap', 0]],
-        'Sales' => [['/admin/orders', 'Orders', 'cart', $pendingOrders, $orderSub('/admin')], ['/admin/affiliates', 'Affiliates', 'link', 0], ['/admin/commissions', 'Commissions', 'coin', $pendingCommissions], ['/admin/withdrawals', 'Withdrawals', 'coin', 0], ['/admin/vouchers', 'Vouchers', 'coin', 0]],
+        'Catalog' => [['/admin/products', 'Products', 'box', 0], ['/admin/categories', 'Categories', 'tag', 0], ['/admin/brands', 'Brands', 'tag', 0], ...($flashMenu ? [['/admin/flash-sales', 'Flash sales', 'coin', 0]] : []), ['/admin/reviews', 'Reviews', 'heart', 0]],
+        'Inventory' => [['/admin/stock', 'Stock Control', 'stack', 0], ...($movementMenu ? [['/admin/stock/movements', 'Stock Movement', 'swap', 0]] : [])],
+        'Sales' => [['/admin/orders', 'Orders', 'cart', $pendingOrders, $orderSub('/admin')], ['/admin/affiliates', 'Affiliates', 'link', 0], ['/admin/commissions', 'Commissions', 'coin', $pendingCommissions], ['/admin/withdrawals', 'Withdrawals', 'coin', 0], ...($vouchersMenu ? [['/admin/vouchers', 'Vouchers', 'coin', 0]] : [])],
         'Administration' => [['/admin/staff', 'Staff', 'users', 0], ['/admin/visitors', 'Visitors', 'pin', 0], ['/admin/shipping-rates', 'Shipping rates', 'truck', 0], ['/admin/invoice', 'Invoice details', 'stack', 0], ['/admin/backup', 'Backup', 'lock', 0], ['/admin/email/announce', 'Announcements', 'heart', 0], ['/admin/payments', 'Payments', 'card', 0], ['/admin/api', 'API Management', 'link', 0, [['/admin/whatsapp', 'WhatsApp', '', 0], ['/admin/email', 'Email', '', 0], ['/admin/payments/billplz', 'Billplz', '', 0], ['/admin/shipping/ninjavan', 'NinjaVan', '', 0], ['/admin/shipping/jnt-express', 'J&T Express', '', 0]]], ['/admin/settings', 'Settings', 'gear', 0]],
         'Account' => [['/admin/profile', 'Profile', 'user', 0], ['/admin/password', 'Password', 'lock', 0]],
-    ],
+    ] + ($role === 'superadmin' ? [
+        'Superadmin' => [['/superadmin/modules', 'Modules', 'gear', 0]],
+    ] : []),
     'staff' => array_filter([
         'Overview' => [['/staff', 'Dashboard', 'home', 0]],
-        'Catalog' => Auth::can('products.manage') ? [['/staff/products', 'Products', 'box', 0], ['/staff/categories', 'Categories', 'tag', 0], ['/staff/brands', 'Brands', 'tag', 0], ['/staff/flash-sales', 'Flash sales', 'coin', 0], ['/staff/reviews', 'Reviews', 'heart', 0]] : [],
-        'Inventory' => Auth::can('stock.manage') ? [['/staff/stock', 'Stock Control', 'stack', 0], ['/staff/stock/movements', 'Stock Movement', 'swap', 0]] : [],
+        'Catalog' => Auth::can('products.manage') ? [['/staff/products', 'Products', 'box', 0], ['/staff/categories', 'Categories', 'tag', 0], ['/staff/brands', 'Brands', 'tag', 0], ...($flashMenu ? [['/staff/flash-sales', 'Flash sales', 'coin', 0]] : []), ['/staff/reviews', 'Reviews', 'heart', 0]] : [],
+        'Inventory' => Auth::can('stock.manage') ? [['/staff/stock', 'Stock Control', 'stack', 0], ...($movementMenu ? [['/staff/stock/movements', 'Stock Movement', 'swap', 0]] : [])] : [],
         'Sales' => Auth::can('orders.view') ? [['/staff/orders', 'Orders', 'cart', $pendingOrders, $orderSub('/staff')]] : [],
         'Administration' => array_merge(
             Auth::can('payments.manage') ? [['/staff/payments', 'Payments', 'card', 0]] : [],
@@ -127,7 +134,7 @@ $siteLogo = \App\Services\SiteLogo::url(); // the logo replaces the shop name wh
     <?php endif; ?>
     <?php foreach (($scripts ?? []) as $__js): ?><script src="<?= e(asset('js/' . $__js)) ?>" defer></script><?php endforeach; ?>
 </head>
-<body class="portal"<?= in_array($role, ['admin', 'staff'], true) ? ' data-search="' . e(url($home . '/search')) . '"' : '' ?>>
+<body class="portal"<?= in_array($role, ['admin', 'superadmin', 'staff'], true) ? ' data-search="' . e(url($home . '/search')) . '"' : '' ?>>
 <div class="shell">
     <aside class="sidebar" id="sidebar" aria-label="Main navigation">
         <div class="sidebar-head">

@@ -12,9 +12,15 @@ final class Auth
     /** Failed logins from one IP across ALL emails: stops password spraying that rotates the email. */
     public const MAX_IP_ATTEMPTS = 30;
 
-    /** Where each role lands after login. */
-    public const HOME = ['admin' => '/admin', 'staff' => '/staff', 'member' => '/member'];
-    public const LOGIN = ['admin' => '/admin/login', 'staff' => '/staff/login', 'member' => '/login'];
+    /**
+     * Where each role lands after login. A superadmin works in the admin portal (HOME is /admin, so every
+     * admin link keeps working) and has its own sign-in page and the Superadmin menu (Modules).
+     */
+    public const HOME = ['admin' => '/admin', 'superadmin' => '/admin', 'staff' => '/staff', 'member' => '/member'];
+    public const LOGIN = ['admin' => '/admin/login', 'superadmin' => '/superadmin/login', 'staff' => '/staff/login', 'member' => '/login'];
+
+    /** Roles that run the admin portal. Only superadmin may change module switches (see isSuperadmin). */
+    public const ADMIN_ROLES = ['admin', 'superadmin'];
 
     private static ?array $user = null;
     private static bool $loaded = false;
@@ -108,7 +114,7 @@ final class Auth
         if ($user === null) {
             return false;
         }
-        if ($user['role'] === 'admin') {
+        if (in_array($user['role'], self::ADMIN_ROLES, true)) {
             return true;
         }
         $perms = json_decode((string) $user['permissions'], true);

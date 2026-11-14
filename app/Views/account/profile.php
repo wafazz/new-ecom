@@ -37,7 +37,7 @@ $active = 'profile';
             <div><dt><?= $role === 'member' ? 'Member since' : 'Account created' ?></dt><dd><?= e($fmt($me['created_at'])) ?></dd></div>
             <div><dt>Last sign-in</dt><dd><?= e($me['last_login_at'] ? date('d M Y, H:i', strtotime((string) $me['last_login_at'])) : '—') ?></dd></div>
         </dl>
-        <?php if ($role === 'admin'): ?>
+        <?php if (in_array($role, \App\Core\Auth::ADMIN_ROLES, true)): ?>
             <h3>Access</h3><p class="muted">Administrators can use every part of the back office.</p>
         <?php elseif ($role === 'staff'): ?>
             <h3>What you can do</h3>

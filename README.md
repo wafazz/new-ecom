@@ -57,6 +57,14 @@ Payment methods (admin **Payments** page, or staff with `payments.manage`): swit
 
 Admin-editable (Settings page): guest checkout on/off, flat shipping fee, default affiliate commission %.
 
+**Superadmin and modules.** A superadmin is an admin that can also switch whole features on or off (Superadmin > Modules, `/superadmin/modules`). Admins run the back office but cannot see or change those switches. Superadmins sign in at `/superadmin/login` and work in the admin portal. Create the first one from the command line (the password is prompted):
+
+```
+php bin/create-admin.php --superadmin "Your Name" you@example.com
+```
+
+A switched-off module returns 404 on its pages, hides its menu items, and stops its storefront blocks and prices. Its data is kept. Flash sales is the first module; to make another one switchable, add it to `Modules::LIST` and guard its routes with `module:<key>`.
+
 ## Deploy checklist
 1. Point the web root at `public/` (the root `.htaccess` is only a safety net).
 2. `.env`: `APP_ENV=production`, `APP_DEBUG=false`, real `APP_URL` (https), `APP_KEY` from `php -r 'echo bin2hex(random_bytes(32));'`, DB credentials. Never commit `.env`.
