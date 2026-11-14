@@ -1101,3 +1101,16 @@ a.vis-card:hover{transform:translateY(-3px);box-shadow:0 14px 28px -12px rgba(47
 .flip-clock.is-mini .flip-tile{max-width:52px}
 .flip-clock.is-mini .flip-num{font-size:58cqw}
 .flip-clock.is-mini .flip-tile::after{height:1px;opacity:.45}
+
+/* Info popup: tabs, and the page behind is still while it is open */
+.bill-info-tabs{display:flex;flex-wrap:wrap;gap:.35rem;margin:.2rem 0 .8rem;border-bottom:1px solid var(--border)}
+.bill-info-tabs [role=tab]{min-height:40px;padding:.4rem .7rem;border:0;border-bottom:2px solid transparent;background:none;color:var(--muted);font:inherit;font-size:.9rem;font-weight:600;cursor:pointer}
+.bill-info-tabs [role=tab][aria-selected=true]{color:var(--accent);border-bottom-color:var(--accent)}
+.bill-info-tabs [role=tab]:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:6px}
+.bill-info-panel{min-height:4.5rem;line-height:1.55;animation:info-in .2s ease}
+.bill-info-panel[hidden]{display:none}
+.bill-info-panel p{margin:0}
+.bill-info-actions{display:flex;justify-content:flex-end;flex-wrap:wrap;gap:.5rem;margin-top:.9rem}
+html.info-open{overflow:hidden}
+@keyframes info-in{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){.bill-info-panel{animation:none}}
