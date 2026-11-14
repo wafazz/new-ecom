@@ -40,6 +40,7 @@ final class BillingController extends Controller
             'rows' => $rows,
             'bank' => PlatformSettings::bank(),
             'billplzReady' => PlatformSettings::billplzCredentials() !== null,
+            'scripts' => ['billing.js'],
         ], 'portal');
     }
 
