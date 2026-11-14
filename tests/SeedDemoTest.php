@@ -38,9 +38,10 @@ check('asking for more orders tops up to that number', $code === 0 && $n($demoOr
 
 [$code, $out] = $run('--remove');
 check('--remove deletes only the demo data', $code === 0 && $n("SELECT COUNT(*) FROM products WHERE slug LIKE 'demo-%'") === 0 && $n("SELECT COUNT(*) FROM categories WHERE slug LIKE 'demo-%'") === 0 && $n("SELECT COUNT(*) FROM brands WHERE slug LIKE 'demo-%'") === 0 && $n($demoOrders) === 0 && $n('SELECT COUNT(*) FROM products WHERE slug NOT LIKE "demo-%"') === $before);
-$leftFiles = count(array_filter($img, fn($p) => is_file(BASE_PATH . '/public/' . $p)));
+$leftList = array_values(array_filter($img, fn($p) => is_file(BASE_PATH . '/public/' . $p)));
+$leftFiles = count($leftList);
 $orphanItems = $n('SELECT COUNT(*) FROM order_items WHERE order_id NOT IN (SELECT id FROM orders)');
-check("--remove deletes the image files (files still there: {$leftFiles})", $leftFiles === 0);
+check("--remove deletes the image files (files still there: {$leftFiles}" . ($leftList ? ': ' . implode(', ', $leftList) : '') . ')', $leftFiles === 0);
 check("--remove leaves no orphan order items (orphans: {$orphanItems})", $orphanItems === 0);
 
 [$code, $out] = (function () { $o = []; exec('APP_ENV=production ' . escapeshellarg(PHP_BINARY) . ' ' . escapeshellarg(BASE_PATH . '/bin/seed-demo.php') . ' 2>&1', $o, $c); return [$c, implode("\n", $o)]; })();
