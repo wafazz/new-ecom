@@ -8,3 +8,5 @@
 <?php require BASE_PATH . '/app/Views/orders/_proof.php'; ?>
 <?php require BASE_PATH . '/app/Views/orders/_pay.php'; ?>
 <?php require BASE_PATH . '/app/Views/orders/_cancel.php'; ?>
+<?php require BASE_PATH . '/app/Views/orders/_return.php'; ?>
+<?php require BASE_PATH . '/app/Views/orders/_support.php'; ?>

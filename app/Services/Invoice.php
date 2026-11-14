@@ -213,6 +213,9 @@ final class Invoice
         $row('Shipping', (float) $order['shipping_fee'] > 0 ? self::money((float) $order['shipping_fee']) : 'Free');
         $pdf->line($x, $y - 8, self::RIGHT, $y - 8, self::ACCENT, 0.8);
         $y += 6;
+        if ((float) ($order['tax_total'] ?? 0) > 0) {
+            $row('Included SST', self::money((float) $order['tax_total']));
+        }
         $row('Total', self::money((float) $order['total']), true);
         return max($end, $y);
     }

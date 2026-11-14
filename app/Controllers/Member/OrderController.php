@@ -35,6 +35,8 @@ final class OrderController extends Controller
             'items' => OrderService::items((int) $order['id']),
             'events' => OrderService::events((int) $order['id']),
             'cancelAction' => $order['status'] === 'pending' ? '/member/orders/' . $order['order_no'] . '/cancel' : null,
+            'returnAction' => '/member/orders/' . $order['order_no'] . '/return',
+            'supportAction' => '/member/orders/' . $order['order_no'] . '/support',
             'payAction' => $order['payment_method'] === 'billplz' && $order['payment_status'] === 'unpaid' && $order['status'] === 'pending' ? '/member/orders/' . $order['order_no'] . '/pay' : null,
             'payment' => Payments::find($order['payment_method']),
             'proofs' => ReceiptService::forOrder((int) $order['id']),
@@ -53,6 +55,30 @@ final class OrderController extends Controller
             $this->backWithErrors('/member/orders/' . $orderNo, ['form' => $error]);
         }
         $this->success('/member/orders/' . $orderNo, 'Your order has been cancelled.');
+    }
+
+    public function support(Request $request, string $orderNo): void
+    {
+        $order = $this->mine($orderNo);
+        if (\App\Services\RateLimiter::tooMany('support', $request->ip(), 20, 60)) {
+            $this->backWithErrors('/member/orders/' . $orderNo, ['form' => 'Too many messages. Please wait a while.']);
+        }
+        \App\Services\RateLimiter::hit('support', $request->ip());
+        $error = \App\Services\SupportService::post((int) $order['id'], 'customer', $request->str('body'));
+        if ($error !== null) {
+            $this->backWithErrors('/member/orders/' . $orderNo, ['form' => $error]);
+        }
+        $this->success('/member/orders/' . $orderNo, 'Message sent. We reply on this page.');
+    }
+
+    public function requestReturn(Request $request, string $orderNo): void
+    {
+        $order = $this->mine($orderNo);
+        $error = \App\Services\ReturnService::request((int) $order['id'], $request->str('reason'));
+        if ($error !== null) {
+            $this->backWithErrors('/member/orders/' . $orderNo, ['form' => $error]);
+        }
+        $this->success('/member/orders/' . $orderNo, 'Your return request has been sent. The shop will reply on your order page.');
     }
 
     public function receipt(Request $request, string $orderNo): void

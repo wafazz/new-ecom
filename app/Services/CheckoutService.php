@@ -21,7 +21,7 @@ final class CheckoutService
      * @return array{order_id:int, order_no:string, token:?string, user_id:?int}
      * @throws CheckoutException
      */
-    public static function place(int $cartId, array $contact, string $paymentMethod, ?int $userId, ?array $newAccount = null, ?string $refCode = null, ?string $voucherCode = null): array
+    public static function place(int $cartId, array $contact, string $paymentMethod, ?int $userId, ?array $newAccount = null, ?string $refCode = null, ?string $voucherCode = null, int $pointsRequested = 0, ?string $giftCode = null): array
     {
         $pdo = Database::connection();
         $pdo->beginTransaction();
@@ -57,6 +57,9 @@ final class CheckoutService
                 }
 
                 $digital = DigitalService::isDigital($p);
+                if (BundleService::isBundle((int) $p['id']) && !Modules::enabled('bundles')) {
+                    throw new CheckoutException("\"{$p['name']}\" is a bundle, and bundles are not available right now. Please remove it from your cart.");
+                }
                 // A cart filled before the switch was turned off cannot be paid for while it is off.
                 if ($digital && !Modules::enabled('digital_products')) {
                     throw new CheckoutException("\"{$p['name']}\" is a digital product, and digital products are not available right now. Please remove it from your cart.");
@@ -126,38 +129,64 @@ final class CheckoutService
                 VoucherService::redeem((int) $voucher['id']);
             }
 
+            // Loyalty points: members can spend up to half of the items' value; the ledger is locked while it is checked.
+            $pointsUsed = 0;
+            if ($userId !== null && $pointsRequested > 0 && Modules::enabled('loyalty')) {
+                $lp = LoyaltyService::discountFor($userId, $subtotal - $discount, $pointsRequested);
+                $pointsUsed = $lp['points'];
+                $discount += $lp['cents'];
+            }
+
+            // Gift card: covers up to its balance and no more than the items left after the discounts above.
+            $giftCardId = null;
+            $giftUsed = 0;
+            if ($giftCode !== null && $giftCode !== '' && Modules::enabled('gift_cards')) {
+                $g = GiftCardService::reserve($giftCode, $subtotal - $discount);
+                $giftCardId = $g['id'];
+                $giftUsed = $g['cents'];
+                $discount += $giftUsed;
+            }
+
             // Postage is worked out here from the zone, weight and payment method. The browser never sets it.
             $quote = ShippingRates::quote($shipLines, $subtotal - $discount, (string) $contact['state'], $paymentMethod);
             $shipping = $quote['fee'];
             $token = $userId === null ? bin2hex(random_bytes(16)) : null;
             $orderNo = self::newOrderNo();
+            // SST is part of the price already paid: worked out here from the final discount, stored on the order and each item.
+            $taxTotal = TaxService::split($items, $subtotal, $discount);
 
             Database::query(
                 'INSERT INTO orders (order_no, user_id, customer_name, customer_email, customer_phone, ship_line1, ship_line2, ship_city, ship_state, ship_postcode,
                                      subtotal, shipping_fee, total, payment_method, track_hash, notes, affiliate_id, voucher_id, voucher_code, discount_total,
-                                     shipping_zone, billable_kg, cod_fee)
-                 VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',
+                                     shipping_zone, billable_kg, cod_fee, tax_total)
+                 VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',
                 [
                     $orderNo, $userId, $contact['name'], strtolower($contact['email']), $contact['phone'],
                     $contact['line1'], $contact['line2'] ?: null, $contact['city'], $contact['state'], $contact['postcode'],
                     PricingService::format($subtotal), PricingService::format($shipping), PricingService::format($subtotal - $discount + $shipping),
                     $paymentMethod, $token === null ? null : hash('sha256', $token), $contact['notes'] ?: null, $affiliateId,
                     $voucher === null ? null : (int) $voucher['id'], $voucher === null ? null : $voucher['code'], PricingService::format($discount),
-                    $quote['zone'], $quote['kg'], PricingService::format($quote['cod']),
+                    $quote['zone'], $quote['kg'], PricingService::format($quote['cod']), PricingService::format($taxTotal),
                 ]
             );
             $orderId = (int) $pdo->lastInsertId();
+            if ($userId !== null && $pointsUsed > 0) {
+                LoyaltyService::spend($orderId, $userId, $pointsUsed);
+            }
+            if ($giftCardId !== null && $giftUsed > 0) {
+                GiftCardService::spend($orderId, $giftCardId, $giftUsed);
+            }
 
             foreach ($items as $it) {
                 Database::query(
-                    'INSERT INTO order_items (order_id, product_id, variant_id, product_name, variant_label, sku, unit_price, retail_price, base_price, company_base_price, qty, line_total, commission_rate, digital_delivery)
-                     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)',
+                    'INSERT INTO order_items (order_id, product_id, variant_id, product_name, variant_label, sku, unit_price, retail_price, base_price, company_base_price, qty, line_total, commission_rate, digital_delivery, tax_rate, tax_amount)
+                     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',
                     [$orderId, $it['product_id'], $it['variant_id'], $it['name'], $it['label'], $it['sku'],
                      PricingService::format($it['unit']), PricingService::format($it['retail']), PricingService::format($it['base']), PricingService::format($it['company']),
-                     $it['qty'], PricingService::format($it['unit'] * $it['qty']), $affiliateId !== null ? $it['rate'] : null, $it['delivery']]
+                     $it['qty'], PricingService::format($it['unit'] * $it['qty']), $affiliateId !== null ? $it['rate'] : null, $it['delivery'], $it['tax_rate'], PricingService::format($it['tax_amount'])]
                 );
                 if ($it['delivery'] === null) {
-                    StockService::delta($it['product_id'], $it['variant_id'], -$it['qty'], 'order', $orderId, $userId); // locks the row, logs the movement
+                    BundleService::adjustLine((int) $it['product_id'], $it['variant_id'] !== null ? (int) $it['variant_id'] : null, -(int) $it['qty'], 'order', $orderId, $userId); // locks the row, logs the movement
                 } // digital items have no stock to take; license keys are assigned when the order is paid
             }
 

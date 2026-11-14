@@ -102,6 +102,9 @@ final class StockService
 
     private static function change(int $productId, ?int $variantId, ?int $delta, ?int $setTo, string $reason, ?int $orderId, ?int $actorId, ?string $note): array
     {
+        if ($variantId === null && BundleService::isBundle($productId)) {
+            throw new \DomainException('A bundle has no stock of its own. Change the stock of the items in it instead.');
+        }
         $pdo = Database::connection();
         $own = !$pdo->inTransaction();
         $own && $pdo->beginTransaction();
@@ -124,6 +127,13 @@ final class StockService
             }
             if ($after !== $before) {
                 Database::query($variantId !== null ? 'UPDATE product_variants SET stock = ? WHERE id = ?' : 'UPDATE products SET stock = ? WHERE id = ?', [$after, $variantId ?? $productId]);
+                if ($variantId === null) {
+                    BundleService::refreshFor($productId); // a bundle's stock depends on its parts
+                }
+                // Stock came back: queue the "back in stock" emails for anyone waiting (sent by the worker, not here).
+                if ($before <= 0 && $after > 0 && StockAlertService::waiting($productId, (int) ($variantId ?? 0))) {
+                    Queue::push('stock.back', ['product_id' => $productId, 'variant_key' => (int) ($variantId ?? 0)]);
+                }
                 self::log($productId, $variantId, $row['sku'] !== null ? (string) $row['sku'] : null, $variantId ? VariantService::label($variantId) : null, $after - $before, $before, $after, $reason, $orderId, $actorId, $note);
             }
             $own && $pdo->commit();

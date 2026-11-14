@@ -63,6 +63,188 @@ check('switched off: a stock change is still recorded', $after === $before + 1);
 check('switched off: the stock level still changes', (int) DB::query('SELECT stock FROM products WHERE id = ?', [$tote])->fetchColumn() === 18);
 Modules::set('stock_movements', true);
 
+// Back in stock: a sign-up on a sold-out product is kept, and refused when the item is already in stock.
+DB::query('DELETE FROM stock_alerts');
+$soldOut = Product::insert(['weight_kg' => '1.000', 'width_cm' => '10', 'length_cm' => '10', 'height_cm' => '10',
+    'name' => 'Sold Out Mug', 'slug' => 'sold-out-mug', 'sku' => 'MUG900', 'category_id' => null, 'brand_id' => null,
+    'base_price' => '5', 'company_base_price' => '10', 'retail_price' => '20.00', 'discount_price' => null, 'stock' => 0, 'status' => 'active']);
+check('back in stock: a sign-up on a sold-out product is saved', \App\Services\StockAlertService::store($soldOut, 0, 'waiter@example.test', null) === 'saved');
+check('back in stock: signing up twice is harmless', \App\Services\StockAlertService::store($soldOut, 0, 'waiter@example.test', null) === 'saved');
+check('back in stock: a bad address is refused', \App\Services\StockAlertService::store($soldOut, 0, 'nope', null) === 'invalid');
+check('back in stock: a waiting alert is recorded', \App\Services\StockAlertService::waiting($soldOut, 0) === true);
+\App\Services\StockService::delta($soldOut, null, 4, 'manual', null, null, 'restock test');
+check('back in stock: a restock queues the alert (waiting until the worker sends it)', \App\Services\StockAlertService::waiting($soldOut, 0) === true);
+check('back in stock: an item already in stock is not put on the list', \App\Services\StockAlertService::store($soldOut, 0, 'other@example.test', null) === 'in_stock');
+
+// Sales reports: cancelled orders are left out of the totals.
+foreach ([['RPT-A', 'completed', '40.00'], ['RPT-B', 'cancelled', '99.00']] as [$no, $st, $amt]) {
+    DB::query("INSERT INTO orders (order_no, customer_name, customer_email, customer_phone, ship_line1, ship_city, ship_state, ship_postcode, subtotal, total, payment_method, status) VALUES (?, 'Report Test', 'rpt@example.test', '0123', 'Line 1', 'City', 'Selangor', '43000', ?, ?, 'cod', ?)", [$no, $amt, $amt, $st]);
+}
+$today = date('Y-m-d');
+$rep = \App\Services\SalesReportService::summary($today, $today);
+check('sales report: cancelled orders are not counted', $rep['orders'] === 1 && abs($rep['sales'] - 40.0) < 0.001);
+check('sales report: payment split matches the total', abs(array_sum(array_column(\App\Services\SalesReportService::byPayment($today, $today), 'sales')) - 40.0) < 0.001);
+
+// Bulk prices: a percentage change moves the regular price, an undo restores it, and a later edit is not overwritten.
+$bpId = Product::insert(['weight_kg' => '1.000', 'width_cm' => '10', 'length_cm' => '10', 'height_cm' => '10',
+    'name' => 'Bulk Tee', 'slug' => 'bulk-tee', 'sku' => 'BLK001', 'category_id' => null, 'brand_id' => null,
+    'base_price' => '5', 'company_base_price' => '10', 'retail_price' => '100.00', 'discount_price' => null, 'stock' => 5, 'status' => 'active']);
+$bpScope = ['type' => 'all', 'id' => 0];
+$bp = \App\Services\BulkPricingService::apply($bpScope, -10.0, 1);
+check('bulk prices: a -10% change moves the regular price', (string) DB::query('SELECT retail_price FROM products WHERE id = ?', [$bpId])->fetchColumn() === '90.00');
+$undo = \App\Services\BulkPricingService::undo($bp['batch'], 1);
+check('bulk prices: undo restores the old price', (string) DB::query('SELECT retail_price FROM products WHERE id = ?', [$bpId])->fetchColumn() === '100.00' && $undo['restored'] >= 1);
+$bp2 = \App\Services\BulkPricingService::apply($bpScope, 20.0, 1);
+DB::query('UPDATE products SET retail_price = 1.00 WHERE id = ?', [$bpId]);
+$undo2 = \App\Services\BulkPricingService::undo($bp2['batch'], 1);
+check('bulk prices: a price changed again since is left alone by undo', (string) DB::query('SELECT retail_price FROM products WHERE id = ?', [$bpId])->fetchColumn() === '1.00' && $undo2['skipped'] >= 1);
+check('bulk prices: a zero percentage is refused', \App\Services\BulkPricingService::checkPercent(0.0) !== null);
+
+// Product CSV: a bad row is skipped on its own; the good row applies (price and stock).
+$csvId = Product::insert(['weight_kg' => '1.000', 'width_cm' => '10', 'length_cm' => '10', 'height_cm' => '10',
+    'name' => 'Csv Mug', 'slug' => 'csv-mug', 'sku' => 'CSVA1', 'category_id' => null, 'brand_id' => null,
+    'base_price' => '5', 'company_base_price' => '10', 'retail_price' => '10.00', 'discount_price' => null, 'stock' => 5, 'status' => 'active']);
+$file = "\xEF\xBB\xBFsku,retail_price,stock\nCSVA1,12.50,7\nNOPE-SKU,1.00,1\n,,\n";
+$checkedCsv = \App\Services\ProductCsvService::check($file);
+check('product CSV: the good row is ready', $checkedCsv['ok'] === 1);
+check('product CSV: an unknown SKU and an empty row are refused', $checkedCsv['bad'] === 2);
+$applied = \App\Services\ProductCsvService::apply($file, 1);
+$after = DB::query('SELECT retail_price, stock FROM products WHERE id = ?', [$csvId])->fetch();
+check('product CSV: the good row changes the price', (string) $after['retail_price'] === '12.50');
+check('product CSV: the good row changes the stock', (int) $after['stock'] === 7 && $applied['stock'] === 1);
+check('product CSV: the export lists the SKU', in_array('CSVA1', array_column(\App\Services\ProductCsvService::exportRows(), 0), true));
+check('product CSV: a file without headers is refused', \App\Services\ProductCsvService::check("CSVA1,1,1\n")['fatal'] !== null);
+
+// Returns: one open request at a time, stock back once on receipt, a refund cannot be recorded twice.
+$retId = Product::insert(['weight_kg' => '1.000', 'width_cm' => '10', 'length_cm' => '10', 'height_cm' => '10',
+    'name' => 'Return Item', 'slug' => 'return-item', 'sku' => 'RET001', 'category_id' => null, 'brand_id' => null,
+    'base_price' => '5', 'company_base_price' => '10', 'retail_price' => '20.00', 'discount_price' => null, 'stock' => 5, 'status' => 'active']);
+DB::query("INSERT INTO orders (order_no, customer_name, customer_email, customer_phone, ship_line1, ship_city, ship_state, ship_postcode, subtotal, total, payment_method, status) VALUES ('RET-1', 'Ret Test', 'ret@example.test', '0123', 'Line 1', 'City', 'Selangor', '43000', 40.00, 40.00, 'cod', 'completed')");
+$retOrder = (int) DB::connection()->lastInsertId();
+DB::query('INSERT INTO order_items (order_id, product_id, product_name, unit_price, retail_price, base_price, company_base_price, qty, line_total) VALUES (?, ?, ?, 20, 20, 5, 10, 2, 40)', [$retOrder, $retId, 'Return Item']);
+$RS = \App\Services\ReturnService::class;
+check('returns: a customer can ask for a return on a completed order', $RS::request($retOrder, 'Arrived with a crack') === null);
+check('returns: a second request while one is open is refused', $RS::request($retOrder, 'Another reason here') !== null);
+$retReq = (int) $RS::forOrder($retOrder)['id'];
+check('returns: approve moves it on', $RS::decide($retReq, 'approve', 1) === null);
+check('returns: receiving puts the stock back', $RS::decide($retReq, 'receive', 1) === null && (int) DB::query('SELECT stock FROM products WHERE id = ?', [$retId])->fetchColumn() === 7);
+check('returns: a refund above the order total is refused', $RS::decide($retReq, 'refund', 1, null, '99.00') !== null);
+check('returns: the refund is recorded once', $RS::decide($retReq, 'refund', 1, null, '40.00') === null && $RS::decide($retReq, 'refund', 1, null, '40.00') !== null);
+check('returns: no new request after a refund', $RS::request($retOrder, 'Second try after refund') !== null);
+
+// Order messages: a customer message makes the order wait for a reply; a staff reply clears it.
+DB::query("INSERT INTO orders (order_no, customer_name, customer_email, customer_phone, ship_line1, ship_city, ship_state, ship_postcode, subtotal, total, payment_method, status) VALUES ('MSG-1', 'Msg Test', 'msg@example.test', '0123', 'Line 1', 'City', 'Selangor', '43000', 10.00, 10.00, 'cod', 'pending')");
+$msgOrder = (int) DB::connection()->lastInsertId();
+check('order messages: an empty message is refused', \App\Services\SupportService::post($msgOrder, 'customer', '   ') !== null);
+check('order messages: a customer message is saved', \App\Services\SupportService::post($msgOrder, 'customer', 'Where is my parcel?') === null);
+check('order messages: the order now waits for a reply', in_array($msgOrder, array_map('intval', array_column(\App\Services\SupportService::waiting(), 'id')), true));
+check('order messages: a staff reply is saved', \App\Services\SupportService::post($msgOrder, 'staff', 'It left the warehouse today.', 1) === null);
+check('order messages: a staff reply clears the waiting list', !in_array($msgOrder, array_map('intval', array_column(\App\Services\SupportService::waiting(), 'id')), true));
+check('order messages: the thread keeps both messages in order', count(\App\Services\SupportService::thread($msgOrder)) === 2);
+
+// Loyalty: earn on completion (once), spend at checkout (capped), a refund takes back only what is still there.
+$lpUser = User::create('member', 'Points Fan', 'points@example.test', 'long-password-1');
+DB::query("INSERT INTO orders (order_no, user_id, customer_name, customer_email, customer_phone, ship_line1, ship_city, ship_state, ship_postcode, subtotal, total, payment_method, status) VALUES ('PTS-1', ?, 'Points Fan', 'points@example.test', '0123', 'Line 1', 'City', 'Selangor', '43000', 100.00, 100.00, 'cod', 'completed')", [$lpUser]);
+$ptsOrder1 = (int) DB::connection()->lastInsertId();
+DB::query("INSERT INTO orders (order_no, user_id, customer_name, customer_email, customer_phone, ship_line1, ship_city, ship_state, ship_postcode, subtotal, total, payment_method, status) VALUES ('PTS-2', ?, 'Points Fan', 'points@example.test', '0123', 'Line 1', 'City', 'Selangor', '43000', 50.00, 50.00, 'cod', 'pending')", [$lpUser]);
+$ptsOrder2 = (int) DB::connection()->lastInsertId();
+$LS = \App\Services\LoyaltyService::class;
+$LS::earn($ptsOrder1);
+check('loyalty: a completed order earns 1 point per RM', $LS::balance($lpUser) === 100);
+$LS::earn($ptsOrder1);
+check('loyalty: earning twice on the same order does not double the points', $LS::balance($lpUser) === 100);
+$cap = $LS::discountFor($lpUser, 10000, 500);
+check('loyalty: a checkout can use at most half of the items, and only what the balance holds', $cap['points'] === 100 && $cap['cents'] === 100);
+$LS::spend($ptsOrder2, $lpUser, 100);
+check('loyalty: spending moves the points out of the balance', $LS::balance($lpUser) === 0);
+$LS::reverse($ptsOrder1);
+check('loyalty: a refund never takes the balance below zero', $LS::balance($lpUser) === 0);
+
+// Gift cards: a code covers up to its balance, a spend cannot exceed it, and a cancelled order gives the money back once.
+$gcCode = \App\Services\GiftCardService::issue(5000, 1);
+check('gift cards: a new card covers up to its balance and no more than the items', \App\Services\GiftCardService::quote($gcCode, 3000)['cents'] === 3000 && \App\Services\GiftCardService::quote($gcCode, 9000)['cents'] === 5000);
+check('gift cards: codes are typed loosely (spaces and case do not matter)', \App\Services\GiftCardService::quote(strtolower(str_replace('-', ' ', $gcCode)), 1000)['ok'] === true);
+DB::query("INSERT INTO orders (order_no, customer_name, customer_email, customer_phone, ship_line1, ship_city, ship_state, ship_postcode, subtotal, total, payment_method, status) VALUES ('GC-1', 'Gift Test', 'gift@example.test', '0123', 'Line 1', 'City', 'Selangor', '43000', 30.00, 30.00, 'cod', 'pending')");
+$gcOrder1 = (int) DB::connection()->lastInsertId();
+$gcRes = \App\Services\GiftCardService::reserve($gcCode, 3000);
+\App\Services\GiftCardService::spend($gcOrder1, $gcRes['id'], $gcRes['cents']);
+check('gift cards: spending takes the amount off the balance', (int) DB::query('SELECT balance_cents FROM gift_cards WHERE id = ?', [$gcRes['id']])->fetchColumn() === 2000);
+check('gift cards: a reserve for more than the balance covers only the balance', \App\Services\GiftCardService::reserve($gcCode, 9000)['cents'] === 2000);
+\App\Services\GiftCardService::restore($gcOrder1);
+\App\Services\GiftCardService::restore($gcOrder1);
+check('gift cards: a cancelled order gives the amount back once', (int) DB::query('SELECT balance_cents FROM gift_cards WHERE id = ?', [$gcRes['id']])->fetchColumn() === 5000);
+
+// Bundles: stock comes from the parts; a sale and a cancellation move stock on the parts; the bundle has no stock of its own.
+$mkSimple = fn(string $name, string $sku, int $stock) => Product::insert(['weight_kg' => '1.000', 'width_cm' => '10', 'length_cm' => '10', 'height_cm' => '10',
+    'name' => $name, 'slug' => strtolower($sku), 'sku' => $sku, 'category_id' => null, 'brand_id' => null,
+    'base_price' => '5', 'company_base_price' => '10', 'retail_price' => '10.00', 'discount_price' => null, 'stock' => $stock, 'status' => 'active']);
+$bpA = $mkSimple('Bundle Part A', 'BPA001', 6);
+$bpB = $mkSimple('Bundle Part B', 'BPB001', 4);
+$bpZ = $mkSimple('Gift Pack', 'GPK001', 0);
+check('bundles: a bundle is saved from its parts', \App\Services\BundleService::setParts($bpZ, [['product_id' => $bpA, 'qty' => 1], ['product_id' => $bpB, 'qty' => 2]], 1) === null);
+$stockOf = fn(int $id) => (int) DB::query('SELECT stock FROM products WHERE id = ?', [$id])->fetchColumn();
+check('bundles: the bundle can make 2 from the parts on the shelf', $stockOf($bpZ) === 2);
+\App\Services\BundleService::adjustLine($bpZ, null, -1, 'order', null, 1);
+check('bundles: a sale takes stock from each part', $stockOf($bpA) === 5 && $stockOf($bpB) === 2);
+check('bundles: the bundle count follows the parts after a sale', $stockOf($bpZ) === 1);
+\App\Services\BundleService::adjustLine($bpZ, null, 1, 'cancel', null, 1);
+check('bundles: a cancelled bundle puts stock back on each part', $stockOf($bpA) === 6 && $stockOf($bpB) === 4 && $stockOf($bpZ) === 2);
+check('bundles: the bundle has no stock of its own to change directly', (function () use ($bpZ) { try { \App\Services\StockService::delta($bpZ, null, 1, 'manual'); return false; } catch (\DomainException) { return true; } })());
+\App\Services\StockService::delta($bpB, null, -4, 'manual', null, 1, 'bundle test');
+check('bundles: a part out of stock makes the bundle unavailable', $stockOf($bpZ) === 0);
+check('bundles: a bundle cannot contain itself', \App\Services\BundleService::setParts($bpZ, [['product_id' => $bpZ, 'qty' => 1]], 1) !== null);
+
+// SST: the rate comes from the product or its category; SST is part of the price, taken from the paid amount.
+$taxCat = (int) DB::query("SELECT id FROM categories LIMIT 1")->fetchColumn();
+if ($taxCat === 0) {
+    DB::query("INSERT INTO categories (name, slug) VALUES ('Tax Test', 'tax-test')");
+    $taxCat = (int) DB::connection()->lastInsertId();
+}
+DB::query('UPDATE categories SET tax_rate = 6.00 WHERE id = ?', [$taxCat]);
+$taxP = Product::insert(['weight_kg' => '1.000', 'width_cm' => '10', 'length_cm' => '10', 'height_cm' => '10',
+    'name' => 'Taxed Mug', 'slug' => 'taxed-mug', 'sku' => 'TAX001', 'category_id' => $taxCat, 'brand_id' => null,
+    'base_price' => '5', 'company_base_price' => '10', 'retail_price' => '106.00', 'discount_price' => null, 'stock' => 5, 'status' => 'active']);
+check('SST: a product takes its category rate', \App\Services\TaxService::rateFor($taxP) === 6.0);
+DB::query('UPDATE products SET tax_rate = 0.00 WHERE id = ?', [$taxP]);
+check('SST: a product rate of 0 overrides its category (zero-rated)', \App\Services\TaxService::rateFor($taxP) === 0.0);
+DB::query('UPDATE products SET tax_rate = NULL WHERE id = ?', [$taxP]);
+$taxItems = [['product_id' => $taxP, 'unit' => 10600, 'qty' => 1]];
+$taxTotal = \App\Services\TaxService::split($taxItems, 10600, 0);
+check('SST: 6% on RM106.00 included is RM6.00', $taxTotal === 600 && $taxItems[0]['tax_amount'] === 600);
+$taxItems2 = [['product_id' => $taxP, 'unit' => 10600, 'qty' => 1]];
+check('SST: a discount reduces the amount SST is taken from', \App\Services\TaxService::split($taxItems2, 10600, 600) === 566);
+Modules::set('tax', false);
+check('SST: switched off, no SST is worked out', \App\Services\TaxService::rateFor($taxP) === 0.0);
+Modules::set('tax', true);
+
+// Defaults: the 12 newer modules are off until a superadmin switches them on; the original modules stay on.
+$newKeys = \App\Services\Modules::OFF_BY_DEFAULT;
+DB::query("DELETE FROM settings WHERE `key` IN (" . implode(',', array_map(fn($k) => "'module." . $k . "'", $newKeys)) . ")");
+check('defaults: all 12 newer modules are off when never switched on', count(array_filter($newKeys, fn($k) => Modules::enabled($k))) === 0 && count($newKeys) === 12);
+check('defaults: the original modules are still on by default', Modules::enabled('flash_sales') && Modules::enabled('vouchers') && Modules::enabled('affiliates'));
+
+// Abandoned carts: a member cart is snapshotted while held; it is due after the idle delay unless the member ordered since.
+$acUser = User::create('member', 'Cart Forgetter', 'cart@example.test', 'long-password-1');
+DB::query("INSERT INTO carts (user_id) VALUES (?)", [$acUser]);
+$acCart = (int) DB::connection()->lastInsertId();
+DB::query("INSERT INTO cart_items (cart_id, product_id, variant_id, qty, reserved_until) VALUES (?, ?, NULL, 1, NOW() + INTERVAL 1 HOUR)", [$acCart, $bpA]);
+check('abandoned carts: a cart with held items is snapshotted', \App\Services\AbandonedCartService::snapshot() >= 1);
+DB::query("UPDATE abandoned_carts SET last_seen_at = NOW() - INTERVAL 3 HOUR WHERE cart_id = ?", [$acCart]);
+check('abandoned carts: an idle cart is due a reminder', in_array($acCart, array_map('intval', array_column(\App\Services\AbandonedCartService::due(7200), 'cart_id')), true));
+DB::query("INSERT INTO orders (order_no, user_id, customer_name, customer_email, customer_phone, ship_line1, ship_city, ship_state, ship_postcode, subtotal, total, payment_method, status) VALUES ('AC-1', ?, 'Cart Forgetter', 'cart@example.test', '0123', 'Line 1', 'City', 'Selangor', '43000', 10.00, 10.00, 'cod', 'pending')", [$acUser]);
+check('abandoned carts: no reminder once the member has ordered since', !in_array($acCart, array_map('intval', array_column(\App\Services\AbandonedCartService::due(7200), 'cart_id')), true));
+check('abandoned carts: a bad restore link is refused', \App\Services\AbandonedCartService::restore($acUser, str_repeat('b', 64)) === null);
+
+// Newsletter: a sign-up only counts once its confirmation link is used, and the link works once.
+DB::query('DELETE FROM newsletter_subscribers');
+$nlToken = bin2hex(random_bytes(32));
+DB::query("INSERT INTO newsletter_subscribers (email, status, token_hash, token_expires) VALUES ('fan@example.test', 'pending', ?, NOW() + INTERVAL 1 DAY)", [hash('sha256', $nlToken)]);
+check('newsletter: a pending sign-up is not active yet', (int) DB::query("SELECT COUNT(*) FROM newsletter_subscribers WHERE status = 'active'")->fetchColumn() === 0);
+check('newsletter: the confirmation link confirms the address', \App\Services\NewsletterService::confirm($nlToken) === 'fan@example.test');
+check('newsletter: the same link cannot be used twice', \App\Services\NewsletterService::confirm($nlToken) === null);
+check('newsletter: a bad link is refused', \App\Services\NewsletterService::confirm(str_repeat('a', 64)) === null);
+check('newsletter: a bad address is refused before anything is sent', \App\Services\NewsletterService::subscribe('not-an-email') === 'invalid');
+
 // Digital products: hidden from the shop and not sold while off. Existing downloads are not touched.
 $digId = Product::insert(['weight_kg' => null, 'width_cm' => null, 'length_cm' => null, 'height_cm' => null,
     'name' => 'Ebook Guide', 'slug' => 'ebook-guide', 'sku' => 'EBK001', 'category_id' => null, 'brand_id' => null,

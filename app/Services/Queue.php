@@ -136,6 +136,7 @@ final class Queue
     {
         return [
             'email.batch' => fn(array $p): bool => EmailService::deliverBatch($p),
+            'stock.back' => fn(array $p): bool => StockAlertService::notify((int) $p['product_id'], (int) $p['variant_key']),
             'email.order_created' => fn(array $p): bool => EmailService::orderCreatedSend((int) $p['order_id'], (string) $p['track_url']),
             'whatsapp.status' => function (array $p): bool {
                 // WhatsAppService logs a provider rejection itself, so the job is finished either way.

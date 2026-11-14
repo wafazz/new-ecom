@@ -31,6 +31,7 @@ $cost = 0;
             <tr><td colspan="3" class="num">Discount<?= $order['voucher_code'] ? ' (' . e($order['voucher_code']) . ')' : '' ?></td><td class="num">−<?= e(money($order['discount_total'])) ?></td></tr>
         <?php endif; ?>
         <tr><td colspan="3" class="num">Shipping</td><td class="num"><?= e(money($order['shipping_fee'])) ?></td></tr>
+        <?php if ((float) ($order['tax_total'] ?? 0) > 0): ?><tr><td colspan="3" class="num">Included SST</td><td class="num"><?= e(money($order['tax_total'])) ?></td></tr><?php endif; ?>
         <tr><td colspan="3" class="num"><strong>Total</strong></td><td class="num"><strong><?= e(money($order['total'])) ?></strong></td></tr>
         <?php if ($showCost): ?>
             <tr class="muted"><td colspan="3" class="num">Cost of goods (admin only)</td><td class="num"><?= e(money($cost)) ?></td></tr>

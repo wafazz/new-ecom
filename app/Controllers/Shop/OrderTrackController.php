@@ -34,6 +34,30 @@ final class OrderTrackController extends Controller
         $this->success("/order/{$orderNo}/{$token}", 'Your order has been cancelled.');
     }
 
+    public function support(Request $request, string $orderNo, string $token): void
+    {
+        $order = $this->byToken($orderNo, $token);
+        if (\App\Services\RateLimiter::tooMany('support', $request->ip(), 20, 60)) {
+            $this->backWithErrors("/order/{$orderNo}/{$token}", ['form' => 'Too many messages. Please wait a while.']);
+        }
+        \App\Services\RateLimiter::hit('support', $request->ip());
+        $error = \App\Services\SupportService::post((int) $order['id'], 'customer', $request->str('body'));
+        if ($error !== null) {
+            $this->backWithErrors("/order/{$orderNo}/{$token}", ['form' => $error]);
+        }
+        $this->success("/order/{$orderNo}/{$token}", 'Message sent. We reply on this page.');
+    }
+
+    public function requestReturn(Request $request, string $orderNo, string $token): void
+    {
+        $order = $this->byToken($orderNo, $token);
+        $error = \App\Services\ReturnService::request((int) $order['id'], $request->str('reason'));
+        if ($error !== null) {
+            $this->backWithErrors("/order/{$orderNo}/{$token}", ['form' => $error]);
+        }
+        $this->success("/order/{$orderNo}/{$token}", 'Your return request has been sent. The shop will reply on this page.');
+    }
+
     public function receipt(Request $request, string $orderNo, string $token): void
     {
         $order = $this->byToken($orderNo, $token);
@@ -107,6 +131,8 @@ final class OrderTrackController extends Controller
             'items' => OrderService::items((int) $order['id']),
             'events' => OrderService::events((int) $order['id']),
             'cancelAction' => $order['status'] === 'pending' && $cancelBase !== null ? $cancelBase . '/cancel' : null,
+            'returnAction' => $cancelBase !== null ? $cancelBase . '/return' : null,
+            'supportAction' => $cancelBase !== null ? $cancelBase . '/support' : null,
             'payAction' => $cancelBase !== null && self::payable($order) ? $cancelBase . '/pay' : null,
             'invoiceAction' => $cancelBase !== null ? $cancelBase . '/invoice' : null,
             'payment' => Payments::find($order['payment_method']),

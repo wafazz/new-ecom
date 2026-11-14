@@ -90,6 +90,9 @@ $defaultMethod = isset($methods['cod']) ? 'cod' : (string) array_key_first($meth
         </div>
         <?php endif; ?>
         <label>Order note (optional) <textarea name="notes" rows="2" maxlength="500" placeholder="Anything we should know about the delivery?"><?= old('notes') ?></textarea></label>
+        <?php if (\App\Services\Modules::enabled('newsletter')): ?>
+        <label class="check"><input type="checkbox" name="newsletter" value="1" <?= old('newsletter') === '1' ? 'checked' : '' ?>> Send me news and offers (we will email you to confirm first)</label>
+        <?php endif; ?>
     </section>
 
     <?php if ($guest): ?>
@@ -137,11 +140,48 @@ $defaultMethod = isset($methods['cod']) ? 'cod' : (string) array_key_first($meth
     <?php endif; ?>
     <?php if ($voucher_note): ?><p class="alert bad"><?= e($voucher_note) ?></p><?php endif; ?>
     <p class="sum-row"><span>Subtotal</span><span><?= e(money($cart['subtotal_cents'] / 100)) ?></span></p>
+    <?php if (\App\Services\Modules::enabled('gift_cards')): ?>
+        <div class="co-gift">
+            <?php if (!empty($gift)): ?>
+                <p class="sum-row"><span>Gift card</span><strong>−RM<?= e(number_format($gift['cents'] / 100, 2)) ?></strong></p>
+                <p class="muted">Balance on the card: RM<?= e(number_format($gift['balance'] / 100, 2)) ?>. It covers up to the items total.</p>
+                <form method="post" action="<?= e(url('/checkout/gift-card/remove')) ?>"><?= csrf_field() ?><button class="s-btn secondary block" type="submit">Remove gift card</button></form>
+            <?php else: ?>
+                <form method="post" action="<?= e(url('/checkout/gift-card')) ?>">
+                    <?= csrf_field() ?>
+                    <label>Gift card code
+                        <input name="code" value="<?= e(old('code')) ?>" autocomplete="off" maxlength="30" style="text-transform:uppercase"></label>
+                    <?= field_error('gift') ?>
+                    <button class="s-btn secondary block" type="submit">Apply gift card</button>
+                </form>
+            <?php endif; ?>
+        </div>
+    <?php endif; ?>
+    <?php if (!empty($loyalty)): ?>
+        <div class="co-points">
+            <p class="sum-row"><span>Your points</span><strong><?= (int) $loyalty['balance'] ?></strong></p>
+            <?php if ($loyalty['applied'] > 0): ?>
+                <p class="muted">Using <?= (int) $loyalty['applied'] ?> points (RM<?= e(number_format($loyalty['cents'] / 100, 2)) ?> off).</p>
+                <form method="post" action="<?= e(url('/checkout/points/remove')) ?>"><?= csrf_field() ?><button class="s-btn secondary block" type="submit">Stop using points</button></form>
+            <?php elseif ($loyalty['balance'] > 0): ?>
+                <form method="post" action="<?= e(url('/checkout/points')) ?>">
+                    <?= csrf_field() ?>
+                    <label>Use points (100 points = RM1; up to half of the items)
+                        <input name="points" inputmode="numeric" value="<?= (int) $loyalty['balance'] ?>"></label>
+                    <?= field_error('points') ?>
+                    <button class="s-btn secondary block" type="submit">Use points</button>
+                </form>
+            <?php else: ?>
+                <p class="muted">You earn 1 point for each RM1 spent on completed orders.</p>
+            <?php endif; ?>
+        </div>
+    <?php endif; ?>
     <?php if ($discount_cents > 0): ?>
         <p class="sum-row"><span>Discount</span><span>−<?= e(money($discount_cents / 100)) ?></span></p>
     <?php endif; ?>
     <p class="sum-row"><span>Shipping <small class="muted">by weight and zone</small></span><span id="co-shipping"><?= e(money($shipping_cents / 100)) ?></span></p>
     <p class="alert bad" id="co-shipping-error"<?= $shipping_error ? '' : ' hidden' ?>><?= e((string) $shipping_error) ?></p>
+    <?php if (($sst_cents ?? 0) > 0): ?><p class="sum-row muted"><span>Included SST</span><span>RM<?= e(number_format($sst_cents / 100, 2)) ?></span></p><?php endif; ?>
     <p class="sum-row total"><span>Total</span><span id="co-total"><?= e(money($total / 100)) ?></span></p>
     <p><a href="<?= e(url('/cart')) ?>"><?= icon('left', 'i i-sm') ?> Edit cart</a></p>
 </aside>

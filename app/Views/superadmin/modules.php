@@ -17,7 +17,7 @@ $onCount = count(array_filter($modules, fn($m) => $m['enabled']));
             <?php foreach ($modules as $m): ?>
                 <article class="mod-card" data-module="<?= e($m['key']) ?>" data-label="<?= e($m['label']) ?>" data-enabled="<?= $m['enabled'] ? '1' : '0' ?>">
                     <div class="mod-head">
-                        <h3 class="mod-name"><?= e($m['label']) ?></h3>
+                        <h3 class="mod-name"><?= e($m['label']) ?><?php if ($m['off_by_default']): ?> <small class="muted">· off by default</small><?php endif; ?></h3>
                         <span class="mod-status <?= $m['enabled'] ? 'is-on' : 'is-off' ?>"><?= $m['enabled'] ? 'On' : 'Off' ?></span>
                     </div>
                     <p class="muted mod-help"><?= e($m['help']) ?></p>

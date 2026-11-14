@@ -42,6 +42,7 @@ final class UnsubscribeService
     public static function unsubscribe(string $email): void
     {
         Database::query('INSERT IGNORE INTO email_unsubscribes (email) VALUES (?)', [strtolower(trim($email))]);
+        NewsletterService::unsubscribe($email);
     }
 
     /** Lower-cased addresses that unsubscribed, as a set (keys). @return array<string,true> */

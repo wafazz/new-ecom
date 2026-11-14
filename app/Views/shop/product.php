@@ -118,6 +118,18 @@ $wishInit = $wish === true;
             <?php endif; ?>
         </form>
 
+        <?php if (\App\Services\Modules::enabled('back_in_stock') && ($variants === [] ? !$inStock : $soldVariants !== [])): ?>
+        <form method="post" action="<?= e(url('/products/' . $product['slug'] . '/notify')) ?>" class="notify-form">
+            <?= csrf_field() ?>
+            <p class="muted">Tell me when it's back in stock.</p>
+            <?php if ($variants !== []): ?>
+                <label>Option <select name="variant_id" required><?php foreach ($soldVariants as $sv): ?><option value="<?= (int) $sv['id'] ?>"><?= e($sv['label']) ?></option><?php endforeach; ?></select></label>
+            <?php endif; ?>
+            <label>Email <input type="email" name="email" required maxlength="190" value="<?= e($notifyEmail) ?>" autocomplete="email"></label>
+            <button class="s-btn secondary" type="submit">Notify me</button>
+        </form>
+        <?php endif; ?>
+
         <?php if (!empty($affiliateLink)): ?>
         <div class="aff-copy" style="margin:.9rem 0;padding:.75rem .9rem;border:1px dashed var(--border-strong, #c8cdd6);border-radius:12px">
             <small class="muted">Your affiliate link for this product. Share it, and you earn commission on any sale made through it.</small>

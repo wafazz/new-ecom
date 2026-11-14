@@ -159,12 +159,16 @@ final class OrderService
             }
             if ($to === 'cancelled') {
                 VoucherService::release($orderId); // the discount code can be used again
+                GiftCardService::restore($orderId); // the gift card gets back what this order paid
             }
             $paid = $to === 'completed' && $order['payment_method'] === 'cod' ? ", payment_status = 'paid'" : '';
             Database::query("UPDATE orders SET status = ?{$paid} WHERE id = ?", [$to, $orderId]);
             Database::query('INSERT INTO order_events (order_id, event, note, actor_id) VALUES (?, ?, ?, ?)', [$orderId, $to, $note ?: null, $actorId]);
             if ($to === 'completed') {
                 AffiliateService::recordCommission($order, self::items($orderId));
+                if (Modules::enabled('loyalty')) {
+                    LoyaltyService::earn($orderId);
+                }
             }
             $pdo->commit();
             Queue::later('whatsapp.status', ['order_id' => $orderId, 'status' => $to]); // queued after the commit: a WhatsApp problem cannot undo the change
@@ -264,7 +268,7 @@ final class OrderService
                 continue; // digital items never took stock (license keys are released with the order, see DigitalService)
             }
             try {
-                StockService::delta((int) $it['product_id'], $it['variant_id'] !== null ? (int) $it['variant_id'] : null, (int) $it['qty'], $reason, $orderId, $actorId);
+                BundleService::adjustLine((int) $it['product_id'], $it['variant_id'] !== null ? (int) $it['variant_id'] : null, (int) $it['qty'], $reason, $orderId, $actorId);
             } catch (\DomainException) {
                 // the variation was removed since the order: its stock no longer exists
             }

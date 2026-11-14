@@ -19,11 +19,14 @@ return function (Router $r): void {
         $r->get('/health', 'Shop/HomeController@health');
         $r->get('/live/visitors', 'Shop/HomeController@liveVisitors');
         $r->get('/verify-email/{token}', 'Auth/VerifyEmailController@confirm');
+        $r->post('/newsletter', 'Shop/NewsletterController@subscribe', ['module:newsletter']);
+        $r->get('/newsletter/confirm/{token}', 'Shop/NewsletterController@confirm', ['module:newsletter']);
         $r->get('/install', 'InstallController@show');
         $r->post('/install/check', 'InstallController@check');
         $r->post('/install/finish', 'InstallController@finish');
         $r->get('/products', 'Shop/CatalogController@index');
         $r->get('/products/{slug}', 'Shop/CatalogController@show');
+        $r->post('/products/{slug}/notify', 'Shop/StockAlertController@store', ['module:back_in_stock']);
         $r->post('/products/{slug}/reviews', 'Shop/ReviewController@store', ['auth:member']);
         $r->post('/wishlist/toggle', 'Shop/WishlistController@toggle', ['auth:member']);
         $r->get('/payments/billplz/return', 'Shop/BillplzController@back');
@@ -42,10 +45,17 @@ return function (Router $r): void {
         $r->get('/checkout/shipping', 'Shop/CheckoutController@shippingQuote');
         $r->post('/checkout/voucher', 'Shop/CheckoutController@applyVoucher');
         $r->post('/checkout/voucher/remove', 'Shop/CheckoutController@removeVoucher');
+        $r->get('/cart/restore/{token}', 'Shop/CartRestoreController@restore', ['auth:member', 'module:abandoned_cart_emails']);
+        $r->post('/checkout/points', 'Shop/CheckoutController@usePoints', ['module:loyalty']);
+        $r->post('/checkout/points/remove', 'Shop/CheckoutController@removePoints', ['module:loyalty']);
+        $r->post('/checkout/gift-card', 'Shop/CheckoutController@useGiftCard', ['module:gift_cards']);
+        $r->post('/checkout/gift-card/remove', 'Shop/CheckoutController@removeGiftCard', ['module:gift_cards']);
         $r->get('/track', 'Shop/OrderTrackController@form');
         $r->post('/track', 'Shop/OrderTrackController@lookup');
         $r->get('/order/{orderNo}/{token}', 'Shop/OrderTrackController@show');
         $r->post('/order/{orderNo}/{token}/cancel', 'Shop/OrderTrackController@cancel');
+        $r->post('/order/{orderNo}/{token}/return', 'Shop/OrderTrackController@requestReturn', ['module:returns']);
+        $r->post('/order/{orderNo}/{token}/support', 'Shop/OrderTrackController@support', ['module:support']);
         $r->post('/order/{orderNo}/{token}/receipt', 'Shop/OrderTrackController@receipt');
         $r->get('/order/{orderNo}/{token}/receipt/{id}', 'Shop/OrderTrackController@receiptFile');
         $r->get('/order/{orderNo}/{token}/invoice', 'Shop/InvoiceController@guest');
@@ -242,6 +252,69 @@ return function (Router $r): void {
             $r->post('/modules/{key}', 'Superadmin/ModulesController@toggle');
         });
 
+        // SST (admin and superadmin)
+        $r->group('/admin', ['auth:admin'], function (Router $r): void {
+            $r->get('/tax', 'Admin/TaxController@index', ['module:tax']);
+            $r->get('/tax/export', 'Admin/TaxController@export', ['module:tax']);
+            $r->post('/tax/category/{id}', 'Admin/TaxController@category', ['module:tax']);
+            $r->post('/tax/product', 'Admin/TaxController@product', ['module:tax']);
+        });
+
+        // Bundles (admin and superadmin)
+        $r->group('/admin', ['auth:admin'], function (Router $r): void {
+            $r->get('/bundles', 'Admin/BundleController@index', ['module:bundles']);
+            $r->post('/bundles', 'Admin/BundleController@save', ['module:bundles']);
+        });
+
+        // Gift cards (admin and superadmin)
+        $r->group('/admin', ['auth:admin'], function (Router $r): void {
+            $r->get('/gift-cards', 'Admin/GiftCardController@index', ['module:gift_cards']);
+            $r->post('/gift-cards', 'Admin/GiftCardController@store', ['module:gift_cards']);
+            $r->post('/gift-cards/{id}/active', 'Admin/GiftCardController@toggle', ['module:gift_cards']);
+        });
+
+        // Product CSV import and export (admin and superadmin)
+        $r->group('/admin', ['auth:admin'], function (Router $r): void {
+            $r->get('/products/csv', 'Admin/ProductCsvController@index', ['module:product_csv']);
+            $r->get('/products/csv/export', 'Admin/ProductCsvController@export', ['module:product_csv']);
+            $r->post('/products/csv/check', 'Admin/ProductCsvController@check', ['module:product_csv']);
+            $r->post('/products/csv/apply', 'Admin/ProductCsvController@apply', ['module:product_csv']);
+            $r->post('/products/csv/cancel', 'Admin/ProductCsvController@cancel', ['module:product_csv']);
+        });
+
+        // Order messages (admin and superadmin)
+        $r->group('/admin', ['auth:admin'], function (Router $r): void {
+            $r->get('/support', 'Admin/SupportController@index', ['module:support']);
+            $r->get('/support/{orderId}', 'Admin/SupportController@show', ['module:support']);
+            $r->post('/support/{orderId}', 'Admin/SupportController@reply', ['module:support']);
+        });
+
+        // Returns and refunds (admin and superadmin)
+        $r->group('/admin', ['auth:admin'], function (Router $r): void {
+            $r->get('/returns', 'Admin/ReturnController@index', ['module:returns']);
+            $r->post('/returns/{id}/{action}', 'Admin/ReturnController@decide', ['module:returns']);
+        });
+
+        // Bulk prices (admin and superadmin): preview, apply, undo
+        $r->group('/admin', ['auth:admin'], function (Router $r): void {
+            $r->get('/bulk-pricing', 'Admin/BulkPricingController@index', ['module:bulk_pricing']);
+            $r->post('/bulk-pricing/preview', 'Admin/BulkPricingController@preview', ['module:bulk_pricing']);
+            $r->post('/bulk-pricing', 'Admin/BulkPricingController@apply', ['module:bulk_pricing']);
+            $r->post('/bulk-pricing/{id}/undo', 'Admin/BulkPricingController@undo', ['module:bulk_pricing']);
+        });
+
+        // Sales reports (admin and superadmin, read-only)
+        $r->group('/admin', ['auth:admin'], function (Router $r): void {
+            $r->get('/reports', 'Admin/ReportController@index', ['module:sales_reports']);
+            $r->get('/reports/export', 'Admin/ReportController@export', ['module:sales_reports']);
+        });
+
+        // Newsletter list (admin and superadmin)
+        $r->group('/admin', ['auth:admin'], function (Router $r): void {
+            $r->get('/newsletter', 'Admin/NewsletterController@index', ['module:newsletter']);
+            $r->get('/newsletter/export', 'Admin/NewsletterController@export', ['module:newsletter']);
+        });
+
         // Staff portal
         $r->group('/staff', ['auth:staff'], function (Router $r): void {
             $r->get('/', 'Staff/DashboardController@index');
@@ -256,6 +329,8 @@ return function (Router $r): void {
             $r->get('/orders/{orderNo}', 'Member/OrderController@show');
             $r->get('/orders/{orderNo}/invoice', 'Shop/InvoiceController@member');
             $r->post('/orders/{orderNo}/cancel', 'Member/OrderController@cancel');
+            $r->post('/orders/{orderNo}/return', 'Member/OrderController@requestReturn', ['module:returns']);
+            $r->post('/orders/{orderNo}/support', 'Member/OrderController@support', ['module:support']);
             $r->post('/orders/{orderNo}/receipt', 'Member/OrderController@receipt');
             $r->get('/orders/{orderNo}/receipt/{id}', 'Member/OrderController@receiptFile');
             $r->post('/orders/{orderNo}/pay', 'Member/OrderController@pay');
