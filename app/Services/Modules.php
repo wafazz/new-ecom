@@ -16,6 +16,7 @@ final class Modules
     /** key => [label, what switching it off does]. Add a row here to make a new module controllable. */
     public const LIST = [
         'flash_sales' => ['Flash sales', 'Time-limited discounts on products. Off hides the Flash sales menus and storefront blocks, and prices go back to normal at once.'],
+        'affiliates' => ['Affiliate programme', 'Referral links, commissions and withdrawals. Off stops new referral tracking and commissions and hides the affiliate pages; existing commissions and payouts stay on record.'],
         'stock_movements' => ['Stock movement log', 'The Stock Movement page and the Movement links on Stock Control. Off hides the page only: stock is still changed and every change is still recorded.'],
         'vouchers' => ['Discount coupons', 'Discount codes shoppers enter at checkout, and the Vouchers menu. Off stops every code at once; orders that already used a code keep their discount.'],
     ];

@@ -72,6 +72,7 @@ $first = explode(' ', trim((string) $me['name']))[0];
             <?php endif; ?>
         </section>
 
+        <?php if (\App\Services\Modules::enabled('affiliates')): ?>
         <section class="panel" aria-labelledby="af-title">
             <div class="panel-head"><h2 id="af-title">Affiliate</h2><a href="<?= e(url('/member/affiliate')) ?>">Details →</a></div>
             <?php if ($d['affiliate']): $a = $d['affiliate']; ?>
@@ -92,5 +93,6 @@ $first = explode(' ', trim((string) $me['name']))[0];
                 <p><a class="btn secondary" href="<?= e(url('/member/affiliate')) ?>">Get my link</a></p>
             <?php endif; ?>
         </section>
+        <?php endif; ?>
     </div>
 </div>
