@@ -195,6 +195,7 @@ check('bundles: a part out of stock makes the bundle unavailable', $stockOf($bpZ
 check('bundles: a bundle cannot contain itself', \App\Services\BundleService::setParts($bpZ, [['product_id' => $bpZ, 'qty' => 1]], 1) !== null);
 
 // SST: the rate comes from the product or its category; SST is part of the price, taken from the paid amount.
+Modules::set('tax', true); // SST is off by default, so these checks switch it on first
 $taxCat = (int) DB::query("SELECT id FROM categories LIMIT 1")->fetchColumn();
 if ($taxCat === 0) {
     DB::query("INSERT INTO categories (name, slug) VALUES ('Tax Test', 'tax-test')");
