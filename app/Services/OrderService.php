@@ -160,6 +160,9 @@ final class OrderService
             if ($to === 'cancelled') {
                 VoucherService::release($orderId); // the discount code can be used again
                 GiftCardService::restore($orderId); // the gift card gets back what this order paid
+                if (Modules::enabled('store_credit')) {
+                    StoreCreditService::restore($orderId); // store credit used on this order comes back once
+                }
             }
             $paid = $to === 'completed' && $order['payment_method'] === 'cod' ? ", payment_status = 'paid'" : '';
             Database::query("UPDATE orders SET status = ?{$paid} WHERE id = ?", [$to, $orderId]);

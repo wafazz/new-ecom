@@ -23,7 +23,7 @@ final class ReturnController extends Controller
 
     public function decide(Request $request, string $id, string $action): void
     {
-        $error = ReturnService::decide((int) $id, $action, (int) Auth::user()['id'], $request->str('note'), $request->str('amount'));
+        $error = ReturnService::decide((int) $id, $action, (int) Auth::user()['id'], $request->str('note'), $request->str('amount'), $request->str('method') ?: 'cash');
         if ($error !== null) {
             $this->backWithErrors('/admin/returns', ['form' => $error]);
         }

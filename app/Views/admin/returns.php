@@ -38,7 +38,8 @@ $tabs = ['' => 'All', 'requested' => 'Waiting', 'approved' => 'Approved', 'recei
                                     <?php elseif ($r['status'] === 'approved'): ?>
                                         <form method="post" action="<?= $act('receive') ?>"><?= csrf_field() ?><button class="btn sm">Mark received</button></form>
                                     <?php elseif ($r['status'] === 'received'): ?>
-                                        <form method="post" action="<?= $act('refund') ?>" data-swal-confirm="Record this refund?" data-swal-text="This records the amount only. Pay it through your bank or gateway." data-swal-button="Record refund"><?= csrf_field() ?>
+                                        <form method="post" action="<?= $act('refund') ?>" data-swal-confirm="Record this refund?" data-swal-text="This records the amount only. Pay it through your bank or gateway, or it goes to store credit." data-swal-button="Record refund"><?= csrf_field() ?>
+                                            <select name="method" aria-label="Refund method"><option value="cash">Cash (bank or gateway)</option><option value="credit">Store credit</option></select>
                                             <input name="amount" inputmode="decimal" required placeholder="RM amount" value="<?= e(number_format((float) $r['total'], 2, '.', '')) ?>">
                                             <button class="btn sm">Record refund</button></form>
                                     <?php else: ?><span class="muted">Done</span><?php endif; ?>

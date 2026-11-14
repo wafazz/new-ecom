@@ -36,13 +36,14 @@ final class Modules
         'stock_counts' => ['Stock count sheets', 'Print a count sheet for a category or all products, enter the counts blind, review the differences and apply them as stock corrections. Off hides the pages.'],
         'quantity_breaks' => ['Quantity price breaks', 'A lower unit price for buying more of a product (for example RM8 each from 10). Off ignores breaks in the cart, checkout and product pages.'],
         'member_prices' => ['Member price groups', 'Member groups (for example wholesale or VIP) with their own lower prices on chosen products. Off makes every shopper pay the public price.'],
+        'store_credit' => ['Store credit', 'Refunds can be given as store credit to a member, and credit can be spent at checkout. Off hides credit at checkout and stops new credit refunds. Balances are kept.'],
         'stock_movements' => ['Stock movement log', 'The Stock Movement page and the Movement links on Stock Control. Off hides the page only: stock is still changed and every change is still recorded.'],
         'vouchers' => ['Discount coupons', 'Discount codes shoppers enter at checkout, and the Vouchers menu. Off stops every code at once; orders that already used a code keep their discount.'],
     ];
 
     /** Every module is off until a superadmin turns it on. */
     public const OFF_BY_DEFAULT = [
-        'flash_sales', 'vouchers', 'affiliates', 'digital_products', 'stock_movements', 'price_alerts', 'accounting_export', 'stock_counts', 'quantity_breaks', 'member_prices',
+        'flash_sales', 'vouchers', 'affiliates', 'digital_products', 'stock_movements', 'price_alerts', 'accounting_export', 'stock_counts', 'quantity_breaks', 'member_prices', 'store_credit',
         'abandoned_cart_emails', 'back_in_stock', 'product_csv', 'bulk_pricing', 'returns', 'loyalty', 'gift_cards',
         'bundles', 'newsletter', 'sales_reports', 'support', 'tax',
     ];

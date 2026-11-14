@@ -53,6 +53,8 @@ return function (Router $r): void {
         $r->post('/checkout/points/remove', 'Shop/CheckoutController@removePoints', ['module:loyalty']);
         $r->post('/checkout/gift-card', 'Shop/CheckoutController@useGiftCard', ['module:gift_cards']);
         $r->post('/checkout/gift-card/remove', 'Shop/CheckoutController@removeGiftCard', ['module:gift_cards']);
+        $r->post('/checkout/credit', 'Shop/CheckoutController@useCredit', ['module:store_credit']);
+        $r->post('/checkout/credit/remove', 'Shop/CheckoutController@removeCredit', ['module:store_credit']);
         $r->get('/track', 'Shop/OrderTrackController@form');
         $r->post('/track', 'Shop/OrderTrackController@lookup');
         $r->get('/order/{orderNo}/{token}', 'Shop/OrderTrackController@show');
