@@ -19,6 +19,11 @@ $periods = \App\Services\ModulePricing::PERIODS;
         <?php foreach ($rows as $r):
             $first = array_key_first($r['quotes']);
             $status = $r['covered'] ? 'paid' : ($r['open'] !== null && $r['open']['status'] === 'pending_review' ? 'review' : 'unpaid');
+            // Payment controls: a lifetime plan needs none; a monthly plan can renew in its last 7 days, a yearly plan in its last 3 weeks.
+            $isLifetime = $status === 'paid' && $r['until'] === '9999-12-31';
+            $daysLeft = ($status === 'paid' && !$isLifetime && $r['until'] !== null) ? (int) ceil((strtotime((string) $r['until'] . ' 23:59:59') - time()) / 86400) : null;
+            $window = match ($r['subscribed']) { 'monthly' => 7, 'yearly' => 21, default => null };
+            $canPay = !$isLifetime && ($status !== 'paid' || ($window !== null && $daysLeft !== null && $daysLeft <= $window));
         ?>
             <article class="bill-card">
                 <header class="bill-head">
@@ -28,6 +33,13 @@ $periods = \App\Services\ModulePricing::PERIODS;
                     </span>
                 </header>
 
+                <?php if ($isLifetime): ?>
+                    <p class="bill-note">Lifetime plan. No payment is needed.</p>
+                <?php elseif (!$canPay): ?>
+                    <p class="bill-note">Renewal opens <?= $r['subscribed'] === 'yearly' ? '3 weeks' : '7 days' ?> before it ends<?= $r['until'] !== null ? ' (' . e(date('d M Y', strtotime((string) $r['until']))) . ')' : '' ?>.</p>
+                <?php endif; ?>
+
+                <?php if ($canPay): ?>
                 <label class="bill-pick">
                     <input type="checkbox" form="bill-basket" name="pick[]" value="<?= e($r['key']) ?>" data-pick="<?= e($r['key']) ?>">
                     <span>Add to payment</span>
@@ -107,6 +119,7 @@ $periods = \App\Services\ModulePricing::PERIODS;
                         </details>
                     <?php endif; ?>
                 </form>
+                <?php endif; ?>
             </article>
         <?php endforeach; ?>
     </div>
