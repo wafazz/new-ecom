@@ -257,6 +257,28 @@ final class CartService
                 $problem = $problem || !$available || $qty < (int) $r['requested'];
             }
         }
+        // Quantity price breaks: the total of each product across its lines sets the price of every line for it.
+        $totals = [];
+        foreach ($items as $it) {
+            if ($it['available']) {
+                $totals[$it['product_id']] = ($totals[$it['product_id']] ?? 0) + $it['qty'];
+            }
+        }
+        foreach ($items as &$it) {
+            if (!$it['available'] || $it['qty'] < 1) {
+                continue;
+            }
+            $best = PriceBreakService::unitFor($it['product_id'], $totals[$it['product_id']], $it['unit_cents']);
+            if ($best < $it['unit_cents']) {
+                $it['unit_cents'] = $best;
+                $it['unit'] = number_format($best / 100, 2, '.', '');
+                $it['break'] = true;
+                $it['line_cents'] = $best * $it['qty'];
+            }
+        }
+        unset($it);
+        $subtotal = (int) array_sum(array_column($items, 'line_cents'));
+
         return ['items' => $items, 'subtotal_cents' => $subtotal, 'count' => $count, 'has_problem' => $problem];
     }
 

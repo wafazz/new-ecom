@@ -37,6 +37,11 @@ final class CheckoutService
                 throw new CheckoutException('Your cart is empty.');
             }
 
+            // Quantity price breaks look at the total of each product across its options, so count them first.
+            $productQty = [];
+            foreach ($lines as $ql) {
+                $productQty[(int) $ql['product_id']] = ($productQty[(int) $ql['product_id']] ?? 0) + (int) $ql['qty'];
+            }
             $items = [];
             $shipLines = []; // weight and quantity per line, for postage (digital lines are marked and skipped there)
             $subtotal = 0;
@@ -74,7 +79,7 @@ final class CheckoutService
                 $p = FlashSaleService::attach([$p])[0]; // the charged price includes any running flash sale
                 $eff = PricingService::effective($p, $v);
                 $cost = PricingService::resolveVariant($p, $v ?? []);
-                $unit = PricingService::cents($eff['price']);
+                $unit = PriceBreakService::unitFor((int) $p['id'], $productQty[(int) $p['id']] ?? 0, PricingService::cents($eff['price']));
                 $subtotal += $unit * (int) $l['qty'];
                 $shipLines[] = ['weight_kg' => $p['weight_kg'], 'qty' => (int) $l['qty'], 'digital' => $digital];
                 $hasDigital = $hasDigital || $digital;

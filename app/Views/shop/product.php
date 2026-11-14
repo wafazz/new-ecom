@@ -67,6 +67,11 @@ $wishInit = $wish === true;
             <s id="price-was" <?= $base['on_sale'] ? '' : 'hidden' ?>><?= e(money($base['retail'])) ?></s>
             <span class="save-badge" id="price-save" <?= $discount > 0 ? '' : 'hidden' ?>>Save <?= $discount ?>%</span>
         </p>
+        <?php if (!empty($breaks)): ?>
+            <ul class="pdp-breaks" aria-label="Quantity prices">
+                <?php foreach ($breaks as $b): ?><li>Buy <?= (int) $b['min_qty'] ?> or more for RM<?= e(number_format($b['unit_price'], 2)) ?> each</li><?php endforeach; ?>
+            </ul>
+        <?php endif; ?>
         <?php if (!empty($base['flash'])): ?>
             <div class="flash-pdp" data-flash-pdp>
                 <span class="flash-kicker"><?= icon('tag', 'i i-sm') ?> Flash sale: <?= e($base['flash']['name']) ?></span>

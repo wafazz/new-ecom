@@ -354,6 +354,19 @@ $applied = \App\Services\StockCountService::apply($countId, 1);
 check('stock count: applying writes the counted figure to stock', $applied['applied'] === 1 && (int) DB::query('SELECT stock FROM products WHERE id = ?', [$cnt])->fetchColumn() === 7);
 check('stock count: applying again changes nothing', \App\Services\StockCountService::apply($countId, 1)['applied'] === 0 && (int) DB::query('SELECT stock FROM products WHERE id = ?', [$cnt])->fetchColumn() === 7);
 
+// Quantity price breaks: a break is cheaper than the price, applies at its quantity, and is ignored when switched off.
+$qb = Product::insert(['weight_kg' => '1.000', 'width_cm' => '10', 'length_cm' => '10', 'height_cm' => '10',
+    'name' => 'Break Mug', 'slug' => 'break-mug', 'sku' => 'BRK001', 'category_id' => null, 'brand_id' => null,
+    'base_price' => '5', 'company_base_price' => '10', 'retail_price' => '10.00', 'discount_price' => null, 'stock' => 50, 'status' => 'active']);
+check('quantity breaks: a break at or above the current price is refused', \App\Services\PriceBreakService::save($qb, [['min_qty' => '10', 'unit_price' => '10.00']], 1) !== null);
+check('quantity breaks: a cheaper break is saved', \App\Services\PriceBreakService::save($qb, [['min_qty' => '10', 'unit_price' => '8.00']], 1) === null);
+Modules::set('quantity_breaks', true);
+check('quantity breaks: below the quantity the normal price applies', \App\Services\PriceBreakService::unitFor($qb, 9, 1000) === 1000);
+check('quantity breaks: at the quantity the break price applies', \App\Services\PriceBreakService::unitFor($qb, 10, 1000) === 800);
+Modules::set('quantity_breaks', false);
+check('quantity breaks: switched off, the normal price applies', \App\Services\PriceBreakService::unitFor($qb, 10, 1000) === 1000);
+Modules::set('quantity_breaks', true);
+
 // Newsletter: a sign-up only counts once its confirmation link is used, and the link works once.
 DB::query('DELETE FROM newsletter_subscribers');
 $nlToken = bin2hex(random_bytes(32));

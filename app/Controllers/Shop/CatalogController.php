@@ -119,6 +119,7 @@ final class CatalogController extends Controller
                 : null,
             'soldVariants' => array_values(array_filter($variants, fn($v) => (int) $v['stock'] < 1)),
             'notifyEmail' => (string) ($me['email'] ?? ''),
+            'breaks' => \App\Services\Modules::enabled('quantity_breaks') ? \App\Services\PriceBreakService::breaksFor($pid) : [],
             'scripts' => ['product-page.js', 'copy-link.js', 'flash-sales.js'],
         ]);
     }

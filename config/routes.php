@@ -326,6 +326,12 @@ return function (Router $r): void {
             $r->post('/bulk-pricing/{id}/undo', 'Admin/BulkPricingController@undo', ['module:bulk_pricing']);
         });
 
+        // Quantity prices (admin and superadmin)
+        $r->group('/admin', ['auth:admin'], function (Router $r): void {
+            $r->get('/price-breaks', 'Admin/PriceBreakController@index', ['module:quantity_breaks']);
+            $r->post('/price-breaks', 'Admin/PriceBreakController@save', ['module:quantity_breaks']);
+        });
+
         // Stock count sheets (admin and superadmin)
         $r->group('/admin', ['auth:admin'], function (Router $r): void {
             $r->get('/stock-counts', 'Admin/StockCountController@index', ['module:stock_counts']);
