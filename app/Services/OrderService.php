@@ -160,6 +160,9 @@ final class OrderService
             if ($to === 'cancelled') {
                 VoucherService::release($orderId); // the discount code can be used again
                 GiftCardService::restore($orderId); // the gift card gets back what this order paid
+                if (Modules::enabled('store_credit')) {
+                    StoreCreditService::restore($orderId); // store credit used on this order comes back once
+                }
             }
             $paid = $to === 'completed' && $order['payment_method'] === 'cod' ? ", payment_status = 'paid'" : '';
             Database::query("UPDATE orders SET status = ?{$paid} WHERE id = ?", [$to, $orderId]);
@@ -266,6 +269,10 @@ final class OrderService
             }
             if ($it['digital_delivery'] !== null) {
                 continue; // digital items never took stock (license keys are released with the order, see DigitalService)
+            }
+            if ((int) ($it['preorder'] ?? 0) === 1) {
+                PreorderService::release((int) $it['product_id'], (int) $it['qty'], $reason, $orderId, $actorId);
+                continue;
             }
             try {
                 BundleService::adjustLine((int) $it['product_id'], $it['variant_id'] !== null ? (int) $it['variant_id'] : null, (int) $it['qty'], $reason, $orderId, $actorId);

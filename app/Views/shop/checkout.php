@@ -157,6 +157,18 @@ $defaultMethod = isset($methods['cod']) ? 'cod' : (string) array_key_first($meth
             <?php endif; ?>
         </div>
     <?php endif; ?>
+    <?php if (!empty($credit) && $credit['balance'] > 0): ?>
+        <div class="co-credit">
+            <?php if ($credit['cents'] > 0): ?>
+                <p class="sum-row"><span>Store credit</span><strong>−RM<?= e(number_format($credit['cents'] / 100, 2)) ?></strong></p>
+                <form method="post" action="<?= e(url('/checkout/credit/remove')) ?>"><?= csrf_field() ?><button class="s-btn secondary block" type="submit">Don't use store credit</button></form>
+            <?php else: ?>
+                <form method="post" action="<?= e(url('/checkout/credit')) ?>"><?= csrf_field() ?>
+                    <p class="muted">You have RM<?= e(number_format($credit['balance'], 2)) ?> store credit.</p>
+                    <button class="s-btn secondary block" type="submit">Use my store credit</button></form>
+            <?php endif; ?>
+        </div>
+    <?php endif; ?>
     <?php if (!empty($loyalty)): ?>
         <div class="co-points">
             <p class="sum-row"><span>Your points</span><strong><?= (int) $loyalty['balance'] ?></strong></p>

@@ -320,6 +320,129 @@ check('abandoned carts: no reminder once the member has ordered since', !in_arra
 check('abandoned carts: a bad restore link is refused', \App\Services\AbandonedCartService::restore($acUser, str_repeat('b', 64)) === null);
 DB::query('DELETE FROM carts WHERE id = ?', [$acCart]); // leave no cart behind for later tests (the seed test expects none)
 
+// Price-drop alerts: a target must be below today's price; a price change queues a check.
+$pa = Product::insert(['weight_kg' => '1.000', 'width_cm' => '10', 'length_cm' => '10', 'height_cm' => '10',
+    'name' => 'Drop Tee', 'slug' => 'drop-tee', 'sku' => 'DRP001', 'category_id' => null, 'brand_id' => null,
+    'base_price' => '5', 'company_base_price' => '10', 'retail_price' => '100.00', 'discount_price' => null, 'stock' => 5, 'status' => 'active']);
+check('price alerts: a target at or above today\'s price is refused', \App\Services\PriceAlertService::store($pa, '100.00', 'drop@example.test', null) === 'at_or_below');
+check('price alerts: a lower target is saved', \App\Services\PriceAlertService::store($pa, '80.00', 'drop@example.test', null) === 'saved');
+check('price alerts: a bad address is refused', \App\Services\PriceAlertService::store($pa, '80.00', 'nope', null) === 'invalid');
+DB::query('DELETE FROM jobs');
+Product::update($pa, ['retail_price' => '75.00']);
+check('price alerts: a price change queues a price check', (int) DB::query("SELECT COUNT(*) FROM jobs WHERE type = 'price.drop'")->fetchColumn() === 1);
+
+// Accounting: an order's journal balances, and a cancelled order is left out.
+DB::query("INSERT INTO orders (order_no, customer_name, customer_email, customer_phone, ship_line1, ship_city, ship_state, ship_postcode, subtotal, discount_total, shipping_fee, tax_total, total, payment_method, status, created_at) VALUES ('ACC-1', 'Acc Test', 'acc@example.test', '0123', 'Line 1', 'City', 'Selangor', '43000', 100.00, 10.00, 8.00, 5.00, 98.00, 'cod', 'completed', NOW())");
+DB::query("INSERT INTO orders (order_no, customer_name, customer_email, customer_phone, ship_line1, ship_city, ship_state, ship_postcode, subtotal, discount_total, shipping_fee, tax_total, total, payment_method, status, created_at) VALUES ('ACC-2', 'Acc Test', 'acc@example.test', '0123', 'Line 1', 'City', 'Selangor', '43000', 50.00, 0, 0, 0, 50.00, 'cod', 'cancelled', NOW())");
+$accToday = date('Y-m-d');
+$accLines = \App\Services\AccountingExportService::journal($accToday, $accToday);
+$accTotals = \App\Services\AccountingExportService::totals($accLines);
+check('accounting: an order journal balances (debits equal credits)', $accTotals['balanced'] === true);
+check('accounting: the order journal debits the amount received (98.00)', abs(array_sum(array_column(array_filter($accLines, fn($l) => $l['ref'] === 'ACC-1'), 'debit')) - 98.0) < 0.005);
+check('accounting: a cancelled order is left out', !in_array('ACC-2', array_column($accLines, 'ref'), true));
+
+// Stock counts: a count is taken blind, differences are applied once as corrections.
+$cnt = Product::insert(['weight_kg' => '1.000', 'width_cm' => '10', 'length_cm' => '10', 'height_cm' => '10',
+    'name' => 'Count Mug', 'slug' => 'count-mug', 'sku' => 'CNT001', 'category_id' => null, 'brand_id' => null,
+    'base_price' => '5', 'company_base_price' => '10', 'retail_price' => '10.00', 'discount_price' => null, 'stock' => 5, 'status' => 'active']);
+$countId = \App\Services\StockCountService::create('Test shelf', null, 1);
+$countLine = (int) DB::query("SELECT id FROM stock_count_lines WHERE count_id = ? AND product_id = ?", [$countId, $cnt])->fetchColumn();
+check('stock count: the sheet lists the product with its system quantity', $countLine > 0 && (int) DB::query('SELECT system_qty FROM stock_count_lines WHERE id = ?', [$countLine])->fetchColumn() === 5);
+\App\Services\StockCountService::saveCounts($countId, [$countLine => '7']);
+check('stock count: a counted difference is listed for review', count(\App\Services\StockCountService::differences($countId)) === 1);
+$applied = \App\Services\StockCountService::apply($countId, 1);
+check('stock count: applying writes the counted figure to stock', $applied['applied'] === 1 && (int) DB::query('SELECT stock FROM products WHERE id = ?', [$cnt])->fetchColumn() === 7);
+check('stock count: applying again changes nothing', \App\Services\StockCountService::apply($countId, 1)['applied'] === 0 && (int) DB::query('SELECT stock FROM products WHERE id = ?', [$cnt])->fetchColumn() === 7);
+
+// Quantity price breaks: a break is cheaper than the price, applies at its quantity, and is ignored when switched off.
+$qb = Product::insert(['weight_kg' => '1.000', 'width_cm' => '10', 'length_cm' => '10', 'height_cm' => '10',
+    'name' => 'Break Mug', 'slug' => 'break-mug', 'sku' => 'BRK001', 'category_id' => null, 'brand_id' => null,
+    'base_price' => '5', 'company_base_price' => '10', 'retail_price' => '10.00', 'discount_price' => null, 'stock' => 50, 'status' => 'active']);
+check('quantity breaks: a break at or above the current price is refused', \App\Services\PriceBreakService::save($qb, [['min_qty' => '10', 'unit_price' => '10.00']], 1) !== null);
+check('quantity breaks: a cheaper break is saved', \App\Services\PriceBreakService::save($qb, [['min_qty' => '10', 'unit_price' => '8.00']], 1) === null);
+Modules::set('quantity_breaks', true);
+check('quantity breaks: below the quantity the normal price applies', \App\Services\PriceBreakService::unitFor($qb, 9, 1000) === 1000);
+check('quantity breaks: at the quantity the break price applies', \App\Services\PriceBreakService::unitFor($qb, 10, 1000) === 800);
+Modules::set('quantity_breaks', false);
+check('quantity breaks: switched off, the normal price applies', \App\Services\PriceBreakService::unitFor($qb, 10, 1000) === 1000);
+Modules::set('quantity_breaks', true);
+
+// Member prices: a group member pays the lower group price; a guest or a member outside the group pays the public price.
+$mpProd = Product::insert(['weight_kg' => '1.000', 'width_cm' => '10', 'length_cm' => '10', 'height_cm' => '10',
+    'name' => 'Group Tee', 'slug' => 'group-tee', 'sku' => 'GRP001', 'category_id' => null, 'brand_id' => null,
+    'base_price' => '5', 'company_base_price' => '10', 'retail_price' => '20.00', 'discount_price' => null, 'stock' => 9, 'status' => 'active']);
+$mpUser = User::create('member', 'Wholesale Buyer', 'wholesale@example.test', 'long-password-1');
+check('member prices: a group is created', \App\Services\MemberPriceService::createGroup('Wholesale', 1) === null);
+$mpGroup = (int) DB::query("SELECT id FROM member_groups WHERE name = 'Wholesale'")->fetchColumn();
+check('member prices: a group price above the public price is refused', \App\Services\MemberPriceService::setPrice($mpGroup, $mpProd, '25.00', 1) !== null);
+check('member prices: a lower group price is saved', \App\Services\MemberPriceService::setPrice($mpGroup, $mpProd, '12.00', 1) === null);
+check('member prices: the member is put in the group', \App\Services\MemberPriceService::assign('wholesale@example.test', $mpGroup, 1) === null);
+Modules::set('member_prices', true);
+check('member prices: a group member pays the group price', \App\Services\MemberPriceService::priceFor($mpUser, $mpProd, 2000) === 1200);
+check('member prices: a guest pays the public price', \App\Services\MemberPriceService::priceFor(null, $mpProd, 2000) === 2000);
+Modules::set('member_prices', false);
+check('member prices: switched off, the public price applies', \App\Services\MemberPriceService::priceFor($mpUser, $mpProd, 2000) === 2000);
+Modules::set('member_prices', true);
+
+// Pre-orders: a limit caps the units sold; stock is set on arrival less the units sold; a cancelled line gives its units back.
+$po = Product::insert(['weight_kg' => '1.000', 'width_cm' => '10', 'length_cm' => '10', 'height_cm' => '10',
+    'name' => 'Pre Mug', 'slug' => 'pre-mug', 'sku' => 'PRE001', 'category_id' => null, 'brand_id' => null,
+    'base_price' => '5', 'company_base_price' => '10', 'retail_price' => '10.00', 'discount_price' => null, 'stock' => 0, 'status' => 'active']);
+Modules::set('preorders', true);
+check('pre-orders: opening with a limit is saved', \App\Services\PreorderService::open($po, date('Y-m-d', strtotime('+30 days')), 5, 1) === null);
+check('pre-orders: the sellable units are the limit', \App\Services\PreorderService::sellable($po, 0) === 5);
+\App\Services\PreorderService::reserve($po, 3, 0);
+check('pre-orders: units sold reduce what is left', \App\Services\PreorderService::sellable($po, 0) === 2);
+$overSold = false;
+try { \App\Services\PreorderService::reserve($po, 3, 0); } catch (\DomainException) { $overSold = true; }
+check('pre-orders: the limit cannot be exceeded', $overSold);
+\App\Services\PreorderService::release($po, 1, 'cancel', 0, 1);
+check('pre-orders: a cancelled unit goes back to the limit', \App\Services\PreorderService::sellable($po, 0) === 3);
+check('pre-orders: arriving stock must cover what is sold', \App\Services\PreorderService::arrive($po, 1, 1) !== null);
+check('pre-orders: arrival sets stock to arrived minus sold', \App\Services\PreorderService::arrive($po, 10, 1) === null && (int) DB::query('SELECT stock FROM products WHERE id = ?', [$po])->fetchColumn() === 8);
+check('pre-orders: the pre-order closes on arrival', !\App\Services\PreorderService::isPreorder($po));
+Modules::set('preorders', false);
+
+// Purchase orders: stock goes up only on a recorded delivery, never past the ordered quantity.
+$poProd = Product::insert(['weight_kg' => '1.000', 'width_cm' => '10', 'length_cm' => '10', 'height_cm' => '10',
+    'name' => 'Supplied Tote', 'slug' => 'supplied-tote', 'sku' => 'SUP001', 'category_id' => null, 'brand_id' => null,
+    'base_price' => '5', 'company_base_price' => '10', 'retail_price' => '10.00', 'discount_price' => null, 'stock' => 1, 'status' => 'active']);
+check('purchase orders: a supplier is saved', \App\Services\PurchaseOrderService::createSupplier('Acme Supply', '', '7', 1) === null);
+$poSupplier = (int) DB::query("SELECT id FROM suppliers WHERE name = 'Acme Supply'")->fetchColumn();
+$poId = \App\Services\PurchaseOrderService::createOrder($poSupplier, [['product_id' => $poProd, 'qty' => 10, 'unit_cost' => '4.00']], 1);
+check('purchase orders: a draft order is made', is_int($poId));
+check('purchase orders: a draft must be sent before it can receive', \App\Services\PurchaseOrderService::receive($poId, [1 => '2'], 1) !== null);
+\App\Services\PurchaseOrderService::send($poId, 1);
+$poItem = (int) DB::query('SELECT id FROM purchase_order_items WHERE po_id = ?', [$poId])->fetchColumn();
+check('purchase orders: a delivery adds to stock', \App\Services\PurchaseOrderService::receive($poId, [$poItem => '4'], 1) === null && (int) DB::query('SELECT stock FROM products WHERE id = ?', [$poProd])->fetchColumn() === 5);
+check('purchase orders: a delivery cannot go past the ordered quantity', \App\Services\PurchaseOrderService::receive($poId, [$poItem => '7'], 1) !== null);
+check('purchase orders: the order is part-received', (string) DB::query('SELECT status FROM purchase_orders WHERE id = ?', [$poId])->fetchColumn() === 'part_received');
+\App\Services\PurchaseOrderService::receive($poId, [$poItem => '6'], 1);
+check('purchase orders: the rest arrives and the order is received, with stock matching the total', (string) DB::query('SELECT status FROM purchase_orders WHERE id = ?', [$poId])->fetchColumn() === 'received' && (int) DB::query('SELECT stock FROM products WHERE id = ?', [$poProd])->fetchColumn() === 11);
+
+// Subscriptions: a due cycle places one order; the same day places none; an unpaid cycle pauses it until paid.
+$subUser = User::create('member', 'Sub Buyer', 'sub@example.test', 'long-password-1');
+DB::query("INSERT INTO addresses (user_id, name, phone, line1, city, state, postcode, is_default) VALUES (?, 'Sub Buyer', '0123456789', 'Line 1', 'City', 'Selangor', '43000', 1)", [$subUser]);
+$subAddr = (int) DB::connection()->lastInsertId();
+$subProd = Product::insert(['weight_kg' => '1.000', 'width_cm' => '10', 'length_cm' => '10', 'height_cm' => '10',
+    'name' => 'Sub Tea', 'slug' => 'sub-tea', 'sku' => 'SUB001', 'category_id' => null, 'brand_id' => null,
+    'base_price' => '5', 'company_base_price' => '10', 'retail_price' => '10.00', 'discount_price' => null, 'stock' => 50, 'status' => 'active']);
+Modules::set('subscriptions', true);
+check('subscriptions: a member can subscribe to a product', \App\Services\SubscriptionService::create($subUser, $subProd, $subAddr, 'monthly', 'cod', $subUser) === null);
+$subRes = \App\Services\SubscriptionService::runDue();
+check('subscriptions: the first due cycle places one order', $subRes['created'] >= 1 && (int) DB::query('SELECT COUNT(*) FROM subscription_runs r JOIN subscriptions s ON s.id = r.subscription_id WHERE s.user_id = ? AND r.order_id IS NOT NULL', [$subUser])->fetchColumn() === 1);
+$subId = (int) DB::query('SELECT id FROM subscriptions WHERE user_id = ?', [$subUser])->fetchColumn();
+check('subscriptions: the next due date moves on by a month', (string) DB::query('SELECT next_due FROM subscriptions WHERE id = ?', [$subId])->fetchColumn() > date('Y-m-d'));
+\App\Services\SubscriptionService::runDue();
+check('subscriptions: the same cycle is never placed twice', (int) DB::query('SELECT COUNT(*) FROM subscription_runs WHERE subscription_id = ?', [$subId])->fetchColumn() === 1);
+DB::query('UPDATE subscriptions SET next_due = CURDATE() WHERE id = ?', [$subId]);
+$pausedRes = \App\Services\SubscriptionService::runDue();
+check('subscriptions: an unpaid cycle pauses the subscription and places nothing', $pausedRes['paused'] >= 1 && (string) DB::query('SELECT status FROM subscriptions WHERE id = ?', [$subId])->fetchColumn() === 'paused');
+DB::query("UPDATE orders o JOIN subscription_runs r ON r.order_id = o.id SET o.payment_status = 'paid', o.status = 'completed' WHERE r.subscription_id = ?", [$subId]);
+$resumeRes = \App\Services\SubscriptionService::runDue();
+check('subscriptions: paying the held cycle resumes it', $resumeRes['resumed'] >= 1 && (string) DB::query('SELECT status FROM subscriptions WHERE id = ?', [$subId])->fetchColumn() === 'active');
+Modules::set('subscriptions', false);
+
 // Newsletter: a sign-up only counts once its confirmation link is used, and the link works once.
 DB::query('DELETE FROM newsletter_subscribers');
 $nlToken = bin2hex(random_bytes(32));

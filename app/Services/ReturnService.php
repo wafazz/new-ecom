@@ -71,7 +71,7 @@ final class ReturnService
      * Moves a request on. Actions: approve | reject | receive | refund.
      * @return string|null error message, or null when done
      */
-    public static function decide(int $requestId, string $action, int $actorId, ?string $note = null, ?string $amount = null): ?string
+    public static function decide(int $requestId, string $action, int $actorId, ?string $note = null, ?string $amount = null, string $method = 'cash'): ?string
     {
         $pdo = Database::connection();
         $pdo->beginTransaction();
@@ -113,8 +113,19 @@ final class ReturnService
                     if ($value <= 0 || $value > (float) $order['total']) {
                         throw new \DomainException('The refund must be more than RM0.00 and no more than the order total (RM' . number_format((float) $order['total'], 2) . ').');
                     }
-                    Database::query("UPDATE return_requests SET status = 'refunded', refund_amount = ?, refunded_at = NOW(), staff_note = COALESCE(?, staff_note) WHERE id = ?",
-                        [number_format($value, 2, '.', ''), $note, $requestId]);
+                    if (!in_array($method, ['cash', 'credit'], true)) {
+                        throw new \DomainException('Choose cash or store credit.');
+                    }
+                    if ($method === 'credit' && Modules::enabled('store_credit')) {
+                        $creditError = StoreCreditService::refund((int) $order['id'], $order['user_id'] !== null ? (int) $order['user_id'] : null, $value, $actorId);
+                        if ($creditError !== null) {
+                            throw new \DomainException($creditError);
+                        }
+                    } elseif ($method === 'credit') {
+                        throw new \DomainException('Store credit is switched off. Refund in cash instead.');
+                    }
+                    Database::query("UPDATE return_requests SET status = 'refunded', refund_amount = ?, refund_method = ?, refunded_at = NOW(), staff_note = COALESCE(?, staff_note) WHERE id = ?",
+                        [number_format($value, 2, '.', ''), $method, $note, $requestId]);
                     AuditService::log($actorId, 'return.refunded', "order {$order['order_no']}: RM" . number_format($value, 2, '.', ''));
                     LoyaltyService::reverse((int) $order['id']);
                     break;

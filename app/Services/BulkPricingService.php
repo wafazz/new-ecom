@@ -71,6 +71,9 @@ final class BulkPricingService
                 $variants += $t['variant_id'] !== null ? 1 : 0;
             }
             AuditService::log($actorId, 'pricing.bulk', "batch {$batch}: " . self::label($scope) . " {$percent}% on {$products} product(s)");
+            foreach (array_unique(array_column($targets, 'product_id')) as $changed) {
+                Queue::push('price.drop', ['product_id' => (int) $changed]);
+            }
             $pdo->commit();
             return ['batch' => $batch, 'products' => $products, 'variants' => $variants];
         } catch (\Throwable $e) {

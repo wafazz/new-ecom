@@ -31,13 +31,22 @@ final class Modules
         'bundles' => ['Bundles', 'Products made of other products, sold at one price. Off stops new bundle sales and hides the bundle list. Orders already placed are still returned to stock correctly.'],
         'tax' => ['SST on orders', 'SST worked out on tax-inclusive prices and shown at checkout, on orders and on invoices, with a monthly SST report. Off shows no SST and stores none on new orders. Existing orders keep their SST.'],
         'abandoned_cart_emails' => ['Abandoned cart emails', 'A reminder email with a restore link, for signed-in members who leave items in their cart. Off stops the reminders and the restore link. Snapshots already saved are kept.'],
+        'price_alerts' => ['Price-drop alerts', 'A "tell me when it drops to RM X" sign-up on products, and the email when the price reaches the target. Off hides the sign-up and stops new alerts. Waiting alerts are kept.'],
+        'accounting_export' => ['Accounting export', 'A monthly journal (sales, postage, SST, payments, refunds) as CSV for accounting software. Read only; it changes no orders. Off hides the page.'],
+        'stock_counts' => ['Stock count sheets', 'Print a count sheet for a category or all products, enter the counts blind, review the differences and apply them as stock corrections. Off hides the pages.'],
+        'quantity_breaks' => ['Quantity price breaks', 'A lower unit price for buying more of a product (for example RM8 each from 10). Off ignores breaks in the cart, checkout and product pages.'],
+        'member_prices' => ['Member price groups', 'Member groups (for example wholesale or VIP) with their own lower prices on chosen products. Off makes every shopper pay the public price.'],
+        'store_credit' => ['Store credit', 'Refunds can be given as store credit to a member, and credit can be spent at checkout. Off hides credit at checkout and stops new credit refunds. Balances are kept.'],
+        'preorders' => ['Pre-orders', 'Sell a product before its stock arrives, up to a limit, with an expected date. Off stops new pre-orders. Existing pre-orders are kept.'],
+        'purchase_orders' => ['Supplier purchase orders', 'Suppliers, purchase orders to them, and recorded deliveries. Stock goes up only when a delivery is recorded, never past what was ordered. Off hides the pages.'],
+        'subscriptions' => ['Subscriptions', 'Shoppers subscribe to a product for regular deliveries. Each cycle becomes an order they pay by hand; an unpaid cycle pauses the subscription until it is paid. Off stops new subscriptions and renewals.'],
         'stock_movements' => ['Stock movement log', 'The Stock Movement page and the Movement links on Stock Control. Off hides the page only: stock is still changed and every change is still recorded.'],
         'vouchers' => ['Discount coupons', 'Discount codes shoppers enter at checkout, and the Vouchers menu. Off stops every code at once; orders that already used a code keep their discount.'],
     ];
 
     /** Every module is off until a superadmin turns it on. */
     public const OFF_BY_DEFAULT = [
-        'flash_sales', 'vouchers', 'affiliates', 'digital_products', 'stock_movements',
+        'flash_sales', 'vouchers', 'affiliates', 'digital_products', 'stock_movements', 'price_alerts', 'accounting_export', 'stock_counts', 'quantity_breaks', 'member_prices', 'store_credit', 'preorders', 'purchase_orders', 'subscriptions',
         'abandoned_cart_emails', 'back_in_stock', 'product_csv', 'bulk_pricing', 'returns', 'loyalty', 'gift_cards',
         'bundles', 'newsletter', 'sales_reports', 'support', 'tax',
     ];

@@ -67,6 +67,32 @@ $wishInit = $wish === true;
             <s id="price-was" <?= $base['on_sale'] ? '' : 'hidden' ?>><?= e(money($base['retail'])) ?></s>
             <span class="save-badge" id="price-save" <?= $discount > 0 ? '' : 'hidden' ?>>Save <?= $discount ?>%</span>
         </p>
+        <?php if (!empty($subscribe) && !empty($subscribe['addresses'])): ?>
+        <details class="price-alert">
+            <summary>Subscribe for regular delivery</summary>
+            <form method="post" action="<?= e(url('/products/' . $product['slug'] . '/subscribe')) ?>" class="notify-form">
+                <?= csrf_field() ?>
+                <label>How often
+                    <select name="cadence"><?php foreach ($subscribe['cadences'] as $ck => $cl): ?><option value="<?= e($ck) ?>"><?= e($cl) ?></option><?php endforeach; ?></select></label>
+                <label>Deliver to
+                    <select name="address_id"><?php foreach ($subscribe['addresses'] as $a): ?><option value="<?= (int) $a['id'] ?>"><?= e(($a['label'] ?: 'Address') . ' · ' . $a['line1'] . ', ' . $a['city']) ?></option><?php endforeach; ?></select></label>
+                <label>Pay each delivery by
+                    <select name="method"><?php foreach ($subscribe['methods'] as $m): ?><option value="<?= e($m) ?>"><?= e(ucwords(str_replace('_', ' ', $m))) ?></option><?php endforeach; ?></select></label>
+                <button class="s-btn secondary" type="submit">Subscribe</button>
+            </form>
+        </details>
+        <?php endif; ?>
+        <?php if (!empty($preorder) && $preorder['left'] > 0): ?>
+            <p class="pdp-preorder"><strong>Pre-order</strong><?= $preorder['expected'] ? ' · ships from ' . e(date('d M Y', strtotime((string) $preorder['expected']))) : '' ?> · <?= (int) $preorder['left'] ?> left to pre-order</p>
+        <?php endif; ?>
+        <?php if (!empty($memberPrice)): ?>
+            <p class="pdp-member-price">Your member price: <strong>RM<?= e($memberPrice) ?></strong></p>
+        <?php endif; ?>
+        <?php if (!empty($breaks)): ?>
+            <ul class="pdp-breaks" aria-label="Quantity prices">
+                <?php foreach ($breaks as $b): ?><li>Buy <?= (int) $b['min_qty'] ?> or more for RM<?= e(number_format($b['unit_price'], 2)) ?> each</li><?php endforeach; ?>
+            </ul>
+        <?php endif; ?>
         <?php if (!empty($base['flash'])): ?>
             <div class="flash-pdp" data-flash-pdp>
                 <span class="flash-kicker"><?= icon('tag', 'i i-sm') ?> Flash sale: <?= e($base['flash']['name']) ?></span>
@@ -128,6 +154,19 @@ $wishInit = $wish === true;
             <label>Email <input type="email" name="email" required maxlength="190" value="<?= e($notifyEmail) ?>" autocomplete="email"></label>
             <button class="s-btn secondary" type="submit">Notify me</button>
         </form>
+        <?php endif; ?>
+
+        <?php if (\App\Services\Modules::enabled('price_alerts')): ?>
+        <details class="price-alert">
+            <summary>Tell me when the price drops</summary>
+            <form method="post" action="<?= e(url('/products/' . $product['slug'] . '/price-alert')) ?>" class="notify-form">
+                <?= csrf_field() ?>
+                <p class="muted">Now RM<?= e(number_format((float) $base['price'], 2, '.', '')) ?>. We'll email you when it reaches your price.</p>
+                <label>Price (RM) <input name="target" inputmode="decimal" required placeholder="below RM<?= e(number_format((float) $base['price'], 2, '.', '')) ?>"></label>
+                <label>Email <input type="email" name="email" required maxlength="190" value="<?= e($notifyEmail ?? '') ?>" autocomplete="email"></label>
+                <button class="s-btn secondary" type="submit">Tell me</button>
+            </form>
+        </details>
         <?php endif; ?>
 
         <?php if (!empty($affiliateLink)): ?>

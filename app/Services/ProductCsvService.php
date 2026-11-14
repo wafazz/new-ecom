@@ -130,6 +130,9 @@ final class ProductCsvService
                 }
             }
             AuditService::log($actorId, 'catalogue.import', "{$prices} price(s), {$stock} stock line(s) from CSV");
+            foreach (array_unique(array_map(fn($r) => (int) $r['target']['product_id'], $good)) as $changed) {
+                Queue::push('price.drop', ['product_id' => $changed]);
+            }
             $pdo->commit();
             return ['prices' => $prices, 'stock' => $stock];
         } catch (\Throwable $e) {

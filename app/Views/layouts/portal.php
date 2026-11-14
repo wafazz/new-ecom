@@ -22,6 +22,11 @@ $supportMenu = Modules::enabled('support');
 $giftMenu = Modules::enabled('gift_cards');
 $bundlesMenu = Modules::enabled('bundles');
 $taxMenu = Modules::enabled('tax');
+$accountingMenu = Modules::enabled('accounting_export');
+$countsMenu = Modules::enabled('stock_counts');
+$preorderMenu = Modules::enabled('preorders');
+$poMenu = Modules::enabled('purchase_orders');
+$subscriptionsMenu = Modules::enabled('subscriptions');
 $canOrders = $isAdminRole || ($role === 'staff' && Auth::can('orders.view'));
 $orderCounts = $canOrders ? Database::query('SELECT status, COUNT(*) FROM orders GROUP BY status')->fetchAll(\PDO::FETCH_KEY_PAIR) : [];
 $pendingOrders = (int) ($orderCounts['pending'] ?? 0);
@@ -40,8 +45,8 @@ $groups = match ($role) {
     'admin', 'superadmin' => [
         'Overview' => [['/admin', 'Dashboard', 'home', 0]],
         'Catalog' => [['/admin/products', 'Products', 'box', 0], ...($bundlesMenu ? [['/admin/bundles', 'Bundles', 'box', 0]] : []), ...($bulkMenu ? [['/admin/bulk-pricing', 'Bulk prices', 'coin', 0]] : []), ...($csvMenu ? [['/admin/products/csv', 'Import / export', 'box', 0]] : []), ['/admin/categories', 'Categories', 'tag', 0], ['/admin/brands', 'Brands', 'tag', 0], ...($flashMenu ? [['/admin/flash-sales', 'Flash sales', 'coin', 0]] : []), ['/admin/reviews', 'Reviews', 'heart', 0]],
-        'Inventory' => [['/admin/stock', 'Stock Control', 'stack', 0], ...($movementMenu ? [['/admin/stock/movements', 'Stock Movement', 'swap', 0]] : [])],
-        'Sales' => [['/admin/orders', 'Orders', 'cart', $pendingOrders, $orderSub('/admin')], ...($reportsMenu ? [['/admin/reports', 'Sales reports', 'coin', 0]] : []), ...($taxMenu ? [['/admin/tax', 'SST', 'coin', 0]] : []), ...($returnsMenu ? [['/admin/returns', 'Returns', 'swap', 0]] : []), ...($supportMenu ? [['/admin/support', 'Order messages', 'heart', 0]] : []), ...($giftMenu ? [['/admin/gift-cards', 'Gift cards', 'coin', 0]] : []), ...($affiliatesOn ? [['/admin/affiliates', 'Affiliates', 'link', 0], ['/admin/commissions', 'Commissions', 'coin', $pendingCommissions], ['/admin/withdrawals', 'Withdrawals', 'coin', 0]] : []), ...($vouchersMenu ? [['/admin/vouchers', 'Vouchers', 'coin', 0]] : [])],
+        'Inventory' => [['/admin/stock', 'Stock Control', 'stack', 0], ...($movementMenu ? [['/admin/stock/movements', 'Stock Movement', 'swap', 0]] : []), ...($countsMenu ? [['/admin/stock-counts', 'Stock counts', 'stack', 0]] : []), ...($preorderMenu ? [['/admin/preorders', 'Pre-orders', 'box', 0]] : []), ...($poMenu ? [['/admin/purchase-orders', 'Purchase orders', 'truck', 0]] : [])],
+        'Sales' => [['/admin/orders', 'Orders', 'cart', $pendingOrders, $orderSub('/admin')], ...($reportsMenu ? [['/admin/reports', 'Sales reports', 'coin', 0]] : []), ...($taxMenu ? [['/admin/tax', 'SST', 'coin', 0]] : []), ...($accountingMenu ? [['/admin/accounting', 'Accounting export', 'coin', 0]] : []), ...($returnsMenu ? [['/admin/returns', 'Returns', 'swap', 0]] : []), ...($supportMenu ? [['/admin/support', 'Order messages', 'heart', 0]] : []), ...($giftMenu ? [['/admin/gift-cards', 'Gift cards', 'coin', 0]] : []), ...($affiliatesOn ? [['/admin/affiliates', 'Affiliates', 'link', 0], ['/admin/commissions', 'Commissions', 'coin', $pendingCommissions], ['/admin/withdrawals', 'Withdrawals', 'coin', 0]] : []), ...($vouchersMenu ? [['/admin/vouchers', 'Vouchers', 'coin', 0]] : [])],
         'Administration' => [['/admin/staff', 'Staff', 'users', 0], ...($newsletterMenu ? [['/admin/newsletter', 'Newsletter', 'heart', 0]] : []), ['/admin/visitors', 'Visitors', 'pin', 0], ['/admin/shipping-rates', 'Shipping rates', 'truck', 0], ['/admin/invoice', 'Invoice details', 'stack', 0], ['/admin/billing', 'Module billing', 'card', 0], ['/admin/backup', 'Backup', 'lock', 0], ['/admin/email/announce', 'Announcements', 'heart', 0], ['/admin/payments', 'Payments', 'card', 0], ['/admin/api', 'API Management', 'link', 0, [['/admin/whatsapp', 'WhatsApp', '', 0], ['/admin/email', 'Email', '', 0], ['/admin/payments/billplz', 'Billplz', '', 0], ['/admin/shipping/ninjavan', 'NinjaVan', '', 0], ['/admin/shipping/jnt-express', 'J&T Express', '', 0]]], ['/admin/settings', 'Settings', 'gear', 0]],
         'Account' => [['/admin/profile', 'Profile', 'user', 0], ['/admin/password', 'Password', 'lock', 0]],
     ] + ($role === 'superadmin' ? [
@@ -63,7 +68,7 @@ $groups = match ($role) {
     ]),
     default => [
         'Overview' => [['/member', 'Overview', 'home', 0]],
-        'Shopping' => [['/member/orders', 'Orders', 'cart', 0], ['/member/wishlist', 'Wishlist', 'heart', 0], ['/member/addresses', 'Addresses', 'pin', 0]],
+        'Shopping' => [['/member/orders', 'Orders', 'cart', 0], ['/member/wishlist', 'Wishlist', 'heart', 0], ['/member/addresses', 'Addresses', 'pin', 0]] + ($subscriptionsMenu ? [['/member/subscriptions', 'Subscriptions', 'truck', 0]] : []),
         'Earn' => $affiliatesOn ? [['/member/affiliate', 'Affiliate', 'link', 0]] : [],
         'Account' => [['/member/profile', 'Profile', 'user', 0], ['/member/password', 'Password', 'lock', 0]],
     ],

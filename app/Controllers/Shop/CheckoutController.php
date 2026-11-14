@@ -83,6 +83,8 @@ final class CheckoutController extends Controller
         $discount += (int) ($loyalty['cents'] ?? 0);
         $gift = $this->giftFor($cart, $discount);
         $discount += (int) ($gift['cents'] ?? 0);
+        $credit = $this->creditFor($cart, $discount);
+        $discount += (int) ($credit['cents'] ?? 0);
         $sst = \App\Services\TaxService::forCart($cart['items'], (int) $cart['subtotal_cents'], $discount);
 
         $this->view('shop/checkout', [
@@ -91,6 +93,7 @@ final class CheckoutController extends Controller
             'voucher' => $voucher,
             'loyalty' => $loyalty,
             'gift' => $gift,
+            'credit' => $credit,
             'sst_cents' => $sst,
             'discount_cents' => $discount,
             'voucher_note' => $voucherNote,
@@ -177,8 +180,9 @@ final class CheckoutController extends Controller
         $voucherCode = Session::get('voucher');
         $pointsWanted = $memberId !== null ? (int) Session::get('points', 0) : 0;
         $giftCode = Session::get('gift_card');
+        $useCredit = $memberId !== null && Session::get('use_credit') === true;
         try {
-            $result = CheckoutService::place((int) CartService::id(), $in, $method, $memberId, $newAccount, is_string($_COOKIE['ref'] ?? null) ? $_COOKIE['ref'] : null, is_string($voucherCode) ? $voucherCode : null, $pointsWanted, is_string($giftCode) ? $giftCode : null);
+            $result = CheckoutService::place((int) CartService::id(), $in, $method, $memberId, $newAccount, is_string($_COOKIE['ref'] ?? null) ? $_COOKIE['ref'] : null, is_string($voucherCode) ? $voucherCode : null, $pointsWanted, is_string($giftCode) ? $giftCode : null, $useCredit);
         } catch (CheckoutException $e) {
             $toCart = in_array($e->getMessage(), ['Your cart is empty.', \App\Services\CartService::EXPIRED_MESSAGE], true);
             $this->backWithErrors($toCart ? '/cart' : '/checkout', ['form' => $e->getMessage()], $request->body);
@@ -186,6 +190,7 @@ final class CheckoutController extends Controller
         Session::forget('voucher');
         Session::forget('points');
         Session::forget('gift_card');
+        Session::forget('use_credit');
 
         // Optional newsletter sign-up at checkout: a confirmation email is sent, the address is added only once confirmed.
         if ($request->str('newsletter') === '1' && \App\Services\Modules::enabled('newsletter')) {
@@ -289,7 +294,42 @@ final class CheckoutController extends Controller
         $loyalty = $this->loyaltyFor($cart, $voucher);
         $afterLoyalty = $voucher + (int) ($loyalty['cents'] ?? 0);
         $gift = $this->giftFor($cart, $afterLoyalty);
-        return $afterLoyalty + (int) ($gift['cents'] ?? 0);
+        $afterGift = $afterLoyalty + (int) ($gift['cents'] ?? 0);
+        $credit = $this->creditFor($cart, $afterGift);
+        return $afterGift + (int) ($credit['cents'] ?? 0);
+    }
+
+    /**
+     * Store credit for a signed-in member: the balance, and how much would be used now (only when they chose to use it).
+     * @return array{balance:float, cents:int}|null
+     */
+    private function creditFor(array $cart, int $discountCents): ?array
+    {
+        $me = Auth::user();
+        if ($me === null || $me['role'] !== 'member' || !\App\Services\Modules::enabled('store_credit')) {
+            return null;
+        }
+        $balance = \App\Services\StoreCreditService::balance((int) $me['id']);
+        $cents = Session::get('use_credit') === true
+            ? \App\Services\StoreCreditService::reserve((int) $me['id'], max(0, (int) $cart['subtotal_cents'] - $discountCents))
+            : 0;
+        return ['balance' => $balance, 'cents' => $cents];
+    }
+
+    public function useCredit(Request $request): void
+    {
+        $me = Auth::user();
+        if ($me === null || $me['role'] !== 'member') {
+            $this->backWithErrors('/checkout', ['credit' => 'Log in to use your store credit.']);
+        }
+        Session::set('use_credit', true);
+        $this->success('/checkout', 'Store credit will be used on this order. Your total is updated below.');
+    }
+
+    public function removeCredit(Request $request): void
+    {
+        Session::forget('use_credit');
+        $this->success('/checkout', 'Store credit removed from this order.');
     }
 
     /**

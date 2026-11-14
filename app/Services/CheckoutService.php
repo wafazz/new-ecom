@@ -21,7 +21,7 @@ final class CheckoutService
      * @return array{order_id:int, order_no:string, token:?string, user_id:?int}
      * @throws CheckoutException
      */
-    public static function place(int $cartId, array $contact, string $paymentMethod, ?int $userId, ?array $newAccount = null, ?string $refCode = null, ?string $voucherCode = null, int $pointsRequested = 0, ?string $giftCode = null): array
+    public static function place(int $cartId, array $contact, string $paymentMethod, ?int $userId, ?array $newAccount = null, ?string $refCode = null, ?string $voucherCode = null, int $pointsRequested = 0, ?string $giftCode = null, bool $useCredit = false): array
     {
         $pdo = Database::connection();
         $pdo->beginTransaction();
@@ -37,6 +37,11 @@ final class CheckoutService
                 throw new CheckoutException('Your cart is empty.');
             }
 
+            // Quantity price breaks look at the total of each product across its options, so count them first.
+            $productQty = [];
+            foreach ($lines as $ql) {
+                $productQty[(int) $ql['product_id']] = ($productQty[(int) $ql['product_id']] ?? 0) + (int) $ql['qty'];
+            }
             $items = [];
             $shipLines = []; // weight and quantity per line, for postage (digital lines are marked and skipped there)
             $subtotal = 0;
@@ -64,7 +69,7 @@ final class CheckoutService
                 if ($digital && !Modules::enabled('digital_products')) {
                     throw new CheckoutException("\"{$p['name']}\" is a digital product, and digital products are not available right now. Please remove it from your cart.");
                 }
-                $stock = $digital ? DigitalService::stock($p) : (int) ($v['stock'] ?? $p['stock']);
+                $stock = $digital ? DigitalService::stock($p) : (int) ($v['stock'] ?? PreorderService::sellable((int) $p['id'], (int) $p['stock']));
                 // Units held by other carts are not free for this order.
                 $stock = max(0, $stock - CartService::heldByOthers((int) $p['id'], (int) ($l['variant_id'] ?? 0), $cartId));
                 if ($l['qty'] > $stock) {
@@ -74,7 +79,8 @@ final class CheckoutService
                 $p = FlashSaleService::attach([$p])[0]; // the charged price includes any running flash sale
                 $eff = PricingService::effective($p, $v);
                 $cost = PricingService::resolveVariant($p, $v ?? []);
-                $unit = PricingService::cents($eff['price']);
+                $memberUnit = MemberPriceService::priceFor($userId, (int) $p['id'], PricingService::cents($eff['price']));
+                $unit = PriceBreakService::unitFor((int) $p['id'], $productQty[(int) $p['id']] ?? 0, $memberUnit);
                 $subtotal += $unit * (int) $l['qty'];
                 $shipLines[] = ['weight_kg' => $p['weight_kg'], 'qty' => (int) $l['qty'], 'digital' => $digital];
                 $hasDigital = $hasDigital || $digital;
@@ -147,6 +153,13 @@ final class CheckoutService
                 $discount += $giftUsed;
             }
 
+            // Store credit: a member's balance, up to the items left after the discounts above.
+            $creditUsed = 0;
+            if ($userId !== null && $useCredit && Modules::enabled('store_credit')) {
+                $creditUsed = StoreCreditService::reserve($userId, $subtotal - $discount);
+                $discount += $creditUsed;
+            }
+
             // Postage is worked out here from the zone, weight and payment method. The browser never sets it.
             $quote = ShippingRates::quote($shipLines, $subtotal - $discount, (string) $contact['state'], $paymentMethod);
             $shipping = $quote['fee'];
@@ -176,6 +189,9 @@ final class CheckoutService
             if ($giftCardId !== null && $giftUsed > 0) {
                 GiftCardService::spend($orderId, $giftCardId, $giftUsed);
             }
+            if ($userId !== null && $creditUsed > 0) {
+                StoreCreditService::spend($orderId, $userId, $creditUsed);
+            }
 
             foreach ($items as $it) {
                 Database::query(
@@ -185,7 +201,11 @@ final class CheckoutService
                      PricingService::format($it['unit']), PricingService::format($it['retail']), PricingService::format($it['base']), PricingService::format($it['company']),
                      $it['qty'], PricingService::format($it['unit'] * $it['qty']), $affiliateId !== null ? $it['rate'] : null, $it['delivery'], $it['tax_rate'], PricingService::format($it['tax_amount'])]
                 );
-                if ($it['delivery'] === null) {
+                if ($it['delivery'] === null && PreorderService::accepting((int) $it['product_id'])) {
+                    // Pre-order units come from the pre-order limit, not physical stock; the line is marked so cancelling it gives them back correctly.
+                    PreorderService::reserve((int) $it['product_id'], (int) $it['qty'], $orderId);
+                    Database::query('UPDATE order_items SET preorder = 1 WHERE id = ?', [(int) $pdo->lastInsertId()]);
+                } elseif ($it['delivery'] === null) {
                     BundleService::adjustLine((int) $it['product_id'], $it['variant_id'] !== null ? (int) $it['variant_id'] : null, -(int) $it['qty'], 'order', $orderId, $userId); // locks the row, logs the movement
                 } // digital items have no stock to take; license keys are assigned when the order is paid
             }

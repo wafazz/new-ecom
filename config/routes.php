@@ -29,6 +29,8 @@ return function (Router $r): void {
         $r->get('/products', 'Shop/CatalogController@index');
         $r->get('/products/{slug}', 'Shop/CatalogController@show');
         $r->post('/products/{slug}/notify', 'Shop/StockAlertController@store', ['module:back_in_stock']);
+        $r->post('/products/{slug}/price-alert', 'Shop/PriceAlertController@store', ['module:price_alerts']);
+        $r->post('/products/{slug}/subscribe', 'Member/SubscriptionController@create', ['auth:member', 'module:subscriptions']);
         $r->post('/products/{slug}/reviews', 'Shop/ReviewController@store', ['auth:member']);
         $r->post('/wishlist/toggle', 'Shop/WishlistController@toggle', ['auth:member']);
         $r->get('/payments/billplz/return', 'Shop/BillplzController@back');
@@ -52,6 +54,8 @@ return function (Router $r): void {
         $r->post('/checkout/points/remove', 'Shop/CheckoutController@removePoints', ['module:loyalty']);
         $r->post('/checkout/gift-card', 'Shop/CheckoutController@useGiftCard', ['module:gift_cards']);
         $r->post('/checkout/gift-card/remove', 'Shop/CheckoutController@removeGiftCard', ['module:gift_cards']);
+        $r->post('/checkout/credit', 'Shop/CheckoutController@useCredit', ['module:store_credit']);
+        $r->post('/checkout/credit/remove', 'Shop/CheckoutController@removeCredit', ['module:store_credit']);
         $r->get('/track', 'Shop/OrderTrackController@form');
         $r->post('/track', 'Shop/OrderTrackController@lookup');
         $r->get('/order/{orderNo}/{token}', 'Shop/OrderTrackController@show');
@@ -325,6 +329,53 @@ return function (Router $r): void {
             $r->post('/bulk-pricing/{id}/undo', 'Admin/BulkPricingController@undo', ['module:bulk_pricing']);
         });
 
+        // Member price groups (admin and superadmin)
+        $r->group('/admin', ['auth:admin'], function (Router $r): void {
+            $r->get('/member-prices', 'Admin/MemberPriceController@index', ['module:member_prices']);
+            $r->post('/member-prices/group', 'Admin/MemberPriceController@group', ['module:member_prices']);
+            $r->post('/member-prices/assign', 'Admin/MemberPriceController@assign', ['module:member_prices']);
+            $r->post('/member-prices/price', 'Admin/MemberPriceController@price', ['module:member_prices']);
+        });
+
+        // Supplier purchase orders (admin and superadmin)
+        $r->group('/admin', ['auth:admin'], function (Router $r): void {
+            $r->get('/purchase-orders', 'Admin/PurchaseOrderController@index', ['module:purchase_orders']);
+            $r->post('/purchase-orders/supplier', 'Admin/PurchaseOrderController@supplier', ['module:purchase_orders']);
+            $r->post('/purchase-orders', 'Admin/PurchaseOrderController@create', ['module:purchase_orders']);
+            $r->get('/purchase-orders/{id}', 'Admin/PurchaseOrderController@show', ['module:purchase_orders']);
+            $r->post('/purchase-orders/{id}/send', 'Admin/PurchaseOrderController@send', ['module:purchase_orders']);
+            $r->post('/purchase-orders/{id}/receive', 'Admin/PurchaseOrderController@receive', ['module:purchase_orders']);
+        });
+
+        // Pre-orders (admin and superadmin)
+        $r->group('/admin', ['auth:admin'], function (Router $r): void {
+            $r->get('/preorders', 'Admin/PreorderController@index', ['module:preorders']);
+            $r->post('/preorders', 'Admin/PreorderController@open', ['module:preorders']);
+            $r->post('/preorders/arrive', 'Admin/PreorderController@arrive', ['module:preorders']);
+        });
+
+        // Quantity prices (admin and superadmin)
+        $r->group('/admin', ['auth:admin'], function (Router $r): void {
+            $r->get('/price-breaks', 'Admin/PriceBreakController@index', ['module:quantity_breaks']);
+            $r->post('/price-breaks', 'Admin/PriceBreakController@save', ['module:quantity_breaks']);
+        });
+
+        // Stock count sheets (admin and superadmin)
+        $r->group('/admin', ['auth:admin'], function (Router $r): void {
+            $r->get('/stock-counts', 'Admin/StockCountController@index', ['module:stock_counts']);
+            $r->post('/stock-counts', 'Admin/StockCountController@create', ['module:stock_counts']);
+            $r->get('/stock-counts/{id}', 'Admin/StockCountController@sheet', ['module:stock_counts']);
+            $r->post('/stock-counts/{id}/counts', 'Admin/StockCountController@save', ['module:stock_counts']);
+            $r->get('/stock-counts/{id}/review', 'Admin/StockCountController@review', ['module:stock_counts']);
+            $r->post('/stock-counts/{id}/apply', 'Admin/StockCountController@apply', ['module:stock_counts']);
+        });
+
+        // Accounting export (admin and superadmin, read-only)
+        $r->group('/admin', ['auth:admin'], function (Router $r): void {
+            $r->get('/accounting', 'Admin/AccountingController@index', ['module:accounting_export']);
+            $r->get('/accounting/export', 'Admin/AccountingController@export', ['module:accounting_export']);
+        });
+
         // Sales reports (admin and superadmin, read-only)
         $r->group('/admin', ['auth:admin'], function (Router $r): void {
             $r->get('/reports', 'Admin/ReportController@index', ['module:sales_reports']);
@@ -358,6 +409,8 @@ return function (Router $r): void {
             $r->post('/orders/{orderNo}/pay', 'Member/OrderController@pay');
             $r->get('/affiliate', 'Member/AffiliateController@show', ['module:affiliates']);
             $r->post('/affiliate/withdraw', 'Member/AffiliateController@withdraw', ['module:affiliates']);
+            $r->get('/subscriptions', 'Member/SubscriptionController@index', ['module:subscriptions']);
+            $r->post('/subscriptions/{id}/{action}', 'Member/SubscriptionController@change', ['module:subscriptions']);
             $r->get('/addresses', 'Member/AddressController@index');
             $r->post('/addresses', 'Member/AddressController@store');
             $r->get('/addresses/{id}/edit', 'Member/AddressController@edit');

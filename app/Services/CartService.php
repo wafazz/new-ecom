@@ -144,7 +144,7 @@ final class CartService
             if ($variantId !== null) {
                 return 'That option is not available.';
             }
-            $stock = DigitalService::isDigital($product) ? DigitalService::stock($product) : (int) $product['stock'];
+            $stock = DigitalService::isDigital($product) ? DigitalService::stock($product) : PreorderService::sellable($productId, (int) $product['stock']);
         }
         if ($stock < 1) {
             return 'Sorry, that item is sold out.';
@@ -220,7 +220,7 @@ final class CartService
                 $variant = $r['variant_id'] !== null ? ['retail_price' => $r['v_retail'], 'discount_price' => $r['v_discount']] : null;
                 $price = PricingService::effective($r, $variant);
                 $digital = DigitalService::isDigital($r);
-                $stock = (int) ($r['variant_id'] !== null ? ($r['v_stock'] ?? 0) : $r['p_stock']);
+                $stock = (int) ($r['variant_id'] !== null ? ($r['v_stock'] ?? 0) : PreorderService::sellable((int) $r['product_id'], (int) $r['p_stock']));
                 if ($digital) {
                     $stock = DigitalService::stock(['id' => $r['product_id'], 'digital_delivery' => $r['digital_delivery']]);
                 }
@@ -257,6 +257,42 @@ final class CartService
                 $problem = $problem || !$available || $qty < (int) $r['requested'];
             }
         }
+        // Member price groups first (signed-in members only), then quantity breaks on that price.
+        $memberId = null;
+        $me = \App\Core\Auth::user();
+        if ($me !== null && $me['role'] === 'member') {
+            $memberId = (int) $me['id'];
+        }
+        foreach ($items as &$it) {
+            if ($it['available']) {
+                $it['unit_cents'] = MemberPriceService::priceFor($memberId, $it['product_id'], $it['unit_cents']);
+                $it['line_cents'] = $it['unit_cents'] * $it['qty'];
+                $it['unit'] = number_format($it['unit_cents'] / 100, 2, '.', '');
+            }
+        }
+        unset($it);
+        // Quantity price breaks: the total of each product across its lines sets the price of every line for it.
+        $totals = [];
+        foreach ($items as $it) {
+            if ($it['available']) {
+                $totals[$it['product_id']] = ($totals[$it['product_id']] ?? 0) + $it['qty'];
+            }
+        }
+        foreach ($items as &$it) {
+            if (!$it['available'] || $it['qty'] < 1) {
+                continue;
+            }
+            $best = PriceBreakService::unitFor($it['product_id'], $totals[$it['product_id']], $it['unit_cents']);
+            if ($best < $it['unit_cents']) {
+                $it['unit_cents'] = $best;
+                $it['unit'] = number_format($best / 100, 2, '.', '');
+                $it['break'] = true;
+                $it['line_cents'] = $best * $it['qty'];
+            }
+        }
+        unset($it);
+        $subtotal = (int) array_sum(array_column($items, 'line_cents'));
+
         return ['items' => $items, 'subtotal_cents' => $subtotal, 'count' => $count, 'has_problem' => $problem];
     }
 

@@ -125,6 +125,15 @@ final class Product extends Model
         return Modules::enabled('digital_products') ? '' : " AND {$alias}.product_type <> 'digital'";
     }
 
+    /** Saves a product. A price change queues a check for price-drop alerts (sent by the worker, not here). */
+    public static function update(int $id, array $data): void
+    {
+        parent::update($id, $data);
+        if (array_intersect_key($data, array_flip(['retail_price', 'discount_price', 'discount_start', 'discount_end'])) !== []) {
+            \App\Services\Queue::push('price.drop', ['product_id' => $id]);
+        }
+    }
+
     public static function publicList(string $q, ?string $categorySlug, string $sort, int $page, int $perPage, ?string $brandSlug = null, array $opts = []): array
     {
         $now = date('Y-m-d H:i:s');
