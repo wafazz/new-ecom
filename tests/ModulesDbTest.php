@@ -132,6 +132,16 @@ check('returns: a refund above the order total is refused', $RS::decide($retReq,
 check('returns: the refund is recorded once', $RS::decide($retReq, 'refund', 1, null, '40.00') === null && $RS::decide($retReq, 'refund', 1, null, '40.00') !== null);
 check('returns: no new request after a refund', $RS::request($retOrder, 'Second try after refund') !== null);
 
+// Order messages: a customer message makes the order wait for a reply; a staff reply clears it.
+DB::query("INSERT INTO orders (order_no, customer_name, customer_email, customer_phone, ship_line1, ship_city, ship_state, ship_postcode, subtotal, total, payment_method, status) VALUES ('MSG-1', 'Msg Test', 'msg@example.test', '0123', 'Line 1', 'City', 'Selangor', '43000', 10.00, 10.00, 'cod', 'pending')");
+$msgOrder = (int) DB::connection()->lastInsertId();
+check('order messages: an empty message is refused', \App\Services\SupportService::post($msgOrder, 'customer', '   ') !== null);
+check('order messages: a customer message is saved', \App\Services\SupportService::post($msgOrder, 'customer', 'Where is my parcel?') === null);
+check('order messages: the order now waits for a reply', in_array($msgOrder, array_map('intval', array_column(\App\Services\SupportService::waiting(), 'id')), true));
+check('order messages: a staff reply is saved', \App\Services\SupportService::post($msgOrder, 'staff', 'It left the warehouse today.', 1) === null);
+check('order messages: a staff reply clears the waiting list', !in_array($msgOrder, array_map('intval', array_column(\App\Services\SupportService::waiting(), 'id')), true));
+check('order messages: the thread keeps both messages in order', count(\App\Services\SupportService::thread($msgOrder)) === 2);
+
 // Newsletter: a sign-up only counts once its confirmation link is used, and the link works once.
 DB::query('DELETE FROM newsletter_subscribers');
 $nlToken = bin2hex(random_bytes(32));

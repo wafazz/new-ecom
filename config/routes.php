@@ -50,6 +50,7 @@ return function (Router $r): void {
         $r->get('/order/{orderNo}/{token}', 'Shop/OrderTrackController@show');
         $r->post('/order/{orderNo}/{token}/cancel', 'Shop/OrderTrackController@cancel');
         $r->post('/order/{orderNo}/{token}/return', 'Shop/OrderTrackController@requestReturn', ['module:returns']);
+        $r->post('/order/{orderNo}/{token}/support', 'Shop/OrderTrackController@support', ['module:support']);
         $r->post('/order/{orderNo}/{token}/receipt', 'Shop/OrderTrackController@receipt');
         $r->get('/order/{orderNo}/{token}/receipt/{id}', 'Shop/OrderTrackController@receiptFile');
         $r->get('/order/{orderNo}/{token}/invoice', 'Shop/InvoiceController@guest');
@@ -255,6 +256,13 @@ return function (Router $r): void {
             $r->post('/products/csv/cancel', 'Admin/ProductCsvController@cancel', ['module:product_csv']);
         });
 
+        // Order messages (admin and superadmin)
+        $r->group('/admin', ['auth:admin'], function (Router $r): void {
+            $r->get('/support', 'Admin/SupportController@index', ['module:support']);
+            $r->get('/support/{orderId}', 'Admin/SupportController@show', ['module:support']);
+            $r->post('/support/{orderId}', 'Admin/SupportController@reply', ['module:support']);
+        });
+
         // Returns and refunds (admin and superadmin)
         $r->group('/admin', ['auth:admin'], function (Router $r): void {
             $r->get('/returns', 'Admin/ReturnController@index', ['module:returns']);
@@ -296,6 +304,7 @@ return function (Router $r): void {
             $r->get('/orders/{orderNo}/invoice', 'Shop/InvoiceController@member');
             $r->post('/orders/{orderNo}/cancel', 'Member/OrderController@cancel');
             $r->post('/orders/{orderNo}/return', 'Member/OrderController@requestReturn', ['module:returns']);
+            $r->post('/orders/{orderNo}/support', 'Member/OrderController@support', ['module:support']);
             $r->post('/orders/{orderNo}/receipt', 'Member/OrderController@receipt');
             $r->get('/orders/{orderNo}/receipt/{id}', 'Member/OrderController@receiptFile');
             $r->post('/orders/{orderNo}/pay', 'Member/OrderController@pay');
